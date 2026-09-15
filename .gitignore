@@ -1,0 +1,41 @@
+# Operating system
+.DS_Store
+Thumbs.db
+
+# Editors and local settings
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+.cache/
+tmp/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# JavaScript and TypeScript
+node_modules/
+dist/
+build/
+coverage/
+
+# Experiment output and local data
+data/private/
+experiments/results/
