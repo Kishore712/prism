@@ -1,0 +1,222 @@
+{% extends "layout.html" %}
+{% block title %}{{ review.title }}{% endblock %}
+{% block content %}
+<h1>{{ review.title }}</h1>
+<p class="subtitle">
+  <span class="mono">{{ review.draft.draft_id }}</span> ·
+  <span class="pill {{ 'ok' if review.draft.status.value == 'published' else 'neutral' }}">{{ review.draft.status.value }}</span>
+  · revision {{ review.draft.revision }}
+</p>
+
+{% if not can_edit %}
+<div class="card" style="border-color:var(--muted)">
+  This draft was already published and is now immutable by design — a
+  published snapshot must always stay traceable to the exact draft
+  revision that was reviewed and hashed, so nothing can drift out from
+  under a link you may have already shared. Nothing below can be edited.
+  To share a different selection from the same conversation, capture it
+  again (<a href="/capture/new">+ Capture</a>) — that starts a brand new
+  draft you're free to curate.
+  {% if published_snapshot_id %}
+  <div style="margin-top:8px;"><a href="/snapshots/{{ published_snapshot_id }}">View the published snapshot →</a></div>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="section">
+  <h3>Title</h3>
+  {% if can_edit %}
+  <div class="card">
+    <form method="post" action="/drafts/{{ review.draft.draft_id }}/title">
+      <input type="hidden" name="expected_revision" value="{{ review.draft.revision }}">
+      <input type="text" name="title" placeholder="Leave blank to use the source title" value="{{ review.draft.title_override or '' }}">
+      <p style="margin-top:10px;">
+        <button class="btn" type="submit">Save title</button>
+        <button class="btn" type="submit" name="clear" value="1">Revert to source title</button>
+      </p>
+    </form>
+  </div>
+  {% else %}
+  <div class="card">{{ review.draft.title_override or "(source title, no override)" }}</div>
+  {% endif %}
+</div>
+
+<div class="section">
+  <h3>Turns — everything starts excluded</h3>
+  {% if can_edit %}
+  <form method="post" action="/drafts/{{ review.draft.draft_id }}/select">
+    <input type="hidden" name="expected_revision" value="{{ review.draft.revision }}">
+    {% for t in review.turns %}
+    <div class="turn {{ '' if t.included else 'excluded' }}">
+      <div class="turn-head">
+        <label class="checkbox" style="margin:0;">
+          <input type="checkbox" name="turn_{{ t.turn.turn_id }}" {{ 'checked' if t.included }}>
+          <span class="idx">Turn {{ t.turn.turn_index }}</span>
+        </label>
+      </div>
+      {% for m in t.turn.messages %}
+      <div class="msg"><span class="role">{{ m.role.value }}</span>{{ m.content }}</div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    <button class="btn primary" type="submit">Save selection</button>
+  </form>
+  {% else %}
+  {% for t in review.turns %}
+  <div class="turn {{ '' if t.included else 'excluded' }}">
+    <div class="turn-head">
+      <span class="idx">Turn {{ t.turn.turn_index }}</span>
+      <span class="pill {{ 'ok' if t.included else 'neutral' }}">{{ 'included' if t.included else 'excluded' }}</span>
+    </div>
+    {% for m in t.turn.messages %}
+    <div class="msg"><span class="role">{{ m.role.value }}</span>{{ m.content }}</div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>
+
+<div class="section">
+  <h3>Resources</h3>
+  {% if review.resources %}
+  <div class="card">
+    <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">Observed, reference-only — mentioning a file never shares it. Attach it below to actually include it.</div>
+    {% for r in review.resources %}
+    <div style="font-size:14px; padding:4px 0;">{{ r.resource.display_name }} <span class="pill neutral">{{ r.resource.availability }}</span></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if review.draft.attachments %}
+  {% for a in review.draft.attachments %}
+  <div class="card card-row">
+    <div>{{ a.display_name }} <span style="color:var(--muted); font-size:13px;">({{ a.byte_size }} bytes)</span></div>
+    {% if can_edit %}
+    <form class="inline" method="post" action="/drafts/{{ review.draft.draft_id }}/resources/{{ a.attachment_id }}/remove">
+      <input type="hidden" name="expected_revision" value="{{ review.draft.revision }}">
+      <button class="btn small danger" type="submit">Remove</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  {% if can_edit %}
+  <div class="card">
+    <form method="post" action="/drafts/{{ review.draft.draft_id }}/resources/attach" enctype="multipart/form-data">
+      <input type="hidden" name="expected_revision" value="{{ review.draft.revision }}">
+      <label for="file">Attach a UTF-8 text or Markdown file</label>
+      <input type="file" id="file" name="file" accept=".txt,.md,.markdown">
+      <p style="margin-top:10px;"><button class="btn" type="submit">Attach</button></p>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<div class="section">
+  <h3>Findings — the Sealed Projection gate</h3>
+  {% if not gate.blocking and not gate.overridden and not gate.warnings %}
+  <div class="empty">No findings against the current selection.</div>
+  {% endif %}
+  {% for f in gate.blocking %}
+  <div class="finding">
+    <div class="card-row">
+      <div><span class="pill block">{{ f.finding_class.value }}</span> <strong>blocks publication</strong></div>
+    </div>
+    <div class="excerpt">{{ f.excerpt }}</div>
+    <div style="font-size:13.5px; color:var(--muted);">{{ f.detail }}</div>
+    {% if can_edit %}
+    <form method="post" action="/drafts/{{ review.draft.draft_id }}/findings/{{ f.finding_id }}/resolve" style="margin-top:10px;">
+      <input type="hidden" name="finding_class" value="{{ f.finding_class.value }}">
+      <input type="text" name="reason" placeholder="Why is this safe to share?" required>
+      <p style="margin-top:8px;"><button class="btn small" type="submit">Allow</button></p>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% for f in gate.overridden %}
+  <div class="finding decided">
+    <div><span class="pill ok">{{ f.finding_class.value }}</span> allowed by you</div>
+    <div class="excerpt">{{ f.excerpt }}</div>
+    {% if can_edit %}
+    <form method="post" action="/drafts/{{ review.draft.draft_id }}/findings/{{ f.finding_id }}/unresolve" style="margin-top:8px;">
+      <button class="btn small" type="submit">Undo</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% if grouped_warnings %}
+  <p class="field-hint">
+    {{ grouped_warnings|length }} advisory warning(s) — never block publication, and are grouped by term
+    (resolving one covers every occurrence). Listed rarest-first: a term that shows up in only one or two
+    places is more likely to be something specific worth a look; a term repeated everywhere is more likely
+    an ordinary shared word.
+  </p>
+  {% endif %}
+  {% for g in grouped_warnings %}
+  {% set f = g.finding %}
+  <div class="finding warn">
+    <div>
+      <span class="pill warn">{{ f.finding_class.value }}</span> advisory — does not block publication
+      {% if g.occurrence_count > 1 %}<span class="pill neutral">seen in {{ g.occurrence_count }} places</span>{% endif %}
+    </div>
+    <div class="excerpt">{{ f.excerpt }}</div>
+    <div style="font-size:13.5px; color:var(--muted);">{{ f.detail }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="section">
+  <h3>Provenance — tool-call events (Claude Code captures only)</h3>
+  {% if provenance %}
+  {% for e in provenance %}
+  <div class="card card-row">
+    <div>
+      <span class="mono">{{ e.tool_name }}</span> at turn {{ e.turn_index }} — {{ e.resource_label }}
+      {% if e.event_id in tainted %}<span class="pill block">flagged</span>{% endif %}
+    </div>
+    {% if can_edit %}
+    {% if e.event_id in tainted %}
+    <form method="post" action="/drafts/{{ review.draft.draft_id }}/untaint/{{ e.event_id }}">
+      <button class="btn small" type="submit">Remove flag</button>
+    </form>
+    {% else %}
+    <form method="post" action="/drafts/{{ review.draft.draft_id }}/taint">
+      <input type="hidden" name="event_id" value="{{ e.event_id }}">
+      <input type="text" name="reason" placeholder="Why was this a mistake?" required style="width:220px;">
+      <button class="btn small danger" type="submit">Flag as mistake</button>
+    </form>
+    {% endif %}
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="empty">No captured tool-call events on this draft.</div>
+  {% endif %}
+</div>
+
+{% if graph_edges %}
+<div class="section">
+  <h3>Dependency graph — suggestions, never applied automatically</h3>
+  {% for e in graph_edges %}
+  <div class="card" style="font-size:13.5px;">
+    <span class="pill neutral">{{ e.kind }} / {{ e.confidence }}</span>
+    {{ e.evidence }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if can_edit %}
+<div class="section">
+  <h3>Preview &amp; publish</h3>
+  <form method="post" action="/drafts/{{ review.draft.draft_id }}/preview">
+    <input type="hidden" name="expected_revision" value="{{ review.draft.revision }}">
+    <button class="btn primary" type="submit" {{ 'disabled' if not review.draft.selected_turn_ids }}>Preview exact snapshot</button>
+  </form>
+  {% if not review.draft.selected_turn_ids %}
+  <p class="field-hint">Select at least one turn above first.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

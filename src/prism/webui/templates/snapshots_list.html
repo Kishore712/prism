@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block title %}Snapshots{% endblock %}
+{% block content %}
+<h1>Snapshots</h1>
+<p class="subtitle">Immutable, content-hashed. Publishing from a draft creates one of these.</p>
+
+{% if snapshots %}
+<table>
+  <tr><th>Snapshot</th><th>Status</th><th>Messages</th><th>Published</th></tr>
+  {% for s in snapshots %}
+  <tr>
+    <td><a href="/snapshots/{{ s.snapshot_id }}" class="mono">{{ s.snapshot_id[:20] }}…</a></td>
+    <td><span class="pill {{ 'ok' if s.status.value == 'active' else 'danger' }}">{{ s.status.value }}</span></td>
+    <td>{{ s.message_count }}</td>
+    <td>{{ s.published_at[:16] }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="empty">Nothing published yet.</div>
+{% endif %}
+{% endblock %}

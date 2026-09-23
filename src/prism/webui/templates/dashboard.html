@@ -1,0 +1,65 @@
+{% extends "layout.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+<p class="subtitle">Capture a thread, curate it, and publish — everything here mirrors <code>prism</code> on the command line.</p>
+
+<div class="grid">
+  <div class="stat"><div class="value">{{ editing_count }}</div><div class="label">drafts in progress</div></div>
+  <div class="stat"><div class="value">{{ snapshot_count }}</div><div class="label">published snapshots</div></div>
+  <div class="stat"><div class="value">{{ pending_grants|length }}</div><div class="label">grants awaiting your approval</div></div>
+</div>
+
+{% if pending_grants %}
+<div class="section">
+  <h3>Waiting for you</h3>
+  {% for grant in pending_grants %}
+  <div class="card card-row">
+    <div>
+      <strong>{{ grant.recipient_label or "Unnamed recipient" }}</strong>
+      <span class="mono" style="color:var(--muted)"> · {{ grant.grant_id }}</span>
+    </div>
+    <div>
+      <a class="btn small" href="/grants">Review</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="two-col">
+  <div class="section">
+    <h3>Recent drafts</h3>
+    {% if recent_drafts %}
+      {% for d in recent_drafts %}
+      <div class="card card-row">
+        <div>
+          <a href="/drafts/{{ d.draft_id }}"><strong>{{ d.draft_id }}</strong></a>
+          <div style="color:var(--muted); font-size:13px;">{{ d.selected_turn_ids|length }} turn(s) selected · rev {{ d.revision }}</div>
+        </div>
+        <span class="pill {{ 'ok' if d.status.value == 'published' else 'neutral' }}">{{ d.status.value }}</span>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">No drafts yet. <a href="/capture/new">Capture a thread</a> to start.</div>
+    {% endif %}
+  </div>
+
+  <div class="section">
+    <h3>Recent snapshots</h3>
+    {% if recent_snapshots %}
+      {% for s in recent_snapshots %}
+      <div class="card card-row">
+        <div>
+          <a href="/snapshots/{{ s.snapshot_id }}"><strong class="mono">{{ s.snapshot_id[:18] }}…</strong></a>
+          <div style="color:var(--muted); font-size:13px;">{{ s.message_count }} messages · {{ s.published_at[:10] }}</div>
+        </div>
+        <span class="pill {{ 'ok' if s.status.value == 'active' else 'danger' }}">{{ s.status.value }}</span>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">Nothing published yet.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+{% block title %}Audit{% endblock %}
+{% block content %}
+<h1>Audit</h1>
+<p class="subtitle">Metadata only — who did what, when. Never recipient queries, answers, or content.</p>
+
+{% if events %}
+<table>
+  <tr><th>Event</th><th>Detail</th><th>When</th></tr>
+  {% for e in events %}
+  <tr>
+    <td>{{ e.event_type }}</td>
+    <td>{{ e.detail or "—" }}</td>
+    <td>{{ e.created_at[:19] }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="empty">No events yet.</div>
+{% endif %}
+{% endblock %}

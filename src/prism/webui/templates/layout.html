@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Prism{% endblock %} — Prism</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">Prism</span>
+    <nav>
+      <a href="/" class="{{ 'active' if request.url.path == '/' }}">Dashboard</a>
+      <a href="/drafts" class="{{ 'active' if request.url.path.startswith('/drafts') }}">Drafts</a>
+      <a href="/snapshots" class="{{ 'active' if request.url.path.startswith('/snapshots') }}">Snapshots</a>
+      <a href="/shares" class="{{ 'active' if request.url.path.startswith('/shares') }}">Shares</a>
+      <a href="/grants" class="{{ 'active' if request.url.path.startswith('/grants') }}">Grants</a>
+      <a href="/audit" class="{{ 'active' if request.url.path.startswith('/audit') }}">Audit</a>
+      <a href="/capture/new" class="{{ 'active' if request.url.path.startswith('/capture') }}">+ Capture</a>
+    </nav>
+    {% if pending_badge %}
+      <a href="/grants" class="pending-badge">{{ pending_badge }} pending</a>
+    {% endif %}
+  </header>
+  <main>
+    {% set ok = request.query_params.get('ok') %}
+    {% set err = request.query_params.get('err') %}
+    {% if ok %}<div class="flash ok">{{ ok }}</div>{% endif %}
+    {% if err %}<div class="flash err">{{ err }}</div>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

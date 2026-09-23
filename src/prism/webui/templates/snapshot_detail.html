@@ -1,0 +1,67 @@
+{% extends "layout.html" %}
+{% block title %}Snapshot{% endblock %}
+{% block content %}
+<h1>{{ snapshot.content.title if snapshot.content else "(purged)" }}</h1>
+<p class="subtitle">
+  <span class="mono">{{ snapshot.summary.snapshot_id }}</span> ·
+  <span class="pill {{ 'ok' if snapshot.summary.status.value == 'active' else 'danger' }}">{{ snapshot.summary.status.value }}</span>
+</p>
+
+<div class="grid">
+  <div class="stat"><div class="value">{{ snapshot.summary.message_count }}</div><div class="label">messages</div></div>
+  <div class="stat"><div class="value">{{ snapshot.summary.resource_count }}</div><div class="label">resources</div></div>
+  <div class="stat"><div class="value">{{ snapshot.summary.byte_size }}</div><div class="label">bytes</div></div>
+</div>
+
+{% if receipt %}
+<div class="section">
+  <h3>Signed receipt</h3>
+  <div class="card">
+    <div style="font-size:14px;">Findings: {{ receipt.finding_count }} ({{ receipt.override_count }} overridden by you)</div>
+    <div style="font-size:14px;">Signature valid: <span class="pill {{ 'ok' if receipt_valid else 'danger' }}">{{ 'yes' if receipt_valid else 'no' }}</span></div>
+    <div style="font-size:12.5px; color:var(--muted); margin-top:6px;">Signed {{ receipt.created_at[:16] }} · key <span class="mono">{{ receipt.public_key_hex[:24] }}…</span></div>
+  </div>
+</div>
+{% endif %}
+
+{% if snapshot.content %}
+<div class="section">
+  <h3>Content</h3>
+  <div class="snapshot-content">
+    {% for m in snapshot.content.messages %}
+    <div class="msg"><span class="role">{{ m.role.value }}</span>{{ m.content }}</div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="section">
+  <h3>Shares from this snapshot</h3>
+  {% if shares %}
+  {% for s in shares %}
+  <div class="card card-row">
+    <div><a href="/shares/{{ s.share.share_id }}">{{ s.share.name }}</a></div>
+    <span class="pill {{ 'ok' if s.share.status.value == 'active' else 'danger' }}">{{ s.share.status.value }}</span>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="card">
+    <form method="post" action="/snapshots/{{ snapshot.summary.snapshot_id }}/share">
+      <label for="name">Share name (optional)</label>
+      <input type="text" id="name" name="name" placeholder="{{ snapshot.content.title if snapshot.content else '' }}">
+      <p style="margin-top:10px;"><button class="btn primary" type="submit">Create share</button></p>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+{% if snapshot.summary.status.value == 'active' %}
+<div class="section">
+  <h3>Danger zone</h3>
+  <form method="post" action="/snapshots/{{ snapshot.summary.snapshot_id }}/revoke" onsubmit="return confirm('Revoke this snapshot? Every dependent share, invitation, and grant will stop working.');">
+    <label class="checkbox"><input type="checkbox" name="purge" value="1"> Also delete the payload bytes (purge)</label>
+    <p style="margin-top:10px;"><button class="btn danger" type="submit">Revoke snapshot</button></p>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block title %}Drafts{% endblock %}
+{% block content %}
+<h1>Drafts</h1>
+<p class="subtitle"><a href="/capture/new">+ Capture a new thread</a></p>
+
+{% if drafts %}
+<table>
+  <tr><th>Draft</th><th>Status</th><th>Selected</th><th>Revision</th><th>Updated</th></tr>
+  {% for d in drafts %}
+  <tr>
+    <td><a href="/drafts/{{ d.draft_id }}" class="mono">{{ d.draft_id }}</a></td>
+    <td><span class="pill {{ 'ok' if d.status.value == 'published' else 'neutral' }}">{{ d.status.value }}</span></td>
+    <td>{{ d.selected_turn_ids|length }} turn(s), {{ d.attachments|length }} file(s)</td>
+    <td>{{ d.revision }}</td>
+    <td>{{ d.updated_at[:16] }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="empty">No drafts yet.</div>
+{% endif %}
+{% endblock %}

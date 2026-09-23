@@ -1,0 +1,34 @@
+{% extends "layout.html" %}
+{% block title %}Review capture{% endblock %}
+{% block content %}
+<h1>{{ preview.title }}</h1>
+<p class="subtitle">Review before storing this on your machine. Nothing is shared by capturing it.</p>
+
+{% if preview.warnings %}
+<div class="card" style="border-color:var(--warn)">
+  <h3>Warnings</h3>
+  {% for w in preview.warnings %}
+  <div style="font-size:14px;margin-bottom:4px;">{{ w.message }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="section">
+  <h3>Candidate turns ({{ preview.observations.selected_message_count }} messages)</h3>
+  {% for turn_index, msgs in preview.messages|groupby("turn_index") %}
+  <div class="turn">
+    <div class="turn-head"><span class="idx">Turn {{ turn_index }}</span></div>
+    {% for m in msgs %}
+    <div class="msg"><span class="role">{{ m.role.value }}</span>{{ m.content }}</div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+
+<form method="post" action="/capture/shared-link/confirm">
+  <input type="hidden" name="import_id" value="{{ preview.import_id }}">
+  <input type="hidden" name="preview_hash" value="{{ preview.preview_hash }}">
+  <button class="btn primary" type="submit">Store this on this machine</button>
+  <a class="btn" href="/capture/new">Cancel</a>
+</form>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+{% block title %}Choose a conversation{% endblock %}
+{% block content %}
+<h1>Choose a conversation</h1>
+<p class="subtitle">From <code>{{ path }}</code> ({{ adapter }})</p>
+
+{% if inventory.warnings %}
+<div class="card" style="border-color:var(--warn)">
+  {% for w in inventory.warnings %}<div style="font-size:14px;">{{ w.message }}</div>{% endfor %}
+</div>
+{% endif %}
+
+{% for c in inventory.conversations %}
+<div class="card card-row">
+  <div>
+    <strong>{{ c.title }}</strong>
+    <div style="color:var(--muted); font-size:13px;">{{ c.supported_message_count }} messages{% if c.updated_at %} · updated {{ c.updated_at[:10] }}{% endif %}</div>
+    {% for w in c.warnings %}<div style="color:var(--warn); font-size:12.5px;">{{ w.message }}</div>{% endfor %}
+  </div>
+  <form method="post" action="/capture/local/import">
+    <input type="hidden" name="adapter" value="{{ adapter }}">
+    <input type="hidden" name="path" value="{{ path }}">
+    <input type="hidden" name="conversation_ref" value="{{ c.conversation_ref }}">
+    <button class="btn primary" type="submit">Capture</button>
+  </form>
+</div>
+{% else %}
+<div class="empty">No supported conversations found at that path.</div>
+{% endfor %}
+{% endblock %}

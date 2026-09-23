@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% block title %}Preview{% endblock %}
+{% block content %}
+<h1>Exact recipient-visible snapshot</h1>
+<p class="subtitle">This is byte-for-byte what publishes. Hash <span class="mono">{{ preview.preview_hash[:24] }}…</span></p>
+
+<div class="snapshot-content">
+  <div style="font-weight:700; margin-bottom:10px;">{{ preview.snapshot.title }}</div>
+  {% for m in preview.snapshot.messages %}
+  <div class="msg"><span class="role">{{ m.role.value }}</span>{{ m.content }}</div>
+  {% endfor %}
+  {% if preview.snapshot.resources %}
+  <div style="margin-top:14px; font-size:13px; color:var(--muted);">Attached: {% for r in preview.snapshot.resources %}{{ r.display_name }}{{ ", " if not loop.last }}{% endfor %}</div>
+  {% endif %}
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <form method="post" action="/drafts/{{ draft_id }}/publish">
+    <input type="hidden" name="expected_revision" value="{{ preview.draft_revision }}">
+    <input type="hidden" name="expected_preview_hash" value="{{ preview.preview_hash }}">
+    <button class="btn primary" type="submit">Publish this exact snapshot</button>
+    <a class="btn" href="/drafts/{{ draft_id }}">Back to draft</a>
+  </form>
+  <p class="field-hint">Publishing will still be blocked if an undecided finding exists — resolve it on the draft page first.</p>
+</div>
+{% endblock %}

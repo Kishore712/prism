@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block title %}Shares{% endblock %}
+{% block content %}
+<h1>Shares</h1>
+<p class="subtitle">A stable, numbered reference to one or more snapshot versions. Create one from a snapshot's page.</p>
+
+{% if shares %}
+<table>
+  <tr><th>Share</th><th>Status</th><th>Versions</th><th>Updated</th></tr>
+  {% for s in shares %}
+  <tr>
+    <td><a href="/shares/{{ s.share.share_id }}">{{ s.share.name }}</a></td>
+    <td><span class="pill {{ 'ok' if s.share.status.value == 'active' else 'danger' }}">{{ s.share.status.value }}</span></td>
+    <td>{{ s.versions|length }}</td>
+    <td>{{ s.share.updated_at[:16] }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="empty">No shares yet. Publish a snapshot, then create a share from it.</div>
+{% endif %}
+{% endblock %}

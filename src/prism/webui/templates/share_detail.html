@@ -1,0 +1,119 @@
+{% extends "layout.html" %}
+{% block title %}{{ share.share.name }}{% endblock %}
+{% block content %}
+<h1>{{ share.share.name }}</h1>
+<p class="subtitle">
+  <span class="mono">{{ share.share.share_id }}</span> ·
+  <span class="pill {{ 'ok' if share.share.status.value == 'active' else 'danger' }}">{{ share.share.status.value }}</span>
+</p>
+
+<div class="section">
+  <h3>Versions</h3>
+  <table>
+    <tr><th>#</th><th>Snapshot</th><th>Status</th><th></th></tr>
+    {% for v in share.versions %}
+    <tr>
+      <td>{{ v.version }}</td>
+      <td><a href="/snapshots/{{ v.snapshot_id }}" class="mono">{{ v.snapshot_id[:18] }}…</a></td>
+      <td><span class="pill {{ 'ok' if v.status.value == 'active' else 'danger' }}">{{ v.status.value }}</span></td>
+      <td>
+        {% if v.status.value == 'active' and share.share.status.value == 'active' %}
+        <form class="inline" method="post" action="/shares/{{ share.share.share_id }}/versions/{{ v.version }}/revoke">
+          <button class="btn small danger" type="submit">Revoke</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% if share.share.status.value == 'active' %}
+  <div class="card">
+    <form method="post" action="/shares/{{ share.share.share_id }}/versions">
+      <label for="snapshot_id">Add another snapshot version</label>
+      <input type="text" id="snapshot_id" name="snapshot_id" placeholder="snp_..." required>
+      <p style="margin-top:10px;"><button class="btn" type="submit">Add version</button></p>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+{% if share.share.status.value == 'active' %}
+<div class="section">
+  <h3>Invite a recipient</h3>
+  <div class="card">
+    <form method="post" action="/shares/{{ share.share.share_id }}/invitations">
+      <label for="recipient_hint">Who is this for? (shown only to you)</label>
+      <input type="text" id="recipient_hint" name="recipient_hint" placeholder="Alice">
+      <label for="version">Version (leave blank for the latest)</label>
+      <input type="number" id="version" name="version" min="1">
+      <div class="two-col">
+        <div>
+          <label for="expires_hours">Invitation expires in (hours)</label>
+          <input type="number" id="expires_hours" name="expires_hours" value="24" min="1">
+        </div>
+        <div>
+          <label for="grant_hours">Access expires in (hours)</label>
+          <input type="number" id="grant_hours" name="grant_hours" value="168" min="1">
+        </div>
+      </div>
+      <label class="checkbox" style="margin-top:14px;"><input type="checkbox" name="require_approval" checked> Require my approval before access is granted</label>
+      <p style="margin-top:10px;"><button class="btn primary" type="submit">Create invitation</button></p>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<div class="section">
+  <h3>Invitations</h3>
+  {% if invitations %}
+  <table>
+    <tr><th>For</th><th>Status</th><th>Expires</th><th></th></tr>
+    {% for i in invitations %}
+    <tr>
+      <td>{{ i.recipient_hint or "—" }} <span class="mono" style="color:var(--muted)">…{{ i.token_hint }}</span></td>
+      <td><span class="pill {{ 'ok' if i.status.value == 'redeemed' else ('danger' if i.status.value == 'revoked' else 'neutral') }}">{{ i.status.value }}</span></td>
+      <td>{{ i.expires_at[:16] }}</td>
+      <td>
+        {% if i.status.value == 'pending' %}
+        <form class="inline" method="post" action="/invitations/{{ i.invitation_id }}/revoke?back=/shares/{{ share.share.share_id }}">
+          <button class="btn small danger" type="submit">Revoke</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty">No invitations yet.</div>
+  {% endif %}
+</div>
+
+<div class="section">
+  <h3>Grants</h3>
+  {% if grants %}
+  <table>
+    <tr><th>Recipient</th><th>Approval</th><th>Status</th><th>Expires</th></tr>
+    {% for g in grants %}
+    <tr>
+      <td>{{ g.recipient_label or "—" }}</td>
+      <td><span class="pill {{ 'ok' if g.approval.value == 'approved' else ('danger' if g.approval.value == 'denied' else 'warn') }}">{{ g.approval.value }}</span></td>
+      <td><span class="pill {{ 'ok' if g.status.value == 'active' else 'danger' }}">{{ g.status.value }}</span></td>
+      <td>{{ g.expires_at[:16] }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p class="field-hint">Approve, deny, or revoke a grant from the <a href="/grants">Grants</a> page.</p>
+  {% else %}
+  <div class="empty">No one has redeemed an invitation yet.</div>
+  {% endif %}
+</div>
+
+{% if share.share.status.value == 'active' %}
+<div class="section">
+  <h3>Danger zone</h3>
+  <form method="post" action="/shares/{{ share.share.share_id }}/revoke" onsubmit="return confirm('Revoke this entire share? All its versions, invitations, and grants stop working.');">
+    <button class="btn danger" type="submit">Revoke share</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

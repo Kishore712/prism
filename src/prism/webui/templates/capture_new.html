@@ -1,0 +1,34 @@
+{% extends "layout.html" %}
+{% block title %}Capture{% endblock %}
+{% block content %}
+<h1>Capture a thread</h1>
+<p class="subtitle">Nothing is shared yet — capture only creates an owner-only, excluded-by-default draft.</p>
+
+<div class="two-col">
+  <div class="card">
+    <h2>From a ChatGPT shared link</h2>
+    <p class="field-hint">Create a public link in ChatGPT (Share → Create link), paste it below, then delete the link once Prism has its own copy.</p>
+    <form method="post" action="/capture/shared-link/inspect">
+      <label for="url">Shared link URL</label>
+      <input type="url" id="url" name="url" placeholder="https://chatgpt.com/share/..." required>
+      <p style="margin-top:16px;"><button class="btn primary" type="submit">Fetch &amp; review</button></p>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>From a local session file</h2>
+    <p class="field-hint">A Claude Code transcript (<code>~/.claude/projects/&lt;project&gt;/&lt;session&gt;.jsonl</code>) or a ChatGPT export file already on this machine.</p>
+    <form method="post" action="/capture/local/inventory">
+      <label for="adapter">Source type</label>
+      <select id="adapter" name="adapter">
+        {% for a in adapters %}
+        <option value="{{ a }}">{{ a }}</option>
+        {% endfor %}
+      </select>
+      <label for="path">File or directory path</label>
+      <input type="text" id="path" name="path" placeholder="/Users/you/.claude/projects/prism/session.jsonl" required>
+      <p style="margin-top:16px;"><button class="btn primary" type="submit">List conversations</button></p>
+    </form>
+  </div>
+</div>
+{% endblock %}

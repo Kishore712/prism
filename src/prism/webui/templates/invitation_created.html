@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+{% block title %}Invitation created{% endblock %}
+{% block content %}
+<h1>Invitation created</h1>
+<p class="subtitle">Copy this code now — Prism stores only its hash and cannot show it again.</p>
+
+<div class="token-box">{{ invitation.invitation_token }}</div>
+<p class="field-hint">Send this to your recipient through a different channel than the MCP URL (text message, not the same email, etc.). They will also need the endpoint from <code>prism mcp serve</code> or <code>prism mcp check</code>.</p>
+
+<p style="margin-top:20px;">
+  <a class="btn primary" href="/shares/{{ share_id }}">Back to share</a>
+</p>
+{% endblock %}
