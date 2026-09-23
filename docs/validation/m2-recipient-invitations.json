@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "kind": "m2_recipient_invitations",
+  "date": "2026-09-21",
+  "branch": "prototype/m2-recipient-invitations",
+  "status": "implemented_locally_remote_oidc_https_e2e_unverified",
+  "implemented": true,
+  "follow_up_status": "local_preflight_bootstrap_and_loopback_tls_controls_validated_remote_provider_and_pilot_pending",
+  "owner_accepted": false,
+  "pilot_ready": false,
+  "model_calls": 0,
+  "model_route": {
+    "default": "disabled",
+    "explicit_provider_flags": "--allow-openai --openai-key-file may configure a route",
+    "external_aggregate_allowance": 0,
+    "budget_flag": "--model-budget-cents defaults to 0; changing it never resets, recharges, or copies reservations",
+    "reservation_ledger": "independent identity-service ledger; existing .prism-demo ledger is not read or changed",
+    "live_call_authorized": false,
+    "existing_demo_ledger": "not read, migrated, or changed"
+  },
+  "local_validation": {
+    "full_unittest": {
+      "command": "PYTHONPATH=src uv run python -m unittest discover -s tests",
+      "passed": 146,
+      "failed": 0,
+      "duration_seconds": 8.902
+    },
+    "focused_identity": {
+      "command": "PYTHONPATH=src uv run python -m unittest tests.test_identity",
+      "passed": 17,
+      "failed": 0,
+      "duration_seconds": 3.653
+    },
+    "ruff": {
+      "changed_python_files": 7,
+      "check": "passed",
+      "format_check": "passed",
+      "full_repository_baseline": "11 existing failures in unchanged doctor.py, engine.py, fixtures/probe.py, selftest.py, test_boundaries.py, and test_kata_spike.py; not a new regression"
+    },
+    "frontend": {
+      "prettier": {
+        "files": ["frontend/src/main.jsx", "frontend/src/style.css"],
+        "status": "passed"
+      },
+      "production_build": "passed"
+    },
+    "security_and_boundary_evidence": {
+      "zero_budget_guarded_transport": "rejected before network",
+      "no_network_agent_test": {
+        "test": "tests/test_agent.py::AgentTests::test_transport_destination_storage_size_and_atomic_prepaid_allowance",
+        "network_delegate_count_unchanged": true
+      },
+      "budget_increase_preserves_prior_usage": true,
+      "identity_tests": [
+        "fake signed-RSA OIDC",
+        "exact subject and cookie session binding",
+        "grant, replay, revoke, and readiness denial",
+        "FunctionModel cited-question and JSONJobs runtime-double checks"
+      ],
+      "cli_tls_boundary": "real loopback HTTPS fake-IdP and Prism servers used a temporary test CA trusted only by the client; wrong hostname and untrusted CA failed at TLS",
+      "independent_security_review": "passed",
+      "parent_code_review": "passed"
+    }
+  },
+  "dependencies": {
+    "authlib": "1.8.0",
+    "jwt_validation": "joserfc",
+    "config_template": "../../examples/oidc-config.example.json",
+    "identify_config_template": "../../examples/oidc-identify-config.example.json",
+    "entry_point": "prism identity-service",
+    "preflight_entry_point": "prism identity-preflight",
+    "identify_entry_point": "prism identity-bootstrap",
+    "direct_tls": true,
+    "proxy_headers_trusted": false
+  },
+  "implemented_controls": {
+    "fixed_https_oidc_endpoints": true,
+    "canonical_redirect_uri": "public_origin + /auth/oidc/callback",
+    "exact_issuer_and_subject_binding": true,
+    "authorization_code_pkce_and_nonce": true,
+    "server_side_grant_and_revision": true,
+    "per_request_session_version_expiry_action_and_grant_checks": true,
+    "single_use_invitation": true,
+    "legacy_local_capability_login_disabled_in_identity_mode": true,
+    "forwarded_proto_not_trusted": true,
+    "identity_budget_defaults_to_zero": true,
+    "identity_reservations_survive_restart_and_ceiling_changes": true,
+    "identity_ledger_independent_from_demo_ledger": true,
+    "secret_free_local_preflight": true,
+    "preflight_checks_cert_key_san_expiry_permissions_port_and_projects": true,
+    "optional_idp_probe_is_tls_handshake_only": true,
+    "identify_only_bootstrap_pkce_state_nonce_signature_and_browser_binding": true,
+    "identify_only_bootstrap_outputs_verified_issuer_and_subject_only": true,
+    "identify_only_bootstrap_creates_no_session_grant_or_invitation": true
+  },
+  "cookie_policy": {
+    "pending_cookie": "__Host-prism_oidc_login",
+    "identity_cookie": "__Host-prism_identity",
+    "attributes": ["Secure", "HttpOnly", "SameSite=Lax", "Path=/", "no Domain"],
+    "pending_seconds": 300,
+    "owner_session_seconds": 3600,
+    "recipient_session": "fixed invitation/grant expiry",
+    "consumed_invitation_replay": "denied; owner must issue a new invitation"
+  },
+  "acceptance_checks": [
+    {
+      "id": "local_fake_idp_claim_pkce_and_invitation_flow",
+      "status": "local tests passed",
+      "evidence": "tests/test_identity.py"
+    },
+    {
+      "id": "local_direct_tls_startup_with_temporary_key",
+      "status": "passed: real loopback HTTPS fake-IdP and Prism TLS flow with temporary client-trusted CA; host trust was unchanged"
+    },
+    {
+      "id": "local_real_loopback_tls_fake_idp_flow",
+      "status": "passed: real loopback HTTPS fake-IdP flow; PKCE, nonce, RSA signature, exact issuer/subject, wrong-hostname and untrusted-CA TLS denial",
+      "boundary": "temporary test CA is trusted only inside the test process; host trust is not changed"
+    },
+    {
+      "id": "local_identity_preflight",
+      "status": "passed: certificate/key pairing, SAN/expiry, owner-only permissions, canonical port, redacted output, and missing-config failure",
+      "boundary": "default is local and secret-free; optional IdP probe performs fixed-host TLS handshakes without HTTP/OAuth requests"
+    },
+    {
+      "id": "local_identify_only_bootstrap",
+      "status": "passed: real TLS bootstrap flow, host-only Secure/HttpOnly cookie, Origin check, single-winner concurrency, fixed deadline/graceful shutdown, and no result after expiry",
+      "boundary": "one-shot browser-bound PKCE/state/nonce/signature flow prints verified issuer/sub and creates no Prism session, grant, or invitation"
+    },
+    {
+      "id": "real_idp_registration_and_exact_claims",
+      "status": "not configured"
+    },
+    {
+      "id": "real_https_browser_invitation_and_relogin",
+      "status": "not verified"
+    },
+    {
+      "id": "recipient_sourced_question_and_permitted_run",
+      "status": "not verified with a real model or reference Kata runtime"
+    },
+    {
+      "id": "revocation_and_cross_identity_direct_api_denial",
+      "status": "local tests passed"
+    },
+    {
+      "id": "private_reachability_and_deployment_boundary",
+      "status": "owner configuration required; no public deployment authorized"
+    }
+  ],
+  "required_owner_inputs": [
+    "IdP client registration for the exact HTTPS redirect URI",
+    "purpose-specific OIDC endpoints, client ID, and any owner-only client secret",
+    "trusted TLS certificate and key for the private origin",
+    "private network reachability scope for intended collaborators",
+    "exact owner and recipient issuer/sub claims obtained from trusted IdP claims, never guessed from email"
+  ],
+  "private_setup_preparation": {
+    "guide": "../m2-recipient-private-setup.md",
+    "google_oidc": {
+      "status": "application preparation exists; web client, exact origin, and redirects pending",
+      "official_guidance": [
+        "https://developers.google.com/identity/openid-connect/openid-connect",
+        "https://developers.google.com/identity/openid-connect/reference"
+      ]
+    },
+    "tailscale": {
+      "status": "new account-specific Prism tailnet selected; login, device enrollment, ACL/policy, DNS/HTTPS, and certificate issuance pending; existing tailnet unchanged",
+      "official_guidance": [
+        "https://tailscale.com/docs/how-to/set-up-https-certificates",
+        "https://tailscale.com/docs/reference/best-practices/security"
+      ]
+    },
+    "private_values_in_repository": false
+  },
+  "unverified_boundaries": [
+    "real Google OIDC provider behavior",
+    "trusted private HTTPS browser E2E",
+    "tailnet policy and device reachability",
+    "cloud or public deployment",
+    "real model calls and provider data disclosure",
+    "reference Linux/Kata execution in this increment",
+    "private pilot release gates and owner acceptance"
+  ],
+  "links": {
+    "guide": "../m2-recipient-invitations.md",
+    "config_template": "../../examples/oidc-config.example.json",
+    "prior_m23_validation": "m2-linux-runtime.json"
+  },
+  "notes": [
+    "The fake transport tests use temporary generated keys and do not establish provider acceptance; the separate loopback fake-IdP test uses real local HTTPS with a temporary client-trusted CA and does not establish private Google/browser, model, or Kata acceptance.",
+    "The final local run passed 146 tests in 8.902 seconds; focused identity passed 17 tests in 3.653 seconds; seven changed Python files passed Ruff check and format check, while 11 repository-wide baseline failures remain in unchanged files.",
+    "The identity-service external allowance defaults to zero; provider flags only configure a possible route and do not authorize or provide a usable model route.",
+    "The existing .prism-demo data, key, and 300-cent ledger were untouched. This stage made no cloud or model calls.",
+    "Order 4 has only local foundation evidence. Real OIDC provider behavior, browser HTTPS E2E, trusted TLS, live model use, and reference Kata execution remain unverified; owner acceptance and pilot readiness remain false.",
+    "Secrets must remain out of chat, repository files, logs, and public URLs."
+  ]
+}

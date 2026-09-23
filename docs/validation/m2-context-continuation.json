@@ -1,0 +1,64 @@
+{
+  "date": "2026-09-17",
+  "increment": "M2.1c",
+  "branch": "prototype/m2-context-continuation",
+  "owner_accepted": false,
+  "pilot_ready": false,
+  "tests": {
+    "handoff": 14,
+    "agent": 12,
+    "owner": 11,
+    "sharing": 13,
+    "jobs": 4,
+    "total_passed": 54,
+    "model_double": "FunctionModel for deterministic context and reference checks"
+  },
+  "live": {
+    "provider": "configured OpenAI route",
+    "turns": 2,
+    "completed_answers": 1,
+    "failed_answers": 1,
+    "failure": "First answer rejected for invalid citations schema after successful execution; preserved.",
+    "recovery": "Explicit reference field descriptions and narrower read-existing-result question; no automatic replay.",
+    "provider_dispatches": 4,
+    "actual_new_jobs": 1,
+    "seed": 23,
+    "mean_difference": 0.022500000000000003,
+    "bootstrap_interval": [
+      0.0024999999999999996,
+      0.04125
+    ],
+    "elapsed_seconds": 0.403,
+    "exit_code": 0,
+    "cleaned_up": true,
+    "profile": "development",
+    "synthetic": true
+  },
+  "allowance": {
+    "total_cents": 200,
+    "reserved_before_cents": 170,
+    "reserved_after_cents": 190,
+    "remaining_cents": 10,
+    "reset": false
+  },
+  "browser": [
+    "approved schema-2 selection and fresh background landing",
+    "separate conversation and imported excerpts",
+    "historical result reference panel",
+    "new current-session execution reference",
+    "approved source panel",
+    "390px background layout"
+  ],
+  "preservation": {
+    "prior_database_rows_unchanged": true,
+    "prior_versions_unchanged": true,
+    "cloud_started": false
+  },
+  "limitations": [
+    "synthetic fixed project/action only",
+    "role credentials, not named identities",
+    "finite testing, not proof of security",
+    "model structured-output failure remains possible",
+    "existing request-size and aggregate budgets unchanged"
+  ]
+}

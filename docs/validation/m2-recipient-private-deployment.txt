@@ -1,0 +1,118 @@
+# Sanitized private deployment checkpoint
+
+Date: 2026-09-22/23
+
+This note records the bounded private deployment checkpoint. It omits project,
+account, VM, hostname, client, secret, key, URL, and operation identifiers.
+
+- A dedicated Tailscale HTTPS certificate was issued. One dedicated Google Web
+  OAuth client was registered. No real browser OIDC flow was run.
+- On the target VM in `us-central1-b`, a first scheduling update omitted
+  `maxRunDuration` and `terminationTime` and returned Operation DONE, but did
+  not clear either field. A second `setScheduling` explicitly set both fields
+  to null; a fresh independent GET confirmed both were absent.
+- The earlier public-key-only KEY boot passed by generating an RSA-4096 key
+  and returning only its public key; that boot did not install the app. APP
+  source-delivery attempts f, g, i, and j did not install it: g received
+  metadata HTTP 503, i exhausted retries with an ambiguous outcome, and j
+  received three network exceptions for the same request. The subsequent
+  one-boot source-delivery path failed before app installation: the controller
+  reported `protected_vm_drift` before sending chunks, and the guest receiver
+  raised `BlockingIOError` on its serial device before READY. The user rejected
+  automatic timeout shutdown.
+- The authorized temporary access pivot used Google IAP and OS Login SSH. A
+  first project-level key add failed because the project was missing and was
+  fully rolled back. A second attempt succeeded through IAP; host-key
+  trust-on-first-use was independently checked, then strict host-key checking
+  was enabled. The guest-reported VM identity matched the API result.
+- The fixed compressed payload and wrapper were copied. The first wrapper
+  rejected the inventory layout at `stage_inventory`, before mutation. After
+  correcting the location under high review, one fixed install passed.
+- Independent guest checks verified `installed.json`, a complete ledger, all
+  six payload-part SHA-256 values, all 29 source-file SHA-256 values, Python
+  3.13.5 in the virtual environment, and successful imports of Prism,
+  Authlib, FastAPI, and Uvicorn. The Python archive did not have an
+  independently pinned SHA-256; that remains a supply-chain verification
+  limitation.
+- The install did not start the application: `service_started=false` and
+  `model_calls=0`. No OIDC secret was installed, no live login or browser
+  check occurred, and no model or Kata integration was exercised.
+- Before the successful fixed install, a small non-executable metadata probe
+  had demonstrated attach/remove writes only; its independent follow-up found
+  the VM STOPPED with its original four metadata controls and no ingress.
+  Earlier independent i/j checks likewise found STOPPED state, the original
+  four controls, no startup metadata, and no ingress; a later check after more
+  than ten minutes remained clean with no matching operation, and request
+  state was retained.
+- The initial temporary IAP access path was fully revoked: SSH sessions were
+  closed, the OS Login key profile was cleared, the dedicated firewall rule and network tag
+  were deleted, and the IAP API was disabled. The target VM remains RUNNING;
+  both scheduling limits are absent, old startup and idle-timeout metadata
+  are cleaned, the original four metadata controls remain, there is no service account, Shielded VM is enabled, and effective
+  ingress is zero on both VMs.
+- This is an app-install checkpoint, not order-4 acceptance. OIDC service
+  configuration and HTTPS serving remain to be deployed and independently
+  reviewed. Real browser identity, model, and Kata checks require separate
+  review before execution. Keep the VM running for that next reviewed step.
+
+This is a preparation checkpoint, not order-4 acceptance. Historical pass/fail
+records are unchanged.
+
+## 2026-09-23 OIDC service checkpoint (superseded provisional record)
+
+This earlier checkpoint supplements the app-install evidence above. The final
+owner-only checkpoint below supersedes its manual-reload, in-progress-release,
+and temporary-IAP descriptions; the earlier failure details remain historical.
+
+- The identify-only Google owner `sub` passed. Client and certificate
+  configuration were installed on the guest, the service configuration was
+  rendered, and Prism preflight passed.
+- The first systemd start failed closed. A second start passed. The Shields Up
+  stop/restart gate passed.
+- From the Mac, HTTPS TLS mode returned HTTP 200; anonymous owner and review
+  mode requests returned HTTP 401.
+- Chrome owner login succeeded, but its initial callback landing needed a
+  manual reload. A narrow callback fix was then prepared.
+- The VM remained RUNNING with temporary IAP SSH open pending cleanup. Model
+  allowance was zero, with no model route; only the synthetic fixture was
+  used. `pilot_ready=false`.
+
+This was provisional evidence and is superseded by the final record below.
+
+## 2026-09-23 private owner-path deployment result
+
+This sanitized result records the current private service and requested
+administrative access configuration. It does not claim recipient or pilot
+acceptance and includes no project, account, VM, hostname, private URL, client,
+subject, secret, or key values.
+
+- A new immutable 29-file service release was installed. The release
+  `source.tar` SHA-256 was verified. Independent checks confirmed the old
+  oneboot marker, manifest, and ledger were byte-identical after the update.
+- The initial updater rejected simultaneous IPv4 and IPv6 addresses and failed
+  closed before publication. After the bounded updater fix, it passed; the new
+  systemd unit passed preflight, `systemd-analyze verify`, and manual start.
+  The earlier first systemd start had also failed closed before the later
+  passing start; both failures remain part of the record.
+- Shields Up was false only while the guarded service was active. Stop closed
+  access; the guarded restart reopened it after checks.
+- From the Mac, trusted HTTPS `/api/auth/mode` returned HTTP 200 and the
+  owner workspace `/owner` returned HTTP 200. Anonymous owner and review mode
+  requests returned HTTP 401.
+- Chrome completed a real Google owner login and redirected directly to the
+  owner workspace after a narrow cross-site document-navigation fix; no manual
+  reload was needed on the corrected release. Cross-site owner document
+  navigation returned HTTP 200, but its API/auth requests returned HTTP 403.
+  An `Origin` from an untrusted site returned HTTP 403.
+- The VM remains RUNNING without auto-stop. By user request, fixed on-demand
+  IAP SSH management remains configured. The earlier temporary rule and tag
+  were removed; the retained path has a dedicated replacement rule and tag
+  for this VM, allowing IAP-source TCP/22 only. Public TCP/8443 ingress
+  remains closed.
+  The IAP API is deliberately enabled. A stable local key is used to issue an
+  OS Login key with a one-hour TTL for each connection; local
+  `prism-ssh --check` passed.
+- Model allowance is zero and no external model route is configured. Only the
+  synthetic fixture was used. No second recipient identity, Kata integration,
+  or model call was tested. `pilot_ready=false`; order 4 and pilot acceptance
+  remain incomplete.

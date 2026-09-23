@@ -1,0 +1,54 @@
+# M2 Order 4 Private HTTPS Certificate Validation
+
+Date: 2026-09-22
+
+This sanitized record covers one bounded certificate issuance attempt on the
+exact existing replacement guest. It excludes the tailnet FQDN, device ID,
+addresses, account identifiers, certificate bytes, private key, and raw
+credentials. The user explicitly approved enabling Tailscale HTTPS and the
+public Certificate Transparency disclosure of the device name before this
+action.
+
+## Guest and certificate checks
+
+- Existing Tailscale identity was checked against the exact saved device-ID
+  and normalized-DNS hashes; values and hashes are not reproduced here.
+- MagicDNS was already enabled. HTTPS enablement was confirmed after refresh.
+- Safe preferences were validated, including `ShieldsUp=true`.
+- The issued certificate SAN matched the exact expected device hostname.
+- Certificate and private key matched; at least seven days of validity
+  remained at validation time.
+- The key file was root-owned with mode `0600`.
+- Certificate and key remained on the retained guest disk. No key export
+  occurred.
+- Prism was not started; no model call was made.
+
+## Controller result and cleanup
+
+The controller summary was:
+
+```text
+state=issued
+reason=null
+cleanup_verified=true
+cleanup_failed=false
+mutation_outcome_uncertain=false
+key_exported=false
+app_started=false
+model_calls=0
+```
+
+The controller separately reported `ISSUED_PROVISIONAL`. Cleanup passed with
+the guest terminated, startup configuration absent, and the original four
+metadata controls retained. Independent GCP Console inspection confirmed the
+VM was stopped and startup configuration blank. Project-wide preflight found
+no startup-script metadata. The reviewed effective firewall configuration had
+no ingress rules.
+
+## Limits and follow-up
+
+`ShieldsUp=true` continues to block inbound tailnet connections. The firewall
+and guest checks do not establish service reachability. No Prism listener or
+application TLS, OIDC registration or flow, browser acceptance, or pilot
+readiness was tested. The public certificate transparency name disclosure was
+approved. File-based certificate renewal will be needed before expiration.

@@ -1,0 +1,96 @@
+{
+  "recorded_at": "2026-09-18T00:04:02.172348+00:00",
+  "kind": "m1_real_synthetic_jobs",
+  "profile": "development",
+  "pilot_ready": false,
+  "model_calls": 0,
+  "passed": true,
+  "checks": [
+    {
+      "id": "actual_run_seed_7",
+      "passed": true
+    },
+    {
+      "id": "confirmed_cleanup_seed_7",
+      "passed": true
+    },
+    {
+      "id": "duplicate_submission_same_run",
+      "passed": true
+    },
+    {
+      "id": "actual_run_seed_23",
+      "passed": true
+    },
+    {
+      "id": "confirmed_cleanup_seed_23",
+      "passed": true
+    },
+    {
+      "id": "changed_interval_same_mean",
+      "passed": true
+    },
+    {
+      "id": "invalid_seed_denied",
+      "passed": true
+    },
+    {
+      "id": "other_recipient_result_denied",
+      "passed": true
+    },
+    {
+      "id": "inspect_execution_denied",
+      "passed": true
+    },
+    {
+      "id": "source_files_unchanged",
+      "passed": true
+    },
+    {
+      "id": "revoked_result_delivery_denied",
+      "passed": true
+    }
+  ],
+  "baseline": {
+    "cleaned_up": true,
+    "elapsed_seconds": 0.294,
+    "exit_code": 0,
+    "image": "docker.io/library/python@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a",
+    "image_id": "sha256:ee51c581302a65863c900c10ab025acf294badb9ee5c2b05c540498d6cd5a2c0",
+    "output": {
+      "bootstrap_interval": [
+        0.004999999999999999,
+        0.0425
+      ],
+      "mean_difference": 0.022500000000000003,
+      "resamples": 300,
+      "samples": 8,
+      "seed": 7,
+      "synthetic": true
+    },
+    "output_sha256": "2446df17077e8a88991270ddbf18908b0f0967c3a50a43179cae7e2b5754a145",
+    "profile": "development",
+    "program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9"
+  },
+  "new_run": {
+    "cleaned_up": true,
+    "elapsed_seconds": 0.31,
+    "exit_code": 0,
+    "image": "docker.io/library/python@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a",
+    "image_id": "sha256:ee51c581302a65863c900c10ab025acf294badb9ee5c2b05c540498d6cd5a2c0",
+    "output": {
+      "bootstrap_interval": [
+        0.0024999999999999996,
+        0.04125
+      ],
+      "mean_difference": 0.022500000000000003,
+      "resamples": 300,
+      "samples": 8,
+      "seed": 23,
+      "synthetic": true
+    },
+    "output_sha256": "76a1ce3a25a94a70a28e9883cf09a586e8f3f273f1de7ecf97c8d7077dd05b83",
+    "profile": "development",
+    "program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9"
+  }
+}

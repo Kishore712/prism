@@ -1,0 +1,283 @@
+{
+  "schema_version": 1,
+  "kind": "m2_linux_runtime_integration",
+  "date": "2026-09-20",
+  "branch": "prototype/m2-linux-runtime",
+  "status": "implemented_local_validated_cloud_acceptance_passed_pilot_pending",
+  "implemented": true,
+  "local_validated": true,
+  "reference_linux_validated": true,
+  "cloud_validation": "passed_46_of_46_pilot_pending",
+  "owner_accepted": false,
+  "pilot_ready": false,
+  "model_calls": 0,
+  "cloud_acceptance": {
+    "checks_passed": 46,
+    "checks_failed": 0,
+    "passed": true,
+    "pilot_ready": false,
+    "model_calls": 0,
+    "revoke_dispatch_precondition": "owned_running",
+    "revoke_during_dispatch_terminal": "cancelled_after_active_revoke",
+    "trusted_cancelled_null_result": true,
+    "fixed_error": true,
+    "exact_resource_absent": true,
+    "final_namespace_helpers": "passed",
+    "cleanup": {
+      "check": "PRISM_CLEAN_FINAL",
+      "instance": "TERMINATED",
+      "startup_script_metadata_keys": 0,
+      "resources": "empty; confirmed by final_namespace_empty",
+      "disk_retained": true
+    },
+    "fix_status": "FIX_COMPLETE",
+    "evidence_record": "validation/m2-linux-runtime-cloud-pass.json",
+    "probe_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9",
+    "full_report_and_hashes": "transcribed in validation/m2-linux-runtime-cloud-pass.json",
+    "artifacts": {
+      "scope": "M2.3 completion-time hashes; these are not current file hashes after M2.4 work",
+      "startup_sha256": "a523d107643ca74c0d0538d2d633d237733af239486d6094bff5effcfe99324a",
+      "base_sha256": "23ee58a9513d797987474ced48d5147087708282e8ea742c98f9fbecec9e132b",
+      "delta_sha256": "60dabd05677e7ac06bb449df6680ea9d6c3fb7b6c31f54c424344af068e20955",
+      "reference_sha256": "590639e5485e124671b99165aea0be4b37fa70d41fa96b0669d4a6dfdcdef7e0",
+      "cloud_check_sha256": "3f1125a648b1d91406e66c6217613c302ad4cc3cb84ab2f5759b0b2245fbd859",
+      "post_cloud_strict_check_sha256": "d098caf8524e46c40345c2b9847a8887d63a40d54df6baab9f424db788d35953",
+      "tests_at_m23_completion_sha256": "8ac70d578acb6ddf4fd6f4a88048e4cfeeb7e927c22a7ee6aa676fb73c955d7e",
+      "original_transcribed_report_sha256": "269c61d560ece0d0ab19d9b7fe370c1190099a80c2232ba0a31cf6a8096e432c",
+      "original_transcribed_report_note": "The repository report gained evidence_note, so its current file hash differs from this original transcription hash.",
+      "post_cloud_strict_check_note": "Local post-cloud strict check only; it is not claimed as a cloud-run hash."
+    }
+  },
+  "test_evidence": {
+    "tests_passed": 114,
+    "focused_tests_passed": 81,
+    "record_scope": "historical baseline; see latest for final local evidence",
+    "latest": {
+      "tests_passed": 129,
+      "focused_tests_passed": 25,
+      "targeted_ruff": "passed"
+    },
+    "targeted_ruff": "passed",
+    "frontend_prettier": "passed",
+    "frontend_production_build": "passed"
+  },
+  "regression_evidence": {
+    "project_runtime_check": {
+      "script": "scripts/m2-project-runtime-check.py",
+      "passed": 9,
+      "failed": 0,
+      "model_calls": 0
+    },
+    "m1_runtime_check": {
+      "script": "scripts/m1-runtime-check.py",
+      "passed": 11,
+      "failed": 0,
+      "model_calls": 0
+    }
+  },
+  "local_profile_admission": {
+    "platform": "Mac development host",
+    "check": "RuntimeRegistry(profile='reference-linux')",
+    "status": "denied",
+    "reason": "unsupported_host_denied",
+    "error": "The reference profile requires its dedicated x86_64 Linux host.",
+    "fallback_used": false,
+    "container_created": false
+  },
+  "preservation": {
+    "approved_fixtures_byte_identical": true,
+    "backup_files_byte_identical": true,
+    "database_audit": "passed",
+    "database_migration_performed": false,
+    "local_server_restarted": false,
+    "old_rows_and_original_columns_preserved": true,
+    "table_row_counts": {
+      "versions": 8,
+      "sessions": 22,
+      "events": 87,
+      "measurements": 0,
+      "runs": 8,
+      "turns": 18,
+      "model_dispatches": 52,
+      "access_requests": 3,
+      "owner_projects": 2,
+      "owner_revisions": 2,
+      "owner_chats": 2,
+      "owner_schema_versions": 1,
+      "owner_handoff_sources": 2,
+      "handoff_schema_versions": 1
+    },
+    "model_dispatch_rows_unchanged": true
+  },
+  "validation_artifact": {
+    "path": "/tmp/prism-m23-validation-startup-20260920.sh",
+    "sha256": "ac9ecf907e0bee632fe130cc2a40ea5609bc1eaf8f8a0c416a20b080ff723573",
+    "bundle_sha256": "23ee58a9513d797987474ced48d5147087708282e8ea742c98f9fbecec9e132b",
+    "bytes": 143280,
+    "mode": "0600",
+    "allowlisted_files": 24
+  },
+  "local_diagnostics": {
+    "tests_passed": 116,
+    "compile_check": "passed",
+    "generated_bash_check": "passed",
+    "product_error_responses_exclude_raw_stderr": true,
+    "leakage_tests": {
+      "count": 2,
+      "status": "separate boundary evidence; not real Linux acceptance"
+    },
+    "scope": "local diagnostic changes only; these results do not establish a real reference-Linux pass"
+  },
+  "local_fix": {
+    "confirmed_by": "independent read-only Docker inspect",
+    "defect": "RepoDigests normalized to python@<fixed digest>, while the reference implementation compared the complete docker.io/library/ string and rejected the normalized value; this is a confirmed local defect, not evidence of the cloud root cause",
+    "helper": "_validated_image_metadata",
+    "checks": {
+      "repo_digests": "strict list and member types with exact @digest membership",
+      "volumes": "rejected",
+      "id_and_ID_behavior": "preserved",
+      "focused_tests": 14,
+      "targeted_ruff": "passed",
+      "cloud_agent_full_tests": 118,
+      "latest_focused_reference_tests": 25,
+      "latest_full_tests": 129,
+      "parent_security_review": "passed"
+    },
+    "cloud_root_cause_proven": false,
+    "fix_bundle": "not generated; the r8 diagnostic bundle remains the prior bundle and does not include this fix",
+    "kata_check_env": {
+      "fixed_nerdctl_containerd_kata_versions": "expected pass",
+      "matrix": {
+        "A_product_env": {
+          "PATH": "/usr/local/bin:/usr/bin:/bin",
+          "HOME": "/nonexistent",
+          "exit_code": 1,
+          "result": "not found"
+        },
+        "B_system_sbin_path": {
+          "PATH": "/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin",
+          "HOME": "/nonexistent",
+          "exit_code": 0
+        },
+        "C_root_home": {
+          "PATH": "/usr/local/bin:/usr/bin:/bin",
+          "HOME": "/root",
+          "exit_code": 0
+        },
+        "D_system_sbin_and_root_home": {
+          "PATH": "/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin",
+          "HOME": "/root",
+          "exit_code": 0
+        }
+      },
+      "minimal_fix": "KATA_CHECK_ENV is applied only to the kata check; it uses the fixed system PATH, does not inherit private environment, leaves HOME=/nonexistent, and leaves other command environments unchanged"
+    },
+    "cloud_image_inspect": {
+      "full_name": "exit 1; no such image",
+      "library_name": "exit 1; no such image",
+      "short_name": "exit 1; no such image",
+      "images_digests": "one exact fixed-digest row exists"
+    },
+    "historical_fix_notes": {
+      "nerdctl_binding": "canonical name inspect failed; exact pinned digest had one unique listing row and RepoDigests/noVolumes inspection passed; listing target ID and inspect config ID differed, which is legal",
+      "ps_format": "replaced conflicting ps -aq --format usage with ps -a --format",
+      "revoke_history": "the prior DB-running-only revoke could terminate before the handler and leave uncertain (43 passed, 1 failed); the current path requires owned_running and uses trusted cancellation",
+      "final_script": "the M2.3 cloud run used real cancellation; completion-time and post-cloud strict-check hashes are recorded under cloud_acceptance.artifacts, with the latter explicitly local rather than a cloud-run hash"
+    }
+  },
+  "cloud_follow_up": {
+    "verification": "completed_acceptance_passed_pilot_pending",
+    "ui_state": "final cloud acceptance evidence recorded",
+    "final_state_confirmed": true,
+    "metadata_absence_is_final_cleanup": true,
+    "previous_cleanup_observation": "historical only; r2 instance was TERMINATED with no startup script and the disk retained",
+    "cleanup_status": "confirmed",
+    "startup_script_presence": "not present at final cleanup",
+    "diagnostic_script": {
+      "size": "approximately 4.6 KB",
+      "sha256": "ea5597810b585f37b716a7cd9b5041d05d52b7cea2742a7406c36f18aacb4e9d",
+      "uploaded_and_started": true,
+      "reliable_result_obtained": false
+    },
+    "stage_completed": true,
+    "stage_completion_scope": "M2.3 runtime acceptance only; owner acceptance and pilot readiness remain pending",
+    "next_stage": "M2 order 4 named remote collaborator local implementation in progress; real OIDC/HTTPS remote validation is not configured",
+    "r8_diagnostic_bundle_includes_local_fix": false
+  },
+  "cloud_attempts": [
+    {
+      "id": "r2",
+      "historical_checkpoint": true,
+      "started_at": "2026-09-21T00:43:09Z",
+      "preflight": {
+        "initial_uv_install": "failed because the official uv 0.11.29 version string included a target triplet",
+        "r2_adjustment": "allowed the suffix and continued into real acceptance"
+      },
+      "checks": {
+        "dedicated_host": "passed",
+        "initial_guest_helpers_absent": "passed",
+        "execution_completed": {
+          "status": "failed",
+          "error": "EngineError"
+        }
+      },
+      "passed": false,
+      "pilot_ready": false,
+      "model_calls": 0,
+      "integration_check": {
+        "name": "PRISM_M23_FAILURE",
+        "exit_code": 1
+      },
+      "error_boundary": {
+        "component": "ReferenceLinuxRuntime",
+        "locations": ["__init__", "_live_host_checks"],
+        "specific_subcause": "unknown"
+      },
+      "artifact_hashes": {
+        "r8_cloud_local_startup_sha256": "a225e5b8ab7b43788b8aa3faed8b03e4ded01c720ab4f270a57fa415e9595a9b",
+        "bundle_sha256": "7cfd8c14199881fab0880c981b8e8ff87178318d75a44efaf4f016d5f044ddeb"
+      },
+      "diagnosis": {
+        "r8_started": false,
+        "gcp_addmetadata": "multiple 503 responses and suspension",
+        "cloudshell_original_account": "present but active account was empty",
+        "cloudshell_recovery": "restored the original logged-in account successfully; subsequent active-account GET still timed out",
+        "post_recovery_acceptance": "not established by this account recovery",
+        "final_summary": {
+          "debug_bytes": 591,
+          "exit_code": 124,
+          "active_account_missing": false,
+          "permission_denied": false,
+          "service_unavailable": false,
+          "internal_error": false,
+          "saw_get_instance": true,
+          "saw_post_set_metadata": false,
+          "saw_operation_wait": false,
+          "observed_log_stage": "pre-write GET; 90-second timeout",
+          "interpretation": "POST and operation-wait were not observed; log absence is not absolute network proof",
+          "raw_debug_log": "not retained; temporary raw log was trapped and removed; RAW_LOG_ABSENT"
+        }
+      },
+      "cleanup": {
+        "last_observed_instance": "TERMINATED",
+        "last_observed_startup_script_present": false,
+        "last_observed_startup_script_keys": "original four keys only",
+        "disk_retained": true,
+        "current_state": "historical checkpoint: cloud control plane blocked; last observed cleanup was TERMINATED with no startup script; no retry was ongoing at that checkpoint"
+      }
+    }
+  ],
+  "planned_acceptance_steps": [
+    "Run the reference-linux readiness and bounded runtime check on the dedicated same-host Linux x86_64 controller with KVM and Kata; do not substitute a Mac remote call.",
+    "Start the loopback Prism demo on that host with the document-handoff manifest and --runtime-profile reference-linux.",
+    "Select the imported project files, create and approve the immutable reviewed version, and start a fresh collaborator session from that version.",
+    "Exercise valid and invalid fixed json-check requests through Jobs, the worker, and Kata; inspect provenance, bounded output, source immutability, and cleanup.",
+    "Exercise denial, timeout, normal SIGTERM cancellation, forced worker loss or restart, and runtime-loss behavior; require uncertain/blocked status and no replay after unconfirmed controller termination."
+  ],
+  "limitations": [
+    "The recorded real cloud r2 attempt failed at execution_completed; the later bounded cloud acceptance passed 46/46 checks and final cleanup was confirmed.",
+    "This is accepted bounded runtime evidence, not owner acceptance, private-pilot readiness, or a complete pilot release.",
+    "Acceptance uses synthetic imported-project data and the fixed json-check action; arbitrary tools, project scripts, remote API/SSH, public networking, Docker/runc fallback, OIDC and lease watchdogs remain out of scope.",
+    "The preservation audit was read-only; the current local database was not migrated and the local server was not restarted."
+  ]
+}

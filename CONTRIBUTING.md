@@ -37,3 +37,13 @@ Write short, action-oriented messages, such as:
 ## Design material
 
 Design documents should be added only after they are ready for collaborative review. Drafts can remain outside the repository until then.
+
+Repository and Wiki documentation must be in English. Maintain translated research material outside the repository. Distinguish proposed requirements from implemented behavior, measured results, and research hypotheses.
+
+## Agile development
+
+Keep a small, ordered milestone backlog with user stories and observable acceptance criteria. Implement a vertical increment, run its relevant positive and denial-path checks, inspect the usable result, and adapt the remaining backlog to what was learned. Do not count code written or tests mocked as user value delivered.
+
+An increment is done only when its behavior, necessary verification, user-facing states, and English usage/limitation notes agree. Record blocked dependencies explicitly. Report at the owner's agreed milestone boundary and obtain authorization before starting the next milestone; Agile iteration does not waive security or scope approvals.
+
+Maintain the [visual roadmap](docs/roadmap.md) as part of that definition of done. At every increment or milestone handoff, and whenever scope, validation, blockers or owner acceptance changes, update its date, diagram/status, evidence links, next action and short update log alongside the active backlog. Keep implemented, verified, owner-accepted and planned states distinct. This maintenance requirement does not authorize starting a later milestone or scheduled background work.

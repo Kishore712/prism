@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-09-17T23:23:13.174921+00:00",
+  "kind": "m0_cloud_host_lifecycle",
+  "instance": "prism-m0-kvm",
+  "zone": "us-central1-a",
+  "status": "TERMINATED",
+  "machine_type": "n2-standard-2",
+  "nested_virtualization": true,
+  "service_account_count": 0,
+  "scheduling": {
+    "automaticRestart": false,
+    "instanceTerminationAction": "STOP",
+    "maxRunDuration": {
+      "nanos": 0,
+      "seconds": "14400"
+    },
+    "onHostMaintenance": "TERMINATE",
+    "preemptible": false,
+    "provisioningModel": "STANDARD"
+  },
+  "shielded": {
+    "enableIntegrityMonitoring": true,
+    "enableSecureBoot": true,
+    "enableVtpm": true
+  },
+  "network": "prism-m0-isolated",
+  "firewall_rule_count": 0,
+  "startup_script_present": false,
+  "metadata_controls": {
+    "block-project-ssh-keys": "TRUE",
+    "enable-oslogin": "TRUE",
+    "disable-legacy-endpoints": "TRUE",
+    "serial-port-enable": "FALSE"
+  },
+  "disk_gib": 30,
+  "disk_type": "pd-balanced",
+  "source_image": "ubuntu-2404-noble-amd64-v20260906",
+  "disk_retained": true,
+  "pilot_ready": false
+}

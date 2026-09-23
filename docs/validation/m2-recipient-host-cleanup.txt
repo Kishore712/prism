@@ -1,0 +1,25 @@
+Prism M2 order 4 replacement-host cleanup note
+===============================================
+
+Status: cleanup evidence for the successful replacement-host controller run.
+The companion Kata record reports 33/33 checks passed; this note does not claim
+application acceptance or pilot readiness.
+
+Source provenance: local UI-transcribed evidence from the controller cleanup
+record `/tmp/prism-m0-kvm-b-controller-cleanup-20260921T233027Z.txt`.
+
+Exact sanitized marker: `PRISM_CONTROLLER_CLEANUP PASS status=TERMINATED startup_script=absent metadata_keys=4`
+
+- The replacement instance was independently describe-confirmed `TERMINATED`.
+- Startup metadata was removed.
+- The exact original four metadata keys remained:
+  `block-project-ssh-keys`, `disable-legacy-endpoints`, `enable-oslogin`, and
+  `serial-port-enable`.
+- No startup script remained.
+- The controller run executed the 33-check workload successfully; the fresh
+  33/33 Kata revalidation is recorded separately in
+  `m2-recipient-host-kata-revalidation.json`.
+
+This is lifecycle cleanup evidence. It does not prove HTTPS, Google OIDC,
+private host-tailnet reachability, real application traffic, model integration,
+or the complete runtime boundary.

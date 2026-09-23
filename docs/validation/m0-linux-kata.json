@@ -1,0 +1,300 @@
+{
+  "schema_version": 1,
+  "kind": "reference_linux_kata_spike",
+  "recorded_at": "2026-09-17T23:19:13.740266+00:00",
+  "host_kernel": "7.0.0-1011-gcp",
+  "host_arch": "x86_64",
+  "controller_python": "3.12.3",
+  "fixture_image": "docker.io/library/python@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a",
+  "program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9",
+  "elapsed_seconds": 46.081,
+  "passed": true,
+  "pilot_ready": false,
+  "checks": [
+    {
+      "id": "real_evaluation",
+      "status": "pass",
+      "detail": "Fixed synthetic evaluation ran inside Kata."
+    },
+    {
+      "id": "repeatable_evaluation",
+      "status": "pass",
+      "detail": "Identical approved seed produced identical output."
+    },
+    {
+      "id": "parameter_change",
+      "status": "pass",
+      "detail": "Another allowed seed executed."
+    },
+    {
+      "id": "non_root",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "no_new_privileges",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "capabilities_dropped",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "seccomp_active",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "host_canary_absent",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "credentials_absent",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "control_sockets_absent",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "session_marker_absent",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "root_read_only",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "no_active_external_interface",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "external_network_denied",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "metadata_network_denied",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "scratch_writable",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "memory_limit",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "swap_disabled",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "process_limit",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "process_limit_cannot_be_raised",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "cpu_limit",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "scratch_limit",
+      "status": "pass",
+      "detail": "Observed inside the actual Kata workload."
+    },
+    {
+      "id": "separate_scratch",
+      "status": "pass",
+      "detail": "A later VM did not inherit the scratch marker."
+    },
+    {
+      "id": "source_unchanged",
+      "status": "pass",
+      "detail": "Host canary was not mounted or changed."
+    },
+    {
+      "id": "process_exhaustion",
+      "status": "pass",
+      "detail": "Finite process creation reached its limit."
+    },
+    {
+      "id": "allocation_terminated",
+      "status": "pass",
+      "detail": "Allocation beyond the observed memory limit ended with exit 137; no controller kill was requested. This is not an OOM-event API claim."
+    },
+    {
+      "id": "output_flood",
+      "status": "pass",
+      "detail": "Bounded output collection stopped the workload."
+    },
+    {
+      "id": "timeout",
+      "status": "pass",
+      "detail": "An observed parent/child workload was killed and removed."
+    },
+    {
+      "id": "cancelled",
+      "status": "pass",
+      "detail": "An observed parent/child workload was killed and removed."
+    },
+    {
+      "id": "distinct_guest_kernels",
+      "status": "pass",
+      "detail": "Every fixed probe observed a guest kernel different from the host."
+    },
+    {
+      "id": "independent_guest_boots",
+      "status": "pass",
+      "detail": "Every run observed a different guest boot ID."
+    },
+    {
+      "id": "cleanup",
+      "status": "pass",
+      "detail": "Every owned container was confirmed absent after removal."
+    },
+    {
+      "id": "guest_helpers_removed",
+      "status": "pass",
+      "detail": "Remaining guest runtime process names: []"
+    }
+  ],
+  "runs": [
+    {
+      "action": "evaluate",
+      "exit_code": 0,
+      "stop_reason": "exited",
+      "elapsed_seconds": 5.427,
+      "cleaned_up": true,
+      "child_observed": false,
+      "retained_bytes": 370,
+      "guest_kernel": "6.18.35",
+      "guest_boot_id": "8d18ec29-b4d8-4b8b-b931-53c31a3fc584"
+    },
+    {
+      "action": "evaluate",
+      "exit_code": 0,
+      "stop_reason": "exited",
+      "elapsed_seconds": 4.014,
+      "cleaned_up": true,
+      "child_observed": false,
+      "retained_bytes": 370,
+      "guest_kernel": "6.18.35",
+      "guest_boot_id": "1f9ba39e-503d-4888-9ccd-07030976234e"
+    },
+    {
+      "action": "evaluate",
+      "exit_code": 0,
+      "stop_reason": "exited",
+      "elapsed_seconds": 4.117,
+      "cleaned_up": true,
+      "child_observed": false,
+      "retained_bytes": 372,
+      "guest_kernel": "6.18.35",
+      "guest_boot_id": "ccf23de2-227d-4901-9681-e64b42d28209"
+    },
+    {
+      "action": "boundaries",
+      "exit_code": 0,
+      "stop_reason": "exited",
+      "elapsed_seconds": 4.076,
+      "cleaned_up": true,
+      "child_observed": false,
+      "retained_bytes": 735,
+      "guest_kernel": "6.18.35",
+      "guest_boot_id": "7493d5d3-dd17-4326-9be8-a549755d5f32"
+    },
+    {
+      "action": "boundaries",
+      "exit_code": 0,
+      "stop_reason": "exited",
+      "elapsed_seconds": 4.191,
+      "cleaned_up": true,
+      "child_observed": false,
+      "retained_bytes": 735,
+      "guest_kernel": "6.18.35",
+      "guest_boot_id": "a395072e-eeb4-4718-9e09-163eaa04cb8c"
+    },
+    {
+      "action": "processes",
+      "exit_code": 0,
+      "stop_reason": "exited",
+      "elapsed_seconds": 4.312,
+      "cleaned_up": true,
+      "child_observed": false,
+      "retained_bytes": 271,
+      "guest_kernel": "6.18.35",
+      "guest_boot_id": "f09e9a06-c0dd-409a-b6c9-96d318fd819a"
+    },
+    {
+      "action": "memory",
+      "exit_code": 137,
+      "stop_reason": "exited",
+      "elapsed_seconds": 5.345,
+      "cleaned_up": true,
+      "child_observed": false,
+      "retained_bytes": 212,
+      "guest_kernel": "6.18.35",
+      "guest_boot_id": "94f22be8-7c90-4101-99b3-3479cfb75b0e"
+    },
+    {
+      "action": "flood",
+      "exit_code": 137,
+      "stop_reason": "output_limit",
+      "elapsed_seconds": 4.269,
+      "cleaned_up": true,
+      "child_observed": false,
+      "retained_bytes": 65536,
+      "guest_kernel": "6.18.35",
+      "guest_boot_id": "298a2d2b-78c3-4366-8cca-205ece309d3c"
+    },
+    {
+      "action": "sleep",
+      "exit_code": 137,
+      "stop_reason": "timeout",
+      "elapsed_seconds": 5.134,
+      "cleaned_up": true,
+      "child_observed": true,
+      "retained_bytes": 297,
+      "guest_kernel": "6.18.35",
+      "guest_boot_id": "60c59dc1-98be-4488-9b5b-53b92463777f"
+    },
+    {
+      "action": "sleep",
+      "exit_code": 137,
+      "stop_reason": "cancelled",
+      "elapsed_seconds": 5.169,
+      "cleaned_up": true,
+      "child_observed": true,
+      "retained_bytes": 297,
+      "guest_kernel": "6.18.35",
+      "guest_boot_id": "ba6699ad-35bc-4c2e-9615-7d52a837b9c0"
+    }
+  ],
+  "unverified": [
+    "sandbox escape resistance",
+    "durable host leases and controller crash recovery",
+    "identity and grants",
+    "aggregate budgets",
+    "private data handling",
+    "model integration"
+  ]
+}

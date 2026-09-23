@@ -1,0 +1,138 @@
+{
+  "recorded_at_utc": "2026-09-18T04:38:12.446302+00:00",
+  "milestone": "M2.1b",
+  "branch": "prototype/m2-reviewed-handoff",
+  "status": "implemented; owner review pending",
+  "automated": {
+    "passed": 50,
+    "suites": {
+      "handoff": 10,
+      "owner": 11,
+      "sharing_api": 13,
+      "agent": 12,
+      "jobs": 4
+    },
+    "ruff": "passed",
+    "frontend_build": "passed",
+    "evidence_type": "Handoff tests use synthetic stored history and run fixtures. Existing agent/transport/worker tests retain their explicit doubles; no paid inference or runtime execution was performed."
+  },
+  "browser": {
+    "workflow": "Selected a completed checkpoint from the existing real owner conversation, excluded private-note messages and the private file, selected four files and the actual historical seed-7 result, explicitly edited the answer, reviewed and approved the frozen version, then prepared a revised unapproved version.",
+    "checks": [
+      "Nothing selected by default",
+      "Missing referenced material blocks review until explicitly resolved",
+      "Raw owner run ID in selected text rejected without creating a candidate",
+      "Explicit edit labelled owner-edited; original question labelled verbatim",
+      "Numbered file preview and fixed executable inspection",
+      "Approval disabled until exact-content acknowledgement",
+      "Approved version reopens after page reload",
+      "Revision restores previous selections and requires new approval",
+      "Legacy Reviewer still lists only the two existing active M1 versions",
+      "390px review layout has no horizontal overflow"
+    ],
+    "iteration": "Fixed a scroll-position effect whose implicit return caused a React cleanup error. Rebuilt and reloaded; navigation and saved-version inspection passed afterward."
+  },
+  "prepared_versions": [
+    {
+      "version": "f3f13e60c78547c9947431bf860255e9",
+      "digest": "9bba33f53a179880513b6f97868f5a7c1fab1517e33b3fe14615c7825dce19bf",
+      "approved": true,
+      "files": 4,
+      "excerpts": 2,
+      "historical_runs": 1,
+      "origins": [
+        "verbatim",
+        "owner_edited"
+      ]
+    },
+    {
+      "version": "8da171a489a042f0a88740822363b6c0",
+      "digest": "4a1e58581c940cd8185509680e9295a69f7bd1cf6368bbffed0cc6873f751173",
+      "approved": false,
+      "files": 4,
+      "excerpts": 2,
+      "historical_runs": 1,
+      "origins": [
+        "verbatim",
+        "owner_edited"
+      ]
+    }
+  ],
+  "preservation": {
+    "versions": {
+      "before": 4,
+      "after": 6,
+      "preexisting_rows_unchanged": true
+    },
+    "sessions": {
+      "before": 16,
+      "after": 16,
+      "preexisting_rows_unchanged": true
+    },
+    "turns": {
+      "before": 11,
+      "after": 11,
+      "preexisting_rows_unchanged": true
+    },
+    "runs": {
+      "before": 5,
+      "after": 5,
+      "preexisting_rows_unchanged": true
+    },
+    "model_dispatches": {
+      "before": 34,
+      "after": 34,
+      "preexisting_rows_unchanged": true
+    },
+    "access_requests": {
+      "before": 2,
+      "after": 2,
+      "preexisting_rows_unchanged": true
+    },
+    "events": {
+      "before": 56,
+      "after": 59,
+      "preexisting_rows_unchanged": true
+    },
+    "owner_projects": {
+      "before": 1,
+      "after": 1,
+      "preexisting_rows_unchanged": true
+    },
+    "owner_revisions": {
+      "before": 1,
+      "after": 1,
+      "preexisting_rows_unchanged": true
+    },
+    "owner_chats": {
+      "before": 1,
+      "after": 1,
+      "preexisting_rows_unchanged": true
+    }
+  },
+  "current_source_files_match_existing_owner_revision": true,
+  "exclusions_verified": [
+    "Synthetic private-note marker",
+    "Excluded private filename",
+    "Private conversation, revision, turn, run and file identifiers"
+  ],
+  "model": {
+    "new_dispatches": 0,
+    "new_reservations_cents": 0,
+    "authorized_total_cents": 200,
+    "reserved_cents": 170,
+    "remaining_cents": 30
+  },
+  "new_runtime_jobs": 0,
+  "historical_run_evidence": "Copied the existing real completed seed-7 record; did not replay it. Unit fixtures are separate from this browser evidence.",
+  "not_implemented": [
+    "Automatic boundary recommendation",
+    "Collaborator background display and contextual agent continuation (M2.1c)",
+    "Arbitrary project import or editing",
+    "Named remote recipients or private-pilot readiness",
+    "Independent package export/import"
+  ],
+  "cloud_started": false,
+  "dependencies_added": false,
+  "published": false
+}

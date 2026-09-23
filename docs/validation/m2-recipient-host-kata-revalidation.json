@@ -1,0 +1,319 @@
+{
+  "controller_started_epoch": 1790033427,
+  "kata_result": {
+    "checks": [
+      {
+        "detail": "Fixed synthetic evaluation ran inside Kata.",
+        "id": "real_evaluation",
+        "status": "pass"
+      },
+      {
+        "detail": "Identical approved seed produced identical output.",
+        "id": "repeatable_evaluation",
+        "status": "pass"
+      },
+      {
+        "detail": "Another allowed seed executed.",
+        "id": "parameter_change",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "non_root",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "no_new_privileges",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "capabilities_dropped",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "seccomp_active",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "host_canary_absent",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "credentials_absent",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "control_sockets_absent",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "session_marker_absent",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "root_read_only",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "no_active_external_interface",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "external_network_denied",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "metadata_network_denied",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "scratch_writable",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "memory_limit",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "swap_disabled",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "process_limit",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "process_limit_cannot_be_raised",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "cpu_limit",
+        "status": "pass"
+      },
+      {
+        "detail": "Observed inside the actual Kata workload.",
+        "id": "scratch_limit",
+        "status": "pass"
+      },
+      {
+        "detail": "A later VM did not inherit the scratch marker.",
+        "id": "separate_scratch",
+        "status": "pass"
+      },
+      {
+        "detail": "Host canary was not mounted or changed.",
+        "id": "source_unchanged",
+        "status": "pass"
+      },
+      {
+        "detail": "Finite process creation reached its limit.",
+        "id": "process_exhaustion",
+        "status": "pass"
+      },
+      {
+        "detail": "Allocation beyond the observed memory limit ended with exit 137; no controller kill was requested. This is not an OOM-event API claim.",
+        "id": "allocation_terminated",
+        "status": "pass"
+      },
+      {
+        "detail": "Bounded output collection stopped the workload.",
+        "id": "output_flood",
+        "status": "pass"
+      },
+      {
+        "detail": "An observed parent/child workload was killed and removed.",
+        "id": "timeout",
+        "status": "pass"
+      },
+      {
+        "detail": "An observed parent/child workload was killed and removed.",
+        "id": "cancelled",
+        "status": "pass"
+      },
+      {
+        "detail": "Every fixed probe observed a guest kernel different from the host.",
+        "id": "distinct_guest_kernels",
+        "status": "pass"
+      },
+      {
+        "detail": "Every run observed a different guest boot ID.",
+        "id": "independent_guest_boots",
+        "status": "pass"
+      },
+      {
+        "detail": "Every owned container was confirmed absent after removal.",
+        "id": "cleanup",
+        "status": "pass"
+      },
+      {
+        "detail": "Remaining guest runtime process names: []",
+        "id": "guest_helpers_removed",
+        "status": "pass"
+      }
+    ],
+    "controller_python": "3.12.3",
+    "elapsed_seconds": 46.992,
+    "fixture_image": "docker.io/library/python@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a",
+    "host_arch": "x86_64",
+    "host_kernel": "7.0.0-1011-gcp",
+    "kind": "reference_linux_kata_spike",
+    "passed": true,
+    "pilot_ready": false,
+    "program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9",
+    "recorded_at": "2026-09-21T23:31:56.414988+00:00",
+    "runs": [
+      {
+        "action": "evaluate",
+        "child_observed": false,
+        "cleaned_up": true,
+        "elapsed_seconds": 5.993,
+        "exit_code": 0,
+        "guest_boot_id": "bccbe9f1-b591-459e-9c80-42daa86adac8",
+        "guest_kernel": "6.18.35",
+        "retained_bytes": 370,
+        "stop_reason": "exited"
+      },
+      {
+        "action": "evaluate",
+        "child_observed": false,
+        "cleaned_up": true,
+        "elapsed_seconds": 4.069,
+        "exit_code": 0,
+        "guest_boot_id": "a81eefcd-5643-41b3-8ebd-5b7ff2d55fc6",
+        "guest_kernel": "6.18.35",
+        "retained_bytes": 370,
+        "stop_reason": "exited"
+      },
+      {
+        "action": "evaluate",
+        "child_observed": false,
+        "cleaned_up": true,
+        "elapsed_seconds": 4.09,
+        "exit_code": 0,
+        "guest_boot_id": "53c35412-ba0e-42de-9310-36d226404cf4",
+        "guest_kernel": "6.18.35",
+        "retained_bytes": 372,
+        "stop_reason": "exited"
+      },
+      {
+        "action": "boundaries",
+        "child_observed": false,
+        "cleaned_up": true,
+        "elapsed_seconds": 4.223,
+        "exit_code": 0,
+        "guest_boot_id": "e57982fe-5da4-499c-b9b7-f6ba411dbd01",
+        "guest_kernel": "6.18.35",
+        "retained_bytes": 735,
+        "stop_reason": "exited"
+      },
+      {
+        "action": "boundaries",
+        "child_observed": false,
+        "cleaned_up": true,
+        "elapsed_seconds": 4.2,
+        "exit_code": 0,
+        "guest_boot_id": "3fb198ef-9550-422f-a125-9ae9ce9deff9",
+        "guest_kernel": "6.18.35",
+        "retained_bytes": 735,
+        "stop_reason": "exited"
+      },
+      {
+        "action": "processes",
+        "child_observed": false,
+        "cleaned_up": true,
+        "elapsed_seconds": 4.226,
+        "exit_code": 0,
+        "guest_boot_id": "44b66b27-95f9-4e31-ba21-3b2338deb0f9",
+        "guest_kernel": "6.18.35",
+        "retained_bytes": 271,
+        "stop_reason": "exited"
+      },
+      {
+        "action": "memory",
+        "child_observed": false,
+        "cleaned_up": true,
+        "elapsed_seconds": 5.429,
+        "exit_code": 137,
+        "guest_boot_id": "ee50a708-1f88-45cf-8c0f-be28db28c49e",
+        "guest_kernel": "6.18.35",
+        "retained_bytes": 212,
+        "stop_reason": "exited"
+      },
+      {
+        "action": "flood",
+        "child_observed": false,
+        "cleaned_up": true,
+        "elapsed_seconds": 4.167,
+        "exit_code": 137,
+        "guest_boot_id": "33a5095b-7b55-42af-b41d-e4d8661fd141",
+        "guest_kernel": "6.18.35",
+        "retained_bytes": 65536,
+        "stop_reason": "output_limit"
+      },
+      {
+        "action": "sleep",
+        "child_observed": true,
+        "cleaned_up": true,
+        "elapsed_seconds": 5.239,
+        "exit_code": 137,
+        "guest_boot_id": "29c60fcb-e739-4142-8b37-a61a6eb5ee02",
+        "guest_kernel": "6.18.35",
+        "retained_bytes": 297,
+        "stop_reason": "timeout"
+      },
+      {
+        "action": "sleep",
+        "child_observed": true,
+        "cleaned_up": true,
+        "elapsed_seconds": 5.323,
+        "exit_code": 137,
+        "guest_boot_id": "e01f0c34-c258-465b-903e-d057d3360f25",
+        "guest_kernel": "6.18.35",
+        "retained_bytes": 297,
+        "stop_reason": "cancelled"
+      }
+    ],
+    "schema_version": 1,
+    "unverified": [
+      "sandbox escape resistance",
+      "durable host leases and controller crash recovery",
+      "identity and grants",
+      "aggregate budgets",
+      "private data handling",
+      "model integration"
+    ]
+  },
+  "kind": "n2_kata_revalidation",
+  "preflight": {
+    "architecture": "x86_64",
+    "cgroup_v2": true,
+    "cpu_count": 2,
+    "empty_kvm_vm_created": true,
+    "kernel": "7.0.0-1011-gcp",
+    "kvm_api_version": 12,
+    "kvm_device": true,
+    "limitation": "Prerequisites only; no guest boot or isolation test has passed.",
+    "pilot_ready": false,
+    "prerequisites_ready": true,
+    "purpose": "m0-host-preflight",
+    "schema_version": 1,
+    "timestamp": "2026-09-21T23:31:08.236603+00:00"
+  }
+}

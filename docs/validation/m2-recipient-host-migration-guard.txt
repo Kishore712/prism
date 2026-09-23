@@ -1,0 +1,45 @@
+Prism M2 order 4 replacement-host migration guard
+===================================================
+
+Status: basic prerequisite/inventory evidence only. This is not full boundary
+proof, a fresh application run, or a pilot acceptance record. It does not
+replace the M2.3 validation artifacts or any old-host result.
+
+Observed at: 2026-09-21T23:00:47Z
+Source provenance: this is a local UI-transcribed record preserving the
+sanitized serial block and timestamps; the original source was GCP CloudShell
+serial output. The local source note was `/tmp/prism-m0-kvm-b-guard-20260921T230047Z.txt`.
+
+Basic guard results:
+
+- kernel: 7.0.0-1011-gcp
+- architecture: x86_64
+- `/dev/kvm`: present
+- API level: 12
+- VM creation check: true
+- Kata check: exit 0
+- containerd: active
+- Tailscale: absent
+- matched helper processes: none
+
+Boundary and execution limits:
+
+- The cloned old JSON was present but is not new evidence.
+- The transferred full 33-check artifact had the expected 12,098 bytes and
+  SHA-256 `af4228620de2798b77b8c50153ac3c90a8363abdef6690cbb1a475f8936d5d68`.
+- Its temporary metadata attachment succeeded, but the RESET command was
+  rejected because of malformed command concatenation and was never executed;
+  there is no fresh full-result report.
+- Startup metadata was subsequently removed successfully. An independent
+  describe confirmed the replacement `TERMINATED`, with exactly the four
+  existing metadata keys and no startup script.
+- HTTPS, Google OIDC, private host-tailnet reachability, and real application
+  traffic remain unverified. No model call occurred.
+
+Interpretation:
+
+These checks establish a sanitized inventory and prerequisite signal on the
+replacement host. They do not prove the full runtime boundary, TLS/OIDC flow,
+or application acceptance. The rejected RESET command reflects malformed
+CloudShell command input, not a Prism or Kata failure. The full 33-check
+artifact was never run.

@@ -1,0 +1,128 @@
+{
+  "record_type": "sanitized_live_validation",
+  "date": "2026-09-23",
+  "milestone": "M2 order 4: named remote collaborator",
+  "status": "bounded live recipient flows exercised for Paired and Document release handoffs; full acceptance and pilot readiness remain false",
+  "environment": {
+    "identity_provider": "Google OIDC",
+    "service_placement": "private Tailscale HTTPS on the authorized Linux VM",
+    "synthetic_project": "Paired evaluation",
+    "vm_state_after_validation": "RUNNING",
+    "public_service_ingress": false
+  },
+  "identity_discovery": {
+    "separate_provider_test_account": true,
+    "one_time_link_lifetime_minutes": 15,
+    "oidc_identity_verified_by_owner": true,
+    "created_prism_session": false,
+    "created_invitation_or_grant": false,
+    "replay_denied": true
+  },
+  "invitation": {
+    "lifetime_minutes": 60,
+    "mode": "read-only",
+    "approved_sources": [
+      "baseline.json",
+      "observations.csv",
+      "limitations.md",
+      "one owner-approved answer excerpt"
+    ],
+    "wrong_identity_redemption_denied": true,
+    "invitation_remained_available_after_wrong_identity": true,
+    "intended_second_identity_redeemed": true,
+    "fresh_scoped_review_session_created": true,
+    "review_session_sources_count": 3,
+    "approved_context_inherited": true
+  },
+  "authorization_checks": {
+    "approved_baseline_evidence_read": true,
+    "private_notes_evidence_request_denied": true,
+    "owner_api_with_reviewer_cookie_denied": true,
+    "grant_revoked_by_owner": true,
+    "revoked_reviewer_session_refused": true,
+    "revoked_session_previous_evidence_read_denied": true
+  },
+  "model_validation": {
+    "broad_synthetic_question": {
+      "result": "failed_closed_without_partial_answer",
+      "provider_dispatches": 4,
+      "reserved_cents": 20
+    },
+    "focused_limits_question": {
+      "result": "completed",
+      "citation": "limitations.md lines 1-6",
+      "reserved_cents": 10
+    },
+    "authorized_aggregate_ceiling_cents": 100,
+    "remaining_after_paired_validation_cents": 50,
+    "document_release_question": {
+      "result": "completed",
+      "internal_provider_dispatches": 4,
+      "reserved_cents": 20
+    },
+    "aggregate_reserved_after_document_release_validation_cents": 70,
+    "remaining_after_document_release_validation_cents": 30,
+    "additional_model_calls_after_document_release_validation": 0
+  },
+  "document_release_validation": {
+    "project_fixture": "synthetic Document release handoff",
+    "installed_fixture_sha256_prefix": "737348aa",
+    "approved_version": "b61a601cb23845a492de9e0f71923fc0",
+    "approved_sources": [
+      "README.md",
+      "docs/release.md",
+      "config/release.json"
+    ],
+    "identity_provider": "Google OIDC",
+    "exact_issuer_and_subject_invitation": true,
+    "invitation_lifetime_minutes": 60,
+    "fresh_scoped_session_created": true,
+    "authorization_checks": {
+      "direct_unlisted_canary_evidence_denied": true,
+      "owner_api_denied": true,
+      "unrelated_session_evidence_denied": true
+    },
+    "permitted_run": {
+      "run_id": "de722cb9bd594af09f15ea0c4558d6bf",
+      "action": "json-check",
+      "runtime": "io.containerd.kata.v2",
+      "guest_kernel": "6.18.35",
+      "exit_code": 0,
+      "duration_seconds": 3.992,
+      "cleaned_up": true,
+      "output_valid_json_object": true,
+      "all_six_source_hashes_unchanged": true,
+      "kata_namespace_empty_after_run": true
+    },
+    "revocation": {
+      "document_release_grant_revoked": true,
+      "earlier_paired_grant_unchanged": true,
+      "config_release_json_unavailable_after_revocation": true,
+      "exact_run_endpoint_unavailable_after_revocation": true,
+      "review_workspace_disappeared_after_refresh": true,
+      "sources_and_run_inaccessible_after_revocation": true,
+      "read_only_database_confirmed_revoked_grant": true,
+      "additional_model_calls_or_runs_after_revocation": 0
+    }
+  },
+  "local_validation": {
+    "full_test_suite": "174/174 passed",
+    "targeted_ruff": "passed",
+    "frontend_prettier": "passed",
+    "frontend_build": "passed"
+  },
+  "document_release_local_validation": {
+    "full_test_suite": "190/190 passed",
+    "targeted_ruff": "passed",
+    "frontend_prettier": "passed",
+    "frontend_build": "passed"
+  },
+  "result_limits": [
+    "This is one bounded synthetic-data browser flow, not a broad security proof or production assessment.",
+    "One live model question failed; one focused question succeeded. This does not establish model reliability or answer correctness generally.",
+    "Only the approved fixed json-check action was exercised through the identity service for the Document release handoff; this is not broad runtime or security assurance.",
+    "Full M2 order-4 acceptance remains unverified.",
+    "pilot_ready=false."
+  ],
+  "privacy": "Account email, issuer subject, invitation/discovery tokens, private hostnames, IP addresses, and sensitive deployment identifiers are intentionally omitted."
+}

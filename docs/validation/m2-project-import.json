@@ -1,0 +1,139 @@
+{
+  "date": "2026-09-20",
+  "recorded_at": "2026-09-20T21:35:17Z",
+  "increment": "M2.2",
+  "branch": "prototype/m2-project-import",
+  "implementation_date": "2026-09-19",
+  "acceptance_date": "2026-09-20",
+  "status": "implemented_validated_local_development_awaiting_owner_review",
+  "owner_accepted": false,
+  "pilot_ready": false,
+  "source_kind": {
+    "configured_project": "local-project",
+    "document_handoff_acceptance_example": "local-project",
+    "legacy_paired_evaluation_fixture": "synthetic"
+  },
+  "backend": {
+    "full_unittest": {
+      "command": "uv run --no-editable python -m unittest discover -s tests -v",
+      "passed": 98,
+      "failed": 0
+    },
+    "focused_project_tests": {
+      "command": "uv run --no-editable python -m unittest discover -s tests -p test_projects.py -v",
+      "passed": 11,
+      "failed": 0
+    },
+    "targeted_ruff": "passed",
+    "project_runtime_check": {
+      "script": "scripts/m2-project-runtime-check.py",
+      "passed": 9,
+      "failed": 0,
+      "model_calls": 0,
+      "temporary_synthetic_database": true,
+      "checks": [
+        "completed",
+        "cross_project_denied",
+        "duplicate_request_id",
+        "input_provenance",
+        "inspect_denied",
+        "invalid_text_not_echoed",
+        "revoke_denied",
+        "source_hash",
+        "valid_and_invalid"
+      ]
+    }
+  },
+  "frontend": {
+    "prettier": "passed",
+    "production_build": "passed",
+    "post_switch_stale_effects_narrow_fix_build": "passed"
+  },
+  "browser": {
+    "project_selection": [
+      "Two configured project sources are visible in the project picker.",
+      "Imported project files start with zero selected for New Share.",
+      "A fast project switch restores each project's own chat without an error."
+    ],
+    "owner_chat": [
+      "README-only owner chat succeeds with exactly one selected resource.",
+      "Owner private-session selection remains separate from New Share selection."
+    ],
+    "new_share": [
+      "New Share starts with zero selected files independently of owner chat.",
+      "The three-file review preview excludes the private note.",
+      "The fixed JSON input, runtime limits, and program hash are visible.",
+      "Approval succeeded; a reviewer separately started a fresh empty conversation. Approval does not automatically create a session."
+    ],
+    "reviewer": [
+      "The reviewed source list contains three approved sources.",
+      "Capabilities show the fixed JSON action and do not expose arbitrary tools."
+    ]
+  },
+  "m1_regression": {
+    "script": "scripts/m1-runtime-check.py",
+    "recorded_at": "2026-09-20T21:35:17Z",
+    "passed": 11,
+    "failed": 0,
+    "model_calls": 0,
+    "profile": "development",
+    "checks": [
+      "actual_run_seed_7",
+      "confirmed_cleanup_seed_7",
+      "duplicate_submission_same_run",
+      "actual_run_seed_23",
+      "confirmed_cleanup_seed_23",
+      "changed_interval_same_mean",
+      "invalid_seed_denied",
+      "other_recipient_result_denied",
+      "inspect_execution_denied",
+      "source_files_unchanged",
+      "revoked_result_delivery_denied"
+    ],
+    "program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9"
+  },
+  "preservation": {
+    "backup_original_table_rows_and_original_columns_unchanged": true,
+    "old_bootstrap_actions_audited": 6,
+    "old_bootstrap_action_hashes_match": true,
+    "old_completed_runs_audited": 6,
+    "old_completed_run_hashes_match": true,
+    "current_counts": {
+      "versions": 7,
+      "sessions": 20,
+      "owner_chats": 2,
+      "turns": 13,
+      "runs": 6
+    },
+    "model_dispatch_rows": 38,
+    "reserved_cents": 190,
+    "budget_cents": 200,
+    "remaining_cents": 10,
+    "cloud_started": false
+  },
+  "maintenance_audit": {
+    "unrelated_formatter_changes": 4,
+    "restored_byte_for_byte_from_backup": true,
+    "compatibility_audit_after_restore": "passed",
+    "note": "The initial fresh-fixture M1 check passed but did not exercise the pre-existing database hashes. A later audit found unrelated formatter changes that could alter an approved program hash; the four files were restored byte-for-byte before the final old-database compatibility audit and the final M1 regression run."
+  },
+  "model_and_runtime_boundary": {
+    "model_calls": 0,
+    "live_model_json_acceptance": false,
+    "tool_wiring": "FunctionModel and mock-job checks",
+    "real_container_validation": "separate bounded development-container check",
+    "provider_budget_unchanged": true,
+    "final_followup": {
+      "jobs": 4,
+      "projects": 11,
+      "after_formatter_restore": true
+    }
+  },
+  "limitations": [
+    "Validated local development and loopback behavior only; this is not private-pilot readiness.",
+    "The JSON action was validated through tool wiring and the separate real bounded container path; no live model JSON response is claimed.",
+    "Owner review remains pending.",
+    "M2.3 reference-Linux runtime integration requires separate approval.",
+    "The existing aggregate model allowance has 10 cents remaining; no additional model call was made for this validation."
+  ]
+}

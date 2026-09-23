@@ -1,0 +1,48 @@
+# Existing-Identity Predicate Diagnostic
+
+Date: 2026-09-22
+
+This sanitized record describes one bounded predicate-diagnostic run against
+the existing replacement guest. It records only boolean, empty, null, and
+enumerated status fields. No account values, machine IDs, IP addresses, DNS
+names, authentication URLs, or credentials are included.
+
+## Controller and independent host state
+
+- `run_id=2335e394e1088f89faa3da8f3462f0b5`
+- `state=complete`
+- `cleanup_verified=true`
+- `mutation_outcome_uncertain=false`
+- Independent GCP Console inspection showed the VM `STOPPED`, startup
+  configuration blank, and exactly the original four metadata keys.
+
+## Guest predicates
+
+- `backend=NeedsLogin`
+- `AuthURL` empty
+- `Self` present
+- `LoggedOut=true`
+- `WantRunning=false`
+- `HaveNodeKey=MISSING`
+- `AdvertiseTags` exact match: `false`
+- `Hostname` exact match: `false`
+- `ShieldsUp=false`
+- `RouteAll=false`
+- `RunSSH=false`
+- `ExitNodeID` and `ExitNodeIP` empty
+- `AdvertiseRoutes=null`
+- `AppConnector.Advertise=false`
+- Status and preferences commands completed successfully.
+
+## Interpretation and limits
+
+The strict recovery preflight failed because the node key was missing and the
+inactive guest's hostname and advertised tags did not match the requested
+values. Shields Up was also false. These facts explain why this recovery
+preflight did not pass; they do not establish the cause of the persisted
+logged-out state. A new recovery fix is pending and has not been run. No Apple
+login occurred.
+
+This record does not change the separate 33/33 fresh-host Kata baseline or
+earlier diagnostic records. No raw account, machine, IP, or DNS value is
+retained.

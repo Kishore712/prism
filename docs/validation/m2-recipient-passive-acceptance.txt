@@ -1,0 +1,48 @@
+# Existing-Identity Passive Reboot Acceptance
+
+Date: 2026-09-22
+
+This sanitized record covers one real passive reboot acceptance on the exact
+replacement VM (`prism-m0-kvm-b`). The evidence was transcribed from the
+operator's UI report. No raw device ID, normalized DNS name, IP address,
+account identifier, or URL is retained. The reported device-ID hash and
+normalized-DNS hash matched their exact previously saved values; hashes are
+not repeated here.
+
+## Controller and guest result
+
+- Guest acceptance: `accepted=true`
+- Controller summary: `state=complete`, `reason=null`
+- Cleanup: `cleanup_verified=true`, `mutation_outcome_uncertain=false`
+- Backend: `Running`; server: `Online`
+- Existing admin device identity hash: exact saved value matched
+- Normalized DNS hash: exact saved value matched
+- Existing expected tag and preferences matched; `ShieldsUp=true`
+- Route-all, SSH, exit node, advertised routes/services, and app connectors:
+  absent or disabled
+- Project-wide read-only startup metadata preflight: zero
+  `startup-script` and zero `startup-script-url` keys found
+
+No Tailscale login, `up`, reset, or logout command was performed for this
+passive acceptance; no guest identity mutation was made.
+
+## Cleanup confirmation
+
+The controller cleanup result was `PASS`: VM `TERMINATED`, startup script
+absent, and exactly the four original metadata controls retained. Independent
+GCP Console inspection showed VM `STOPPED`, blank startup configuration, and
+the original controls intact.
+
+The existing admin tailnet still contains only one `prism-pilot` device; no
+duplicate was created. No HTTPS request, certificate issuance, OIDC flow,
+application traffic, or model call occurred. `pilot_ready=false`.
+
+## Interpretation and limits
+
+This confirms the existing saved admin identity and normalized DNS identity
+survived the passive reboot path and that the guest returned to the expected
+running/online and restricted-preference state. It is one acceptance on this
+VM; it does not establish HTTPS, OIDC, application integration, real service
+traffic, or pilot readiness. Earlier failed recovery attempts and diagnostics
+remain historical evidence and are not overwritten by this result. The
+separate 33/33 Kata baseline across 10 cleaned boots remains unchanged.

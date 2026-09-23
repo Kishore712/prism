@@ -1,0 +1,78 @@
+{
+  "date": "2026-09-20",
+  "increment": "run-reference-answers",
+  "branch": "fix/run-reference-answers",
+  "status": "implemented_validated_awaiting_owner_review",
+  "implementation_files": [
+    "src/prism/conversation.py",
+    "tests/test_agent.py",
+    "tests/test_projects.py"
+  ],
+  "tests": {
+    "agent": 14,
+    "projects": 15,
+    "owner": 11,
+    "handoff": 14,
+    "total_passed": 54,
+    "targeted_ruff": "passed",
+    "test_agent_note": "The pre-existing B023 warning was excluded from the targeted Ruff result."
+  },
+  "guardrails": {
+    "strict_reference_validation": true,
+    "final_double_check": true,
+    "output_validator_single_correction": true,
+    "function_tools_hidden_during_correction": true,
+    "side_effect_bodyguard": true,
+    "max_requests": 4,
+    "max_tool_calls": 8,
+    "max_seconds": 90,
+    "budget_cents": 300
+  },
+  "live": {
+    "model_backed": true,
+    "real_container": true,
+    "session": "a03987fad8484df79f80052bbb07d985",
+    "approved_version": "c8b8d21f7df4",
+    "run": "1fbcfab9fc014103bcea13282620bf1d",
+    "run_status": "completed",
+    "run_valid": true,
+    "turns": [
+      {
+        "id": "324c64c2cae64e14b9a26647dfb7db11",
+        "status": "completed",
+        "claim_type": "new_run",
+        "reference_matches_run": true
+      },
+      {
+        "id": "f372dae6f1b24873a131c25ae926de9e",
+        "status": "completed",
+        "claim_type": "new_run",
+        "reference_matches_run": true,
+        "read_only": true
+      }
+    ],
+    "requests_by_turn": [3, 4],
+    "requests_total": 7,
+    "tool_calls_by_turn": [1, 3],
+    "database_run_count": 1,
+    "ui_references_visible": true
+  },
+  "ledger": {
+    "dispatches_before": 45,
+    "dispatches_after": 52,
+    "reserved_cents_before": 225,
+    "reserved_cents_after": 260,
+    "budget_cents": 300,
+    "remaining_cents": 40,
+    "remaining_is_application_reservation_not_billing": true
+  },
+  "preservation": {
+    "all_existing_database_table_rows_and_original_columns_unchanged": true,
+    "bootstrap_program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9"
+  },
+  "limitations": [
+    "This validates the repaired reference path for the recorded questions; it does not guarantee every possible model wording or citation pattern.",
+    "The earlier two failed answers and one successful answer remain historical walkthrough evidence.",
+    "M2.3 reference-Linux integration has not started and remains separately gated."
+  ]
+}

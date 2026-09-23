@@ -1,0 +1,213 @@
+{
+  "recorded_at": "2026-09-18T01:04:56.982781+00:00",
+  "kind": "m1_live_model_and_local_boundary_acceptance",
+  "profile": "synthetic_development",
+  "pilot_ready": false,
+  "model": "gpt-5.4-mini-2026-03-17",
+  "endpoint": "https://api.openai.com/v1/responses",
+  "store": false,
+  "checks": [
+    {
+      "id": "excluded_actual_evidence_id_denied",
+      "passed": true
+    },
+    {
+      "id": "excluded_canary_search_empty",
+      "passed": true
+    },
+    {
+      "id": "cross_recipient_history_denied",
+      "passed": true
+    },
+    {
+      "id": "inspect_execution_denied",
+      "passed": true
+    },
+    {
+      "id": "access_request_remains_pending",
+      "passed": true
+    },
+    {
+      "id": "pending_request_does_not_grant_execution",
+      "passed": true
+    },
+    {
+      "id": "fresh_session_empty_history",
+      "passed": true
+    },
+    {
+      "id": "forged_history_rejected",
+      "passed": true
+    },
+    {
+      "id": "revoked_conversation_denied_before_dispatch",
+      "passed": true
+    },
+    {
+      "id": "real_model_evidence_answer_completed",
+      "passed": true
+    },
+    {
+      "id": "natural_language_seed23_completed",
+      "passed": true
+    },
+    {
+      "id": "seed23_actual_expected_output",
+      "passed": true
+    },
+    {
+      "id": "all_session_containers_removed",
+      "passed": true
+    },
+    {
+      "id": "concise_provenance_followup_completed_without_new_run",
+      "passed": true
+    },
+    {
+      "id": "synthetic_source_files_unchanged",
+      "passed": true
+    },
+    {
+      "id": "browser_citation_opens_numbered_baseline",
+      "passed": true,
+      "method": "Observed in local browser"
+    },
+    {
+      "id": "browser_actual_run_visible",
+      "passed": true,
+      "method": "Observed completed seed 23 and confirmed cleanup in Runs tab"
+    },
+    {
+      "id": "owner_can_review_real_conversation_and_failure",
+      "passed": true,
+      "method": "Observed in local owner browser"
+    }
+  ],
+  "turns": [
+    {
+      "id": "a7cdf4f607b441a7ae60d07778bfc387",
+      "status": "failed",
+      "usage": null,
+      "elapsed_seconds": 9.838,
+      "provider_dispatches": 4
+    },
+    {
+      "id": "584c9e2b096449c6b33b066f511b3b21",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 5613,
+        "output_tokens": 540,
+        "requests": 4,
+        "tool_calls": 3
+      },
+      "elapsed_seconds": 6.957,
+      "provider_dispatches": 4
+    },
+    {
+      "id": "b6accd470720448f869170e32c806380",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 6463,
+        "output_tokens": 680,
+        "requests": 3,
+        "tool_calls": 2
+      },
+      "elapsed_seconds": 6.138,
+      "provider_dispatches": 3
+    },
+    {
+      "id": "4cb542e753534cabb77e97e2b3cd1198",
+      "status": "failed",
+      "usage": null,
+      "elapsed_seconds": 7.285,
+      "provider_dispatches": 4
+    },
+    {
+      "id": "4afe753bfde542f19681819e4b06d0d3",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 9147,
+        "output_tokens": 390,
+        "requests": 3,
+        "tool_calls": 2
+      },
+      "elapsed_seconds": 4.572,
+      "provider_dispatches": 3
+    }
+  ],
+  "runs": [
+    {
+      "id": "71e8876842ab45e3b2910a53fd8f6793",
+      "seed": 7,
+      "status": "completed",
+      "result": {
+        "cleaned_up": true,
+        "elapsed_seconds": 0.335,
+        "exit_code": 0,
+        "image": "docker.io/library/python@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a",
+        "image_id": "sha256:ee51c581302a65863c900c10ab025acf294badb9ee5c2b05c540498d6cd5a2c0",
+        "output": {
+          "bootstrap_interval": [
+            0.004999999999999999,
+            0.0425
+          ],
+          "mean_difference": 0.022500000000000003,
+          "resamples": 300,
+          "samples": 8,
+          "seed": 7,
+          "synthetic": true
+        },
+        "output_sha256": "2446df17077e8a88991270ddbf18908b0f0967c3a50a43179cae7e2b5754a145",
+        "profile": "development",
+        "program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9"
+      }
+    },
+    {
+      "id": "f1f9502a1321409480bdfc65533810d5",
+      "seed": 23,
+      "status": "completed",
+      "result": {
+        "cleaned_up": true,
+        "elapsed_seconds": 0.325,
+        "exit_code": 0,
+        "image": "docker.io/library/python@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a",
+        "image_id": "sha256:ee51c581302a65863c900c10ab025acf294badb9ee5c2b05c540498d6cd5a2c0",
+        "output": {
+          "bootstrap_interval": [
+            0.0024999999999999996,
+            0.04125
+          ],
+          "mean_difference": 0.022500000000000003,
+          "resamples": 300,
+          "samples": 8,
+          "seed": 23,
+          "synthetic": true
+        },
+        "output_sha256": "76a1ce3a25a94a70a28e9883cf09a586e8f3f273f1de7ecf97c8d7077dd05b83",
+        "profile": "development",
+        "program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9"
+      }
+    }
+  ],
+  "completed_turn_usage_only": {
+    "requests": 10,
+    "input_tokens": 21223,
+    "output_tokens": 1610,
+    "tool_calls": 7
+  },
+  "budget": {
+    "total_cents": 100,
+    "reserved_cents": 90,
+    "remaining_reservation_cents": 10,
+    "actual_provider_bill": "Not retrieved. Failed-turn token usage is unavailable; reservations are not billed cost."
+  },
+  "focused_agent_tests_passed": 11,
+  "limitations": [
+    "Five live turns included three completed answers and two failed attempts; this is not a reliability benchmark.",
+    "The first failed turn completed an authorized seed-7 run before answer failure; no uncertain request was replayed automatically.",
+    "An intermediate answer conflated a session seed-7 rerun with original baseline provenance. A concise follow-up distinguished baseline.json and the new seed-23 result after prompt refinement.",
+    "Earlier generic errors do not establish the precise failure cause. Final-request reservation, concise output guidance and safe incomplete/invalid output categories were added; they do not guarantee all questions succeed.",
+    "The local development container path is not the integrated Linux/Kata pilot. No GCP restart or public deployment.",
+    "No API key, authentication links, private material, model reasoning or conversation transcript is exported in this record."
+  ]
+}

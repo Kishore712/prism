@@ -1,0 +1,300 @@
+{
+  "schema_version": 1,
+  "kind": "synthetic_runtime_selftest",
+  "recorded_at": "2026-09-17T23:11:48.848356+00:00",
+  "environment": {
+    "controller_os": "Darwin",
+    "controller_arch": "arm64",
+    "python": "3.13.5",
+    "engine": {
+      "Version": "27.4.0",
+      "ApiVersion": "1.47",
+      "Os": "linux",
+      "Arch": "arm64"
+    }
+  },
+  "profile": "development",
+  "passed": true,
+  "pilot_ready": false,
+  "fixture_image": "docker.io/library/python@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a",
+  "elapsed_seconds": 4.868,
+  "evaluation_example": {
+    "seed": 7,
+    "samples": 8,
+    "mean_difference": 0.022500000000000003,
+    "bootstrap_interval": [
+      0.004999999999999999,
+      0.0425
+    ],
+    "resamples": 300,
+    "synthetic": true
+  },
+  "checks": [
+    {
+      "id": "real_evaluation",
+      "status": "pass",
+      "detail": "Executed the fixed evaluation inside a constrained container."
+    },
+    {
+      "id": "repeatable_evaluation",
+      "status": "pass",
+      "detail": "The same input produced the same structured result."
+    },
+    {
+      "id": "parameter_change",
+      "status": "pass",
+      "detail": "A second allowed seed was actually executed."
+    },
+    {
+      "id": "non_root",
+      "status": "pass",
+      "detail": "Observed by the real synthetic probe inside its container."
+    },
+    {
+      "id": "no_new_privileges",
+      "status": "pass",
+      "detail": "Observed by the real synthetic probe inside its container."
+    },
+    {
+      "id": "capabilities_dropped",
+      "status": "pass",
+      "detail": "Observed by the real synthetic probe inside its container."
+    },
+    {
+      "id": "seccomp_active",
+      "status": "pass",
+      "detail": "Observed by the real synthetic probe inside its container."
+    },
+    {
+      "id": "host_canary_absent",
+      "status": "pass",
+      "detail": "Observed by the real synthetic probe inside its container."
+    },
+    {
+      "id": "credentials_absent",
+      "status": "pass",
+      "detail": "Observed by the real synthetic probe inside its container."
+    },
+    {
+      "id": "control_sockets_absent",
+      "status": "pass",
+      "detail": "Observed by the real synthetic probe inside its container."
+    },
+    {
+      "id": "session_marker_absent",
+      "status": "pass",
+      "detail": "Observed by the real synthetic probe inside its container."
+    },
+    {
+      "id": "root_read_only",
+      "status": "pass",
+      "detail": "Observed by the real synthetic probe inside its container."
+    },
+    {
+      "id": "no_active_external_interface",
+      "status": "pass",
+      "detail": "Observed by the real synthetic probe inside its container."
+    },
+    {
+      "id": "external_network_denied",
+      "status": "pass",
+      "detail": "Observed by the real synthetic probe inside its container."
+    },
+    {
+      "id": "metadata_network_denied",
+      "status": "pass",
+      "detail": "Observed by the real synthetic probe inside its container."
+    },
+    {
+      "id": "scratch_writable",
+      "status": "pass",
+      "detail": "Observed by the real synthetic probe inside its container."
+    },
+    {
+      "id": "memory_limit",
+      "status": "pass",
+      "detail": "Observed by the real synthetic probe inside its container."
+    },
+    {
+      "id": "swap_disabled",
+      "status": "pass",
+      "detail": "Observed by the real synthetic probe inside its container."
+    },
+    {
+      "id": "process_limit",
+      "status": "pass",
+      "detail": "Observed by the real synthetic probe inside its container."
+    },
+    {
+      "id": "cpu_limit",
+      "status": "pass",
+      "detail": "Observed by the real synthetic probe inside its container."
+    },
+    {
+      "id": "scratch_limit",
+      "status": "pass",
+      "detail": "Observed by the real synthetic probe inside its container."
+    },
+    {
+      "id": "separate_scratch",
+      "status": "pass",
+      "detail": "The second container cannot see the first container's scratch marker."
+    },
+    {
+      "id": "source_unchanged",
+      "status": "pass",
+      "detail": "Synthetic host source was never mounted and its digest is unchanged."
+    },
+    {
+      "id": "process_exhaustion",
+      "status": "pass",
+      "detail": "Finite child creation reached the configured process ceiling."
+    },
+    {
+      "id": "memory_exhaustion",
+      "status": "pass",
+      "detail": "The engine reported an OOM kill for allocation beyond the memory ceiling."
+    },
+    {
+      "id": "output_flood",
+      "status": "pass",
+      "detail": "The collector retained at most 65536 bytes and stopped the task."
+    },
+    {
+      "id": "wall_timeout",
+      "status": "pass",
+      "detail": "A task with an observed child process was killed and removed at its deadline."
+    },
+    {
+      "id": "cancellation",
+      "status": "pass",
+      "detail": "Cancellation stopped and removed a task with an observed child process."
+    },
+    {
+      "id": "cleanup",
+      "status": "pass",
+      "detail": "Every created container was confirmed absent after cleanup."
+    }
+  ],
+  "runs": [
+    {
+      "action": "evaluate",
+      "exit_code": 0,
+      "stop_reason": "exited",
+      "oom_killed": false,
+      "output_limited": false,
+      "cleaned_up": true,
+      "elapsed_seconds": 0.366,
+      "image_id": "sha256:ee51c581302a65863c900c10ab025acf294badb9ee5c2b05c540498d6cd5a2c0",
+      "program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9"
+    },
+    {
+      "action": "evaluate",
+      "exit_code": 0,
+      "stop_reason": "exited",
+      "oom_killed": false,
+      "output_limited": false,
+      "cleaned_up": true,
+      "elapsed_seconds": 0.277,
+      "image_id": "sha256:ee51c581302a65863c900c10ab025acf294badb9ee5c2b05c540498d6cd5a2c0",
+      "program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9"
+    },
+    {
+      "action": "evaluate",
+      "exit_code": 0,
+      "stop_reason": "exited",
+      "oom_killed": false,
+      "output_limited": false,
+      "cleaned_up": true,
+      "elapsed_seconds": 0.227,
+      "image_id": "sha256:ee51c581302a65863c900c10ab025acf294badb9ee5c2b05c540498d6cd5a2c0",
+      "program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9"
+    },
+    {
+      "action": "boundaries",
+      "exit_code": 0,
+      "stop_reason": "exited",
+      "oom_killed": false,
+      "output_limited": false,
+      "cleaned_up": true,
+      "elapsed_seconds": 0.236,
+      "image_id": "sha256:ee51c581302a65863c900c10ab025acf294badb9ee5c2b05c540498d6cd5a2c0",
+      "program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9"
+    },
+    {
+      "action": "boundaries",
+      "exit_code": 0,
+      "stop_reason": "exited",
+      "oom_killed": false,
+      "output_limited": false,
+      "cleaned_up": true,
+      "elapsed_seconds": 0.288,
+      "image_id": "sha256:ee51c581302a65863c900c10ab025acf294badb9ee5c2b05c540498d6cd5a2c0",
+      "program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9"
+    },
+    {
+      "action": "processes",
+      "exit_code": 0,
+      "stop_reason": "exited",
+      "oom_killed": false,
+      "output_limited": false,
+      "cleaned_up": true,
+      "elapsed_seconds": 0.239,
+      "image_id": "sha256:ee51c581302a65863c900c10ab025acf294badb9ee5c2b05c540498d6cd5a2c0",
+      "program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9"
+    },
+    {
+      "action": "memory",
+      "exit_code": 137,
+      "stop_reason": "exited",
+      "oom_killed": true,
+      "output_limited": false,
+      "cleaned_up": true,
+      "elapsed_seconds": 0.244,
+      "image_id": "sha256:ee51c581302a65863c900c10ab025acf294badb9ee5c2b05c540498d6cd5a2c0",
+      "program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9"
+    },
+    {
+      "action": "flood",
+      "exit_code": 137,
+      "stop_reason": "output_limit",
+      "oom_killed": false,
+      "output_limited": true,
+      "cleaned_up": true,
+      "elapsed_seconds": 0.241,
+      "image_id": "sha256:ee51c581302a65863c900c10ab025acf294badb9ee5c2b05c540498d6cd5a2c0",
+      "program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9"
+    },
+    {
+      "action": "sleep",
+      "exit_code": 137,
+      "stop_reason": "timeout",
+      "oom_killed": false,
+      "output_limited": false,
+      "cleaned_up": true,
+      "elapsed_seconds": 1.578,
+      "image_id": "sha256:ee51c581302a65863c900c10ab025acf294badb9ee5c2b05c540498d6cd5a2c0",
+      "program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9"
+    },
+    {
+      "action": "sleep",
+      "exit_code": 137,
+      "stop_reason": "cancelled",
+      "oom_killed": false,
+      "output_limited": false,
+      "cleaned_up": true,
+      "elapsed_seconds": 1.077,
+      "image_id": "sha256:ee51c581302a65863c900c10ab025acf294badb9ee5c2b05c540498d6cd5a2c0",
+      "program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9"
+    }
+  ],
+  "unverified": [
+    "Kata/VM-per-recipient isolation",
+    "OIDC and grants",
+    "host lease loss and worker crash",
+    "cross-recipient authorization",
+    "aggregate budgets and persistent artifact quotas",
+    "real model interaction"
+  ],
+  "notice": "Synthetic container development checks only; no private-pilot security claim or access activation."
+}

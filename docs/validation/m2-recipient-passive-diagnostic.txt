@@ -1,0 +1,44 @@
+# Existing-Identity Passive Diagnostic
+
+Date: 2026-09-22
+
+This sanitized note records one passive diagnostic of the existing replacement
+guest. The result below is transcribed from the CloudShell UI/operator report;
+it is not a direct download or transcription of raw JSON. No raw machine ID,
+FQDN, IP address, account identifier, or URL is retained here.
+
+## Controller result
+
+- `state=complete`
+- `reason=null`
+- `cleanup_verified=true`
+- `mutation_outcome_uncertain=false`
+
+## Guest backend state
+
+- `backend=NeedsLogin`
+- `have_node_key=false`
+- `auth_url_present=false`
+- `self_present=true`
+- `want_running=false`
+- `logged_out=true`
+- `approved_prefs=false`
+- `state_changed=false`
+- `daemon_active=true`
+
+Independent CloudShell describe confirmed the VM was `TERMINATED`, with exactly
+the four existing metadata keys and no startup script.
+
+## Interpretation and limits
+
+The persisted guest state has no node key or authentication URL and is logged
+out, so passive recovery cannot work from this state. This evidence does not
+establish the causal reason the guest became logged out. The earlier
+timeout-before-Connect chronology is verified, but it does not prove causation.
+No login/reset/logout cycle, reinstall, new node, policy change, application or
+certificate action, or model call was performed.
+
+The separate fresh replacement-host Kata baseline remains 33/33 checks across
+10 cleaned, distinct boots. This diagnostic does not change or extend that
+baseline, and neither result establishes private host reachability, HTTPS,
+OIDC, Prism application traffic, or pilot readiness.

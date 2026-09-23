@@ -1,0 +1,44 @@
+# Apple Tailnet Reauthorization Validation
+
+Date: 2026-09-22
+
+This sanitized record summarizes the latest approved Apple Connect
+reauthorization run on the existing replacement guest. It contains no raw
+identity, tailnet, DNS, IP, account, URL, or cipher values.
+
+## Result
+
+- Guest recovery post-login validation passed: backend `Running`, server
+  `Online`, and exact existing hostname, tag, unsafe preferences, and
+  `ShieldsUp=true` predicates matched.
+- The run then intentionally failed with `old_admin_identity_reused` because
+  the authenticated identity hash matched the saved old admin identity hash.
+- Apple tailnet control-plane state shows exactly two nodes: `prism-client` and
+  one `prism-pilot`. There is no duplicate pilot node. The existing pilot host
+  tag is unchanged, and its last-seen time refreshed.
+- The purpose record independently contains the same old admin identity hash.
+
+## Cleanup and side effects
+
+- Controller summary: `state=fail`, `reason=old_admin_identity_reused`,
+  `cleanup_verified=true`, `cleanup_failed=false`,
+  `mutation_outcome_uncertain=false`, `app_started=false`, and
+  `cert_requested=false`.
+- The controller and independent GCP Console checks both confirmed the VM
+  `STOPPED`, startup configuration absent, and exactly the original four
+  metadata controls.
+- No certificate was requested; no HTTPS, DNS, OIDC, application, or model
+  validation occurred.
+
+## Interpretation and remaining evidence
+
+The guest reauthorized the same stable identity already represented by the
+existing host node. The current script assumes reauthorization must produce a
+new identity and rejects a matching saved identity hash. This result therefore
+shows that the script's new-identity assumption was not met; it is not evidence
+that the stable identity is unsafe. The duplicate-node guard worked: the
+existing two-node state was preserved.
+
+Passive reboot persistence has not yet been checked after this reauthorization.
+Exact private DNS resolution and reachability also remain pending. Earlier
+diagnostics and the fresh 33/33 Kata baseline remain separate evidence.

@@ -1,0 +1,36 @@
+# Live Private-Host Recovery Attempt
+
+Date: 2026-09-22
+Run ID: `95c6c4ea912280fa00f0edb71f496684`
+Run timestamp: `2026-09-22T21:37:29Z`
+
+This sanitized record summarizes one approved live recovery attempt on the
+replacement test VM. It contains no account, project, machine, network, or
+credential identifiers.
+
+## Result
+
+- Controller: `state=fail`, `reason=state_mismatch`
+- Guest failed before an authorization URL was produced.
+- No Apple Connect occurred and no new node was created.
+- `app_started=false`
+- `cert_requested=false`
+- `mutation_outcome_uncertain=false`
+
+## Cleanup
+
+- Controller cleanup: `cleanup_verified=true`, `cleanup_failed=false`
+- Controller cleanup confirmed VM `TERMINATED`, startup script absent, and the
+  original four metadata controls present.
+- Independent GCP Console inspection confirmed VM `STOPPED`, startup
+  configuration blank, and the original controls intact.
+- A temporary CloudShell token-refresh error occurred during cleanup. Final
+  controller and independent Console checks confirmed clean state.
+
+## Interpretation and limits
+
+The run stopped before authorization and did not create a new authenticated
+device. The cause of `state_mismatch` is unknown; targeted diagnostics remain
+pending. This failure does not change the separate 33/33 Kata baseline or the
+earlier passive diagnostic. No application start, certificate request, or
+model call occurred.

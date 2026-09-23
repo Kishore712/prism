@@ -1,0 +1,46 @@
+{
+  "date": "2026-09-23",
+  "scope": "private owner-only live model validation",
+  "service": {
+    "authentication": "owner-only Google OIDC",
+    "transport": "private Tailscale HTTPS",
+    "data": "synthetic Paired evaluation",
+    "model_snapshot": "gpt-5.4-mini-2026-03-17",
+    "aggregate_reservation_usd": 1.0,
+    "reserved_usd": 0.2,
+    "remaining_usd_ui": 0.8
+  },
+  "completed_owner_answer": {
+    "questions_completed": 1,
+    "model_requests": 4,
+    "tool_calls": 3,
+    "input_tokens": 8898,
+    "output_tokens": 488,
+    "citations": [
+      { "file": "observations.csv", "lines": "1-9" },
+      { "file": "baseline.json", "lines": "1-13" },
+      { "file": "limitations.md", "lines": "1-6" }
+    ],
+    "note": "The UI duplicated the question text, but no second execution was requested. The one evidence-only answer did read evidence through model tools. Private question text and owner identity are intentionally omitted."
+  },
+  "pending_handoff_review": {
+    "state": "draft_pending_owner_approval",
+    "selected_files": [
+      "baseline.json",
+      "observations.csv",
+      "limitations.md"
+    ],
+    "answer_excerpts": 1,
+    "capability": "read-only",
+    "private_notes_included": false,
+    "approved_share": false
+  },
+  "not_validated": [
+    "recipient-bound invitation and fresh scoped recipient session",
+    "second-identity denial",
+    "Kata execution through this private service",
+    "full order-4 acceptance",
+    "private-pilot readiness"
+  ],
+  "pilot_ready": false
+}

@@ -1,0 +1,142 @@
+{
+  "recorded_at_utc": "2026-09-18T03:55:53.487996+00:00",
+  "milestone": "M2.1a",
+  "branch": "prototype/m2-owner-chat",
+  "status": "implemented; owner acceptance pending",
+  "scope": "Configured synthetic local owner project only; no reviewed conversation handoff or remote pilot",
+  "automated": {
+    "passed": 40,
+    "suites": {
+      "owner": 11,
+      "sharing_api": 13,
+      "agent": 12,
+      "jobs": 4
+    },
+    "model_evidence": "FunctionModel and fake HTTP transport, not live inference",
+    "worker_evidence": "Worker launch mocked in unit cases; live runtime evidence is separate",
+    "ruff": "passed",
+    "frontend_build": "passed",
+    "intermediate_failure": "The new diagnostics test initially failed because the SDK chained ValidationError directly. Corrected and final focused suite passed."
+  },
+  "live_model": {
+    "provider": "OpenAI",
+    "model": "gpt-5.4-mini-2026-03-17",
+    "sent_data": "Synthetic owner questions, current owner-session history, retrieved configured project evidence including synthetic private note, and permitted tool results",
+    "turns": [
+      {
+        "scenario": "Evidence-only project question including synthetic owner-only note",
+        "status": "completed",
+        "error": null,
+        "usage": {
+          "input_tokens": 5607,
+          "output_tokens": 498,
+          "requests": 4,
+          "tool_calls": 3
+        },
+        "answer_delivered": true
+      },
+      {
+        "scenario": "Requested seed-7 execution; run completed but answer failed",
+        "status": "failed",
+        "error": "The model did not return a valid structured answer within this turn. No answer was fabricated. Try a narrower question and inspect existing runs before retrying work.",
+        "usage": null,
+        "answer_delivered": false
+      },
+      {
+        "scenario": "Read existing result; answer failed",
+        "status": "failed",
+        "error": "The model did not return a valid structured answer within this turn. No answer was fabricated. Try a narrower question and inspect existing runs before retrying work.",
+        "usage": null,
+        "answer_delivered": false
+      },
+      {
+        "scenario": "Read existing result; completed without reexecution",
+        "status": "completed",
+        "error": null,
+        "usage": {
+          "input_tokens": 4059,
+          "output_tokens": 278,
+          "requests": 2,
+          "tool_calls": 1
+        },
+        "answer_delivered": true
+      }
+    ],
+    "completed": 2,
+    "failed": 2,
+    "failure_limit": "Historical invalid fields were not retained; later success does not establish a fix or reliability rate. New invalid-output diagnostics retain only known schema field names."
+  },
+  "actual_runs": [
+    {
+      "seed": 7,
+      "status": "completed",
+      "result": {
+        "cleaned_up": true,
+        "elapsed_seconds": 0.332,
+        "exit_code": 0,
+        "image": "docker.io/library/python@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a",
+        "image_id": "sha256:ee51c581302a65863c900c10ab025acf294badb9ee5c2b05c540498d6cd5a2c0",
+        "output": {
+          "bootstrap_interval": [
+            0.004999999999999999,
+            0.0425
+          ],
+          "mean_difference": 0.022500000000000003,
+          "resamples": 300,
+          "samples": 8,
+          "seed": 7,
+          "synthetic": true
+        },
+        "output_sha256": "2446df17077e8a88991270ddbf18908b0f0967c3a50a43179cae7e2b5754a145",
+        "profile": "development",
+        "program_sha256": "8bb6f234a9d9cb3f03d55a5df1fe701e40b943e89508c9d4f08d23aecd4725b9"
+      }
+    }
+  ],
+  "preservation": {
+    "preexisting_rows_unchanged": {
+      "versions": 4,
+      "sessions": 16,
+      "turns": 7,
+      "runs": 4,
+      "model_dispatches": 23,
+      "access_requests": 2,
+      "events": 49
+    },
+    "protected_source_files": 5,
+    "all_source_hashes_unchanged": true,
+    "original_workspace_written": false
+  },
+  "allowance_checkpoint_cents": {
+    "authorized_total": 200,
+    "reserved_before": 115,
+    "reserved_after": 170,
+    "remaining_after": 30,
+    "new_reservations": 55,
+    "reset": false,
+    "meaning": "Conservative application reservations, not actual provider charges or an account spending cap"
+  },
+  "browser_checks": [
+    "Owner landing chat and explicit model disclosure acknowledgement",
+    "Existing owner conversation restored after restart and reload",
+    "Private-note citation panel and numbered lines",
+    "Project-only search with synthetic exclusion marker",
+    "Actual run visible after model answer failure",
+    "Successful follow-up references the existing run without executing again",
+    "Unsent draft retained across Shared projects navigation",
+    "All four existing shared versions remain visible",
+    "390px composer layout and navigation drawer"
+  ],
+  "not_established": [
+    "Model reliability beyond these four attempts",
+    "M2.1b reviewed handoff context",
+    "M2.1c contextual collaborator continuation",
+    "Arbitrary project import or editing",
+    "Integrated Linux/Kata application runtime",
+    "Named remote identities or pilot readiness",
+    "Owner acceptance or absolute security"
+  ],
+  "cloud_started": false,
+  "dependencies_added": false,
+  "published": false
+}
