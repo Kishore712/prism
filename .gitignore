@@ -29,6 +29,7 @@ __pycache__/
 venv/
 .pytest_cache/
 .mypy_cache/
+*.egg-info/
 
 # JavaScript and TypeScript
 node_modules/
@@ -39,3 +40,18 @@ coverage/
 # Experiment output and local data
 data/private/
 experiments/results/
+var/
+
+# Owner-local SQLite state — this project's entire point is that captured
+# conversations, drafts, and attachment content never leave the owner's
+# machine, so these must never be committed, at the repo root or anywhere
+# a stray local run happens to have created one.
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Internal working docs: phase-by-phase dev logs, research write-ups, the
+# running decision log/changelog. Not for the public repo — see docs/ for
+# the curated, checked-in documentation.
+/dev-docs/
