@@ -1,0 +1,55 @@
+{
+  "schema_version": "prism.synthetic-session.v1",
+  "title": "Synthetic shared-agent research session",
+  "instructions": "Answer questions using only the material included in the published share.",
+  "messages": [
+    {
+      "turn_id": "turn-1",
+      "role": "user",
+      "content": "What should the first prototype demonstrate?",
+      "status": "completed"
+    },
+    {
+      "turn_id": "turn-1",
+      "role": "assistant",
+      "content": "It should demonstrate explicit selection of completed turns and files, followed by an isolated recipient continuation.",
+      "status": "completed"
+    },
+    {
+      "turn_id": "turn-2",
+      "role": "user",
+      "content": "Should the recipient receive the owner's long-term memory?",
+      "status": "completed"
+    },
+    {
+      "turn_id": "turn-2",
+      "role": "assistant",
+      "content": "No. The recipient should receive only the published session projection and their own continuation transcript.",
+      "status": "completed"
+    },
+    {
+      "turn_id": "turn-3",
+      "role": "user",
+      "content": "This turn is still being processed and must not be shareable.",
+      "status": "completed"
+    },
+    {
+      "turn_id": "turn-3",
+      "role": "assistant",
+      "content": "Partial response",
+      "status": "in_progress"
+    }
+  ],
+  "resources": [
+    {
+      "display_name": "Project notes",
+      "path": "resources/project-notes.md",
+      "media_type": "text/markdown"
+    },
+    {
+      "display_name": "Private notes",
+      "path": "resources/private-notes.md",
+      "media_type": "text/markdown"
+    }
+  ]
+}

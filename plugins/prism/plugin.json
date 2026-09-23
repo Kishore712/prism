@@ -1,0 +1,33 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "prism",
+  "version": "0.1.0",
+  "description": "Open and query one owner-approved immutable agent share.",
+  "author": {
+    "name": "Prism contributors"
+  },
+  "keywords": [
+    "agents",
+    "collaboration",
+    "research",
+    "sharing"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Prism",
+        "shortDescription": "Query an owner-approved agent share.",
+        "longDescription": "Prism exposes only the immutable conversation snapshot its owner explicitly approved, to recipients the owner approved.",
+        "developerName": "Prism contributors",
+        "category": "Productivity",
+        "capabilities": [
+          "Read"
+        ],
+        "defaultPrompt": [
+          "Show me the manifest of the Prism share and summarize it.",
+          "Search the Prism share for the decisions about access control."
+        ]
+      }
+    }
+  }
+}

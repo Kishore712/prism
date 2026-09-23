@@ -1,0 +1,9 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "prism-owner": {
+      "type": "streamable-http",
+      "url": "https://replace-with-owner-tunnel.example/mcp"
+    }
+  }
+}

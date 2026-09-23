@@ -1,0 +1,188 @@
+{
+  "schema_version": "prism.synthetic-chatgpt-export.v1",
+  "notice": "Synthetic Prism sample inspired by conversational export structures. It is not an official or guaranteed ChatGPT export schema.",
+  "conversations": [
+    {
+      "id": "conversation-prism-research",
+      "title": "Prism shared-agent research",
+      "update_time": "2026-09-19T18:30:00Z",
+      "current_node": "assistant-2-selected",
+      "mapping": {
+        "root": {
+          "id": "root",
+          "parent": null,
+          "children": ["user-1"],
+          "message": null
+        },
+        "user-1": {
+          "id": "user-1",
+          "parent": "root",
+          "children": ["assistant-1"],
+          "message": {
+            "id": "message-user-1",
+            "author": {"role": "user"},
+            "status": "finished_successfully",
+            "content": {
+              "content_type": "text",
+              "parts": ["What should the first Prism prototype demonstrate?"]
+            }
+          }
+        },
+        "assistant-1": {
+          "id": "assistant-1",
+          "parent": "user-1",
+          "children": ["user-2"],
+          "message": {
+            "id": "message-assistant-1",
+            "author": {"role": "assistant"},
+            "status": "finished_successfully",
+            "content": {
+              "content_type": "text",
+              "parts": ["It should import one owner-selected conversation deterministically and keep every capture local and owner-only."]
+            }
+          }
+        },
+        "user-2": {
+          "id": "user-2",
+          "parent": "assistant-1",
+          "children": ["assistant-2-selected", "assistant-2-alternate"],
+          "message": {
+            "id": "message-user-2",
+            "author": {"role": "user"},
+            "status": "finished_successfully",
+            "content": {
+              "content_type": "text",
+              "parts": ["How should Prism treat files mentioned in the conversation?"]
+            }
+          }
+        },
+        "assistant-2-selected": {
+          "id": "assistant-2-selected",
+          "parent": "user-2",
+          "children": [],
+          "message": {
+            "id": "message-assistant-2-selected",
+            "author": {"role": "assistant"},
+            "status": "finished_successfully",
+            "content": {
+              "content_type": "text",
+              "parts": ["Record safe file metadata only. The owner must explicitly supply and select file bytes in a later phase."]
+            }
+          }
+        },
+        "assistant-2-alternate": {
+          "id": "assistant-2-alternate",
+          "parent": "user-2",
+          "children": [],
+          "message": {
+            "id": "message-assistant-2-alternate",
+            "author": {"role": "assistant"},
+            "status": "finished_successfully",
+            "content": {
+              "content_type": "text",
+              "parts": ["This regenerated response is intentionally not on the selected current branch."]
+            }
+          }
+        }
+      },
+      "resources": [
+        {
+          "display_name": "research-overview.md",
+          "media_type": "text/markdown",
+          "message_id": "message-user-2"
+        },
+        {
+          "display_name": "alternate-branch-notes.md",
+          "media_type": "text/markdown",
+          "message_id": "message-assistant-2-alternate"
+        }
+      ]
+    },
+    {
+      "id": "conversation-private-synthetic",
+      "title": "Synthetic private planning conversation",
+      "update_time": "2026-09-18T16:00:00Z",
+      "current_node": "private-assistant-1",
+      "mapping": {
+        "private-root": {
+          "id": "private-root",
+          "parent": null,
+          "children": ["private-user-1"],
+          "message": null
+        },
+        "private-user-1": {
+          "id": "private-user-1",
+          "parent": "private-root",
+          "children": ["private-assistant-1"],
+          "message": {
+            "id": "private-message-user-1",
+            "author": {"role": "user"},
+            "status": "finished_successfully",
+            "content": {
+              "content_type": "text",
+              "parts": ["Remember this synthetic marker: UNSELECTED_PRIVATE_MARKER_7429."]
+            }
+          }
+        },
+        "private-assistant-1": {
+          "id": "private-assistant-1",
+          "parent": "private-user-1",
+          "children": [],
+          "message": {
+            "id": "private-message-assistant-1",
+            "author": {"role": "assistant"},
+            "status": "finished_successfully",
+            "content": {
+              "content_type": "text",
+              "parts": ["I can use that marker within this synthetic conversation."]
+            }
+          }
+        }
+      },
+      "resources": []
+    },
+    {
+      "id": "conversation-unsupported-content",
+      "title": "Unsupported multimodal example",
+      "update_time": "2026-09-17T12:00:00Z",
+      "current_node": "unsupported-assistant-1",
+      "mapping": {
+        "unsupported-root": {
+          "id": "unsupported-root",
+          "parent": null,
+          "children": ["unsupported-user-1"],
+          "message": null
+        },
+        "unsupported-user-1": {
+          "id": "unsupported-user-1",
+          "parent": "unsupported-root",
+          "children": ["unsupported-assistant-1"],
+          "message": {
+            "id": "unsupported-message-user-1",
+            "author": {"role": "user"},
+            "status": "finished_successfully",
+            "content": {
+              "content_type": "multimodal_text",
+              "parts": [{"asset_pointer": "synthetic-image-reference"}]
+            }
+          }
+        },
+        "unsupported-assistant-1": {
+          "id": "unsupported-assistant-1",
+          "parent": "unsupported-user-1",
+          "children": [],
+          "message": {
+            "id": "unsupported-message-assistant-1",
+            "author": {"role": "assistant"},
+            "status": "finished_successfully",
+            "content": {
+              "content_type": "text",
+              "parts": ["This conversation is expected to be blocked in Phase 2."]
+            }
+          }
+        }
+      },
+      "resources": []
+    }
+  ]
+}
