@@ -1,0 +1,12 @@
+{
+  "issuer": "https://accounts.google.com",
+  "authorization_endpoint": "https://accounts.google.com/o/oauth2/v2/auth",
+  "token_endpoint": "https://oauth2.googleapis.com/token",
+  "jwks_uri": "https://www.googleapis.com/oauth2/v3/certs",
+  "client_id": "replace-with-the-registered-client-id",
+  "redirect_uri": "https://prism.example.com:8443/auth/oidc/identify/callback",
+  "public_origin": "https://prism.example.com:8443",
+  "algorithms": [
+    "RS256"
+  ]
+}

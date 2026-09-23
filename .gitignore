@@ -29,6 +29,7 @@ __pycache__/
 venv/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
 
 # JavaScript and TypeScript
 node_modules/
@@ -39,3 +40,7 @@ coverage/
 # Experiment output and local data
 data/private/
 experiments/results/
+.prism-demo/
+src/prism/static/app.js
+src/prism/static/app.css
+src/prism/static/*.map

@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "id": "document-handoff",
+  "title": "Document release handoff",
+  "files": [
+    "README.md",
+    "docs/release.md",
+    "config/release.json",
+    "private/notes.txt"
+  ],
+  "action": "json-check"
+}

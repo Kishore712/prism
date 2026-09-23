@@ -1,0 +1,13 @@
+{
+  "issuer": "https://identity.example.com/tenant",
+  "authorization_endpoint": "https://identity.example.com/oauth2/authorize",
+  "token_endpoint": "https://identity.example.com/oauth2/token",
+  "jwks_uri": "https://identity.example.com/oauth2/jwks",
+  "client_id": "replace-with-the-registered-client-id",
+  "redirect_uri": "https://prism.example.com:8443/auth/oidc/callback",
+  "public_origin": "https://prism.example.com:8443",
+  "owner_subject": "replace-with-the-owner-sub-claim",
+  "algorithms": [
+    "RS256"
+  ]
+}

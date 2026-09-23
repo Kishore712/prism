@@ -1,0 +1,1 @@
+Synthetic owner-only note: confirm that only explicitly selected files enter a reviewed handoff.
