@@ -1,18 +1,20 @@
 # M2 Order 6: Active Revocation of In-Flight Collaborator Work
 
-**Status (2026-09-25):** The first order 6 increment is installed as immutable
-v5 on the private Linux identity-service. An isolated synthetic Linux/Kata
+**Status (2026-09-25):** The private Linux identity-service runs immutable v6,
+which retains the v5 active-revoke behavior and adds a colocated worker lease.
+An isolated synthetic Linux/Kata
 check passed 13/13 checks. A subsequent browser/API end-to-end run with two
 verified identities on an approved synthetic Document version independently
 observed a Kata job running, then revoked its grant from the same-origin owner
 browser poll; the revoke returned HTTP 200 and the exact job was confirmed
 cancelled with no result. An earlier browser attempt saw `owned_running`, but
 revocation came only after the job had completed, so it remains inconclusive
-for active cancellation. Owner acceptance is pending and `pilot_ready=false`.
-See the [sanitized live validation record](validation/m2-active-revoke-live.json),
-[synthetic validation record](validation/m2-active-revoke.json),
-[release guide](m2-recipient-guest-service.md), and the preserved
-[order 5 decision guide](m2-access-decisions.md).
+for active cancellation. V6 lease evidence is bounded and its limitations
+remain explicit. Owner acceptance is pending and `pilot_ready=false`. See the
+[worker-lease validation record](validation/m2-worker-lease.json), [sanitized
+live validation record](validation/m2-active-revoke-live.json), [synthetic
+validation record](validation/m2-active-revoke.json), [release guide](m2-recipient-guest-service.md),
+and the preserved [order 5 decision guide](m2-access-decisions.md).
 
 ## Behavior delivered
 
@@ -78,6 +80,53 @@ The earlier browser attempt is explicitly inconclusive: it observed
 `owned_running`, but the revoke happened after completion. It is not evidence
 that browser revocation cancelled active work. No new model call was made.
 
+## Colocated worker lease (immutable v6)
+
+The v6 service adds a parent-to-worker liveness lease for the reference-Linux
+fixed-job path. After authorization and stop checks, the trusted Jobs parent
+renews a pipe while the worker is active. The worker starts its lease monitor
+before creating the Kata resource and cancels its owned execution when the
+pipe closes, contains malformed data, or stops renewing for the bounded
+timeout. Existing runtime cancellation and exact-resource reconciliation then
+remove that execution. The parent launches the worker from the pinned release
+source even under isolated Python mode; the acceptance check verified that the
+worker did not resolve to an older installed package.
+
+The isolated fixed `json-check` submitted through the real v6 Jobs path
+completed in Kata, recorded the expected handler and guest kernel, and
+confirmed cleanup. A separate test-only Linux/Kata check used the installed
+v6 worker lease with a synthetic 12-second sleeper: it observed the exact
+owned resource running and its worker/client processes, killed only its own
+controller, confirmed the exact resource absent within 30 seconds, observed
+the worker and client terminate, saw no resource recreation during a further
+five-second observation, and confirmed an empty final namespace. The first
+fixed-job controller-loss attempt was inconclusive because the short fixed
+action completed before the observer saw it running. A first direct lease
+check failed with `EngineError` during pre-observation; its exact cause was not
+captured. The subsequent version retries only the specific transient
+inspect-during-creation condition and passed 12/12 checks, observing that
+condition once. No exact termination latency was recorded beyond absence
+within the 30-second deadline. No model calls were made. The test script hash
+and sanitized results are in the [validation record](validation/m2-worker-lease.json).
+The tested script is retained root-only on the host at
+`/var/lib/prism/identity-pilot/checks/m2-worker-lease-runtime-check.py` with
+the recorded SHA-256. Its fault injection requires the service to be stopped
+and private inbound access shielded; use the recorded evidence for ordinary
+acceptance rather than interrupting a live demo.
+
+These checks are complementary, not an end-to-end Jobs-controller crash
+proof: the successful lease-loss check directly exercised the installed
+worker monitor and Kata runtime with a test-only program. It does not prove
+systemd cgroup behavior, remote-host disconnect handling, worker-SIGKILL
+handling, or the 30-second bound under stalled runtime operations. A test-only
+check observed removal by its 30-second deadline, but the hard target remains
+unproven. The lease is colocated with the trusted parent and worker; it is not
+an independent control-plane lease. Only Linux/Kata reference execution uses it; development
+mode behavior is unchanged. The active service was restored and checked over
+private TLS after isolated host testing; active runs were zero, model dispatches
+remained 64, the application allowance remained 1,000 cents, and the VM has no
+automatic stop.
+
 ## Repeat the isolated host check
 
 The root-only check is retained on the private Linux host at
@@ -110,15 +159,18 @@ against or point it at the live service database.
 ## Acceptance boundary and remaining work
 
 The live owner browser revoke path over private HTTPS/OIDC was exercised with
-synthetic data. It does not cover cancellation of a live model-provider
-request, crash or host-disconnect lease, restarts, streams, or downloads.
-Streaming and downloads are not implemented. The 30-second lease target was
-not tested. The focused code review was static and independent, found no
+synthetic data. V6 adds bounded in-process parent-loss evidence, but does not
+cover a remote-host disconnect lease, worker-SIGKILL handling, cancellation of
+a live model-provider request, restarts, streams, or downloads.
+Streaming and downloads are not implemented. The separate test-only lease
+check observed removal by its 30-second deadline; the hard timing target under
+runtime stalls was not established. The focused code review was static and independent, found no
 remaining blocker after a script cleanup fix, and was not a security audit.
 The service remains active on a VM with no automatic stop. Owner acceptance
 remains pending; private-pilot readiness remains false.
 
-The immediate next action is to present this bounded evidence for owner review
-and resolve feedback. Further order 6 work must cover the remaining lifecycle
-conditions and applicable acceptance gates before claiming reliable revocation
-across streams, downloads, failures, or restarts.
+The immediate next action is to present the v5 active-revoke and v6 worker-
+lease evidence for owner review and resolve feedback. Further order 6 work
+must cover the remaining lifecycle conditions and applicable acceptance gates
+before claiming reliable revocation across streams, downloads, failures, or
+restarts.

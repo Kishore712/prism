@@ -1,19 +1,22 @@
 # Private guest identity-service preparation
 
 **Current demo state (2026-09-25):** The private identity-service is running
-the immutable v5 release, including the first M2 order 6 increment for active
-revocation of in-flight collaborator work. Its transfer archive SHA-256 is
-`2764939727afebf7483cbbee647e441a1d958334780f2f0c958c0b6c5a524d0f`; the full
+the immutable v6 release. It includes the v5 active-revoke path and the
+colocated parent-to-worker liveness lease for reference-Linux fixed jobs. Its
+transfer archive SHA-256 is
+`774c8125bf190849b97993dafcaf43caeaac0b07ea0088dafb2d2c66e7a1869d`; the full
 29-source release archive SHA-256 is
-`3fcec81887fb019bca86ef951e79d8756e54d9ec60287a0d5b9ba54681cfed8d`. The
-service is active and private TLS self-check passed. The application model
+`866e68832298af417ff18cba589657c47f20e3e4909b6baff5a6c708d23bb595`. The
+release and lifecycle helpers were updated, the service is active, and private
+TLS self-check passed. The application model
 reservation ceiling is 1,000 cents; this is not a provider billing cap. The VM
 remains RUNNING with no automatic stop, and on-demand IAP SSH remains
 configured. Existing database integrity passed; `model_dispatches` remained
 64 and grants remained 9. No new model call occurred and no user/demo grant
 was revoked. Follow the [end-to-end live demo SOP](live-demo-sop.md) for
 owner-path operations. Order 6 acceptance and pilot readiness remain pending.
-See the [sanitized v5 record](validation/m2-active-revoke.json).
+See the [sanitized v6 worker-lease record](validation/m2-worker-lease.json)
+and the earlier [v5 active-revoke record](validation/m2-active-revoke.json).
 
 **Historical owner-path checkpoint (2026-09-23):** The owner-only private
 OIDC service checkpoint passed on the new immutable 29-file release. The
@@ -406,6 +409,31 @@ the [focused guide](m2-active-revoke.md) and
 [sanitized validation record](validation/m2-active-revoke.json). Order 6
 owner acceptance remains pending; this checkpoint makes no pilot-readiness
 claim.
+
+## Immutable v6 release: colocated worker lease
+
+Version 6 adds the reviewed `src/prism/worker.py` lease monitor and the
+`src/prism/jobs.py` parent renewal path, and updates the release and lifecycle
+helpers to recognize the exact nine-source patch set. Its transfer archive
+SHA-256 is
+`774c8125bf190849b97993dafcaf43caeaac0b07ea0088dafb2d2c66e7a1869d`; the
+complete 29-source archive SHA-256 is
+`866e68832298af417ff18cba589657c47f20e3e4909b6baff5a6c708d23bb595`.
+The deployed worker source SHA-256 is
+`0e48850da8d8dbe51a73f92483a2f50a35e14fdc051b290477ed1263203a5854`. Both
+updated helpers were installed and their hashes verified. The immutable v5
+release, prior service unit, service data, and database were retained.
+
+After installation, the service was manually started and checked active; its
+private TLS self-check passed. The normal fixed `json-check` path completed in
+Kata and confirmed cleanup. A distinct test-only synthetic Kata sleeper
+validated lease-loss cancellation; its scope, an inconclusive short Jobs run,
+and an initial failed direct check
+are recorded in the [sanitized validation](validation/m2-worker-lease.json).
+This does not prove systemd cgroup cleanup, remote-host disconnect, worker
+SIGKILL behavior, or a hard 30-second bound under stalled runtime operations.
+The service remained active after testing; no database migration or model call
+occurred. The VM remains running without automatic stop.
 
 A version 2 update can carry exactly the reviewed `src/prism/webapp.py` and
 `src/prism/static/app.js` together. The original single-file command and

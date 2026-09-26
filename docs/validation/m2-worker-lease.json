@@ -1,0 +1,79 @@
+{
+  "kind": "m2-worker-lease-validation",
+  "schema": 1,
+  "date": "2026-09-25",
+  "status": "bounded-validation-passed-owner-acceptance-pending",
+  "release": {
+    "version": 6,
+    "transfer_archive_sha256": "774c8125bf190849b97993dafcaf43caeaac0b07ea0088dafb2d2c66e7a1869d",
+    "complete_29_source_archive_sha256": "866e68832298af417ff18cba589657c47f20e3e4909b6baff5a6c708d23bb595",
+    "worker_source_sha256": "0e48850da8d8dbe51a73f92483a2f50a35e14fdc051b290477ed1263203a5854",
+    "release_helpers_updated": true,
+    "service_active_after_validation": true,
+    "private_tls_self_check": "passed",
+    "active_runs_after_validation": 0,
+    "model_dispatches_before_and_after": 64,
+    "application_model_budget_cents": 1000,
+    "vm_auto_stop": false
+  },
+  "implementation": {
+    "scope": "colocated trusted Jobs parent to reference-Linux worker liveness pipe",
+    "renewal_begins_after_authorization_and_stop_checks": true,
+    "worker_monitor_starts_before_kata_creation": true,
+    "invalid_or_lost_lease_cancels_owned_execution": true,
+    "worker_source_pinned_under_isolated_python_mode": true,
+    "development_profile_changed": false,
+    "independent_remote_control_plane_lease": false
+  },
+  "local_validation": {
+    "focused_tests": "52/52 passed",
+    "full_backend_tests": "226/226 passed",
+    "targeted_ruff": "passed",
+    "diff_check": "passed",
+    "independent_high_review": "no remaining code-level blocker; not a security audit"
+  },
+  "linux_kata_validation": {
+    "normal_fixed_jobs_path": {
+      "outcome": "passed",
+      "action": "fixed json-check",
+      "runtime_handler": "io.containerd.kata.v2",
+      "guest_kernel_recorded": true,
+      "result_cleaned_up": true,
+      "controller_loss_observation": "inconclusive",
+      "controller_loss_reason": "The fixed action completed in approximately 4.82 seconds before the observer saw the exact resource in the owned-running state.",
+      "evidence": "isolated synthetic temporary database and project"
+    },
+    "direct_test_only_worker_lease": {
+      "outcome": "passed",
+      "script_sha256": "890df9a1d36d2786dbe23c34d42f35c17da22b09e88cfd3a461e943b8148f380",
+      "program": "synthetic 12-second sleeper",
+      "model_calls": 0,
+      "exact_owned_resource_observed_running": true,
+      "worker_and_client_observed": true,
+      "only_own_controller_killed": true,
+      "exact_owned_resource_absent_within_30_seconds": true,
+      "worker_and_client_terminated": true,
+      "no_resource_recreation_observed_for_seconds": 5,
+      "final_namespace_empty": true,
+      "cleanup_confirmed": true,
+      "passed_checks": "12/12",
+      "transient_inspect_during_creation_retries": 1,
+      "first_attempt": "failed with EngineError during pre-observation; exact cause not captured",
+      "termination_latency_measured": false,
+      "bounded_observation": "owned resource absent by the 30-second deadline; no exact latency recorded"
+    }
+  },
+  "not_established": [
+    "end-to-end approved Jobs controller crash cancellation proof",
+    "systemd cgroup containment and complete descendant cleanup",
+    "remote Linux host disconnect or independent control-plane lease expiry",
+    "worker SIGKILL handling",
+    "a hard 30-second termination guarantee when Kata operations stall",
+    "live provider-call cancellation",
+    "broad security assurance or pilot readiness"
+  ],
+  "model_calls": 0,
+  "pilot_ready": false,
+  "owner_acceptance": "pending",
+  "privacy": "Contains no identity, email, private host name, token, private path, or run identifier."
+}
