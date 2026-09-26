@@ -1,18 +1,27 @@
 # M2 Order 5: Owner Decisions on Access Requests
 
-**Status (2026-09-25):** The local implementation is complete and its focused
-and full test suites, targeted Ruff check, frontend Prettier check and frontend
-production build passed. A focused independent read-only code review found two
-issues; both were fixed and re-reviewed, with no further high-severity
-findings. This was a static review, not an audit. Owner acceptance is pending.
-The current private Linux service is still running an older release; this
-branch has not been deployed. The reviewed service updater accepts only exact
-`webapp.py`, `app.js`, and `identity.py` patches, while this increment changes
-multiple backend modules. An updated, reviewed packaging path is required
-before browser acceptance. No browser walkthrough, live identity-provider,
-model, or cloud runtime acceptance is claimed. See the
-[validation record](validation/m2-access-decisions.json); `pilot_ready` remains
-false.
+**Status (2026-09-25):** The M2 order 5 implementation has been installed as an
+immutable v4 release on the existing private Linux service. The transfer
+archive and complete 29-source release hashes were verified; the service is
+active and the private TLS self-check passed. This release stage reran the
+205-test full suite and targeted Ruff. Frontend Prettier/build checks passed in
+the prior local implementation stage and were not rerun during release. A focused independent
+read-only review found two issues; both were fixed and re-reviewed, with no
+further high-severity findings. This was a static review, not an audit.
+Two-identity browser/API acceptance also passed for bounded synthetic request,
+denial, approval, one-use redemption and session-separation paths. The
+order-5 approved-request invitation was redeemed by its bound recipient and
+replay was denied. Separately, a new direct invitation for the same approved
+synthetic version and recipient was rejected when opened under the owner's
+different Google identity; the intended recipient then redeemed that same
+link. Private HTTPS probes returned 401 for owner state without a session
+cookie, 403 for a decision POST with no Origin header due to the same-origin
+guard, and 401 for the same-origin decision POST without a session cookie.
+These were unauthenticated checks, not an authenticated cross-role
+authorization test. No new model call or Kata run was made during this
+acceptance; `pilot_ready` remains false. See the [release validation
+record](validation/m2-access-decisions-release.json) and the preserved
+[local validation record](validation/m2-access-decisions.json).
 
 ## Reproduce the local checks
 
@@ -29,19 +38,19 @@ npm exec -- prettier --check src/main.jsx
 npm run build
 ```
 
-The recorded focused run covered identity, handoff, owner and access-decision
-tests (57 passed), but its exact command was not retained. The full suite passed
-202 tests. The recorded scope is in the
-[validation record](validation/m2-access-decisions.json).
+The initial local implementation checkpoint recorded 57 focused tests and a
+202-test full suite; its exact focused command was not retained. During the v4
+release stage, the full suite was rerun with 205 passing tests and targeted
+Ruff passed. Frontend Prettier/build checks belong to the preceding local
+implementation checkpoint and were not rerun during release. See the
+[release validation record](validation/m2-access-decisions-release.json) and
+preserved [initial validation record](validation/m2-access-decisions.json).
 
 ## Owner walkthrough
 
-**Run this walkthrough only after the updated order 5 release has been safely
-packaged, reviewed, privately deployed, and its service health checked.** The
-currently running private Linux service is older than this branch, so it does
-not yet have these owner controls. The existing updater cannot package this
-multi-module backend change as-is. No browser or two-identity acceptance has
-been completed for this feature yet.
+This walkthrough was completed against the private v4 release. It describes
+the bounded acceptance path; use synthetic requests and do not treat it as a
+broad security evaluation.
 
 1. Sign in to the private identity-service as the configured owner and open the
    **Requests** section.
@@ -60,6 +69,23 @@ been completed for this feature yet.
    OIDC identity. Redemption creates a fresh session with the selected version
    and capability. The recipient can refresh request status in the original
    session; an approved status tells them to obtain the separate invitation.
+
+The recorded live acceptance also submitted an unauthorized shell/private-file
+request and confirmed the owner could deny it without granting access. A
+separate read/converse request was approved against the already approved
+Document version. Redemption by the bound second identity produced a distinct
+inspect-only grant and fresh session; the original verify grant/session stayed
+unchanged. Replay of that order-5 decision invitation was denied. In a
+separate test, a new direct invitation for the same approved synthetic version
+and recipient was opened under the owner's different Google identity and
+rejected. The invitation remained valid and the bound recipient then redeemed
+that same link. Private HTTPS probes returned 401 for owner state without a
+session cookie, 403 for an owner decision POST without an Origin header, and
+401 for the same-origin decision POST without a session cookie. The 403 was
+the same-origin guard response; none of these API probes used an authenticated
+non-owner identity. These checks cover only the recorded synthetic flow and
+endpoints. See the [sanitized release
+validation record](validation/m2-access-decisions-release.json).
 
 For versions created with exact project provenance, a follow-up may select a
 different approved version only when its immutable project identity matches the
@@ -116,7 +142,8 @@ owner choice in the current interface.
   must also be rejected. Confirm source revocation/expiry blocks an unredeemed
   approval and that a redeemed follow-up grant can be revoked independently.
 
-These acceptance steps should use synthetic data. The current validation
-record covers local automated checks and independent review; run and report
-browser acceptance, live identity-provider behavior, and cloud runtime checks
-as separate evidence classes.
+These acceptance steps use synthetic data. The records distinguish local
+automated checks, static review, private deployment, live identity-provider
+behavior and browser/API acceptance. No model call or Kata run was made during
+the order 5 live acceptance. Passing these bounded checks does not establish
+absolute security or pilot readiness.

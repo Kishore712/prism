@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "kind": "m2_access_decisions_private_release",
+  "date": "2026-09-25",
+  "branch": "prototype/m2-access-release",
+  "release_version": 4,
+  "status": "private_release_and_bounded_two_identity_acceptance_passed_owner_acceptance_pending",
+  "owner_accepted": false,
+  "pilot_ready": false,
+  "model_calls_during_acceptance": 0,
+  "deployment": {
+    "target": "existing private Linux identity-service",
+    "service_state_after_install": "active",
+    "private_tls_selfcheck": "passed",
+    "transfer_archive_sha256": "86bcfbee704fa5692934e18b8fd404406166c4a5a316f975a0362daa27ae4743",
+    "full_source_archive_sha256": "d2ff8dbf9002bd3c9db7494e64aa64036eba442c9aebd3843565946184222338",
+    "full_source_file_count": 29,
+    "patched_source_files": [
+      "src/prism/webapp.py",
+      "src/prism/static/app.js",
+      "src/prism/identity.py",
+      "src/prism/conversation.py",
+      "src/prism/sharing.py",
+      "src/prism/owner.py",
+      "src/prism/handoff.py"
+    ],
+    "previous_release_and_service_data": "retained",
+    "vm_automatic_stop": "disabled; VM remains running"
+  },
+  "local_validation": {
+    "full_unittest": {
+      "passed": 205,
+      "failed": 0
+    },
+    "targeted_ruff": "passed",
+    "frontend_prettier_and_build": "Passed during the preceding local implementation stage; not rerun during this release stage.",
+    "focused_independent_read_only_code_review": "No blocking findings after fixes; static review only, not an audit."
+  },
+  "live_acceptance": {
+    "identities": "owner and a distinct verified Google recipient identity",
+    "fixture": "synthetic Document release project/version",
+    "unauthorized_shell_and_private_files_request": "owner denied; no added access was granted",
+    "separate_read_converse_request": "owner approved against the already approved Document version",
+    "order_5_approved_request_invitation": {
+      "redemption": "passed by the bound recipient identity",
+      "replay": "denied"
+    },
+    "original_verify_grant_and_session": "unchanged",
+    "followup_grant": "distinct inspect-only grant and fresh session",
+    "separate_direct_invitation_wrong_identity_check": "A new direct invitation for the same approved synthetic version and recipient (separate from the order-5 approved-request invitation) was first opened under the owner's different Google identity and rejected; the bound recipient then redeemed that same link successfully.",
+    "unauthenticated_api_probes": {
+      "get_owner_state_without_session_cookie": "HTTP 401",
+      "post_owner_decision_without_origin_or_cookie": "HTTP 403; same-origin guard response (Use the same-origin JSON interface).",
+      "post_owner_decision_with_same_origin_but_without_cookie": "HTTP 401",
+      "authenticated_cross_role_authorization": "not tested"
+    },
+    "database_crosscheck": "read-only SQLite inspection confirmed approved/denied request records, source verify versus follow-up inspect grants, and distinct sessions",
+    "model_or_kata_execution": "none during this acceptance"
+  },
+  "current_demo_budget_checkpoint": {
+    "application_ceiling_usd": 10.0,
+    "remaining_usd": 6.8,
+    "note": "Application reservation limit only; not a provider billing cap. Point-in-time checkpoint."
+  },
+  "limitations": [
+    "Owner acceptance is pending.",
+    "The focused independent review was static and does not establish broad security or pilot readiness.",
+    "Wrong-identity testing used a separate direct invitation, not the invitation created by the order-5 approval flow.",
+    "Unauthenticated API probes exercised only owner-state and owner-decision endpoints; no authenticated cross-role API request was tested.",
+    "Frontend Prettier/build checks were passed during the preceding local implementation stage and were not rerun during the release stage.",
+    "No model behavior or Kata execution was evaluated during order 5 live acceptance.",
+    "The $10 application ceiling is not a provider billing cap.",
+    "A redeemed follow-up grant has an independent revocation lifecycle; revocation cannot recall information already viewed or saved."
+  ]
+}

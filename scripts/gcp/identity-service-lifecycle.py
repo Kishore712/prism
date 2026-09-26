@@ -215,6 +215,15 @@ def installation(record, expected_bundle=None, expected_run=None):
                 "src/prism/webapp.py",
                 "src/prism/static/app.js",
             },
+            "prism_service_update_v4": {
+                "src/prism/identity.py",
+                "src/prism/webapp.py",
+                "src/prism/static/app.js",
+                "src/prism/conversation.py",
+                "src/prism/sharing.py",
+                "src/prism/owner.py",
+                "src/prism/handoff.py",
+            },
         }.get(kind)
         expected_manifest_keys = {
             "kind",
@@ -232,10 +241,29 @@ def installation(record, expected_bundle=None, expected_run=None):
             != expected_manifest_keys
             | (
                 {"app_js_sha256"}
-                if kind in ("prism_service_update_v2", "prism_service_update_v3")
+                if kind
+                in (
+                    "prism_service_update_v2",
+                    "prism_service_update_v3",
+                    "prism_service_update_v4",
+                )
                 else set()
             )
-            | ({"identity_sha256"} if kind == "prism_service_update_v3" else set())
+            | (
+                {"identity_sha256"}
+                if kind in ("prism_service_update_v3", "prism_service_update_v4")
+                else set()
+            )
+            | (
+                {
+                    "conversation_sha256",
+                    "sharing_sha256",
+                    "owner_sha256",
+                    "handoff_sha256",
+                }
+                if kind == "prism_service_update_v4"
+                else set()
+            )
             or not isinstance(transfer, str)
             or not BUNDLE_RE.fullmatch(transfer)
             or marker.parent.name != transfer
@@ -246,12 +274,24 @@ def installation(record, expected_bundle=None, expected_run=None):
             or manifest.get("release_name") != "service-" + transfer
             or manifest.get("webapp_sha256") != hashes["src/prism/webapp.py"]
             or (
-                kind in ("prism_service_update_v2", "prism_service_update_v3")
+                kind
+                in (
+                    "prism_service_update_v2",
+                    "prism_service_update_v3",
+                    "prism_service_update_v4",
+                )
                 and manifest.get("app_js_sha256") != hashes["src/prism/static/app.js"]
             )
             or (
-                kind == "prism_service_update_v3"
+                kind in ("prism_service_update_v3", "prism_service_update_v4")
                 and manifest.get("identity_sha256") != hashes["src/prism/identity.py"]
+            )
+            or (
+                kind == "prism_service_update_v4"
+                and any(
+                    manifest.get(key + "_sha256") != hashes["src/prism/" + key + ".py"]
+                    for key in ("conversation", "sharing", "owner", "handoff")
+                )
             )
         ):
             raise ValueError("Service update manifest differs from the marker.")

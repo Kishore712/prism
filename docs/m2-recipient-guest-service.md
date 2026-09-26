@@ -1,17 +1,15 @@
 # Private guest identity-service preparation
 
-**Current demo state (2026-09-23):** The deployed private service is running
-with a test-recipient grant recorded with expiry 2026-09-24 03:35:54 PDT. The
-earlier recorded live `json-check` run completed on `io.containerd.kata.v2` in 3.979
-seconds with exit 0 and confirmed cleanup; `pilot_ready=false`. The aggregate
-model reservation ceiling is temporarily $10.00 (1,000 cents). The earlier
-$0.80 reservation remained recorded, leaving $9.20 at that checkpoint before later demo calls. Check the live interface for the current remainder. It stays in effect until
-the user explicitly ends the demo; restoring the former ceiling requires an
-explicit user request. This application reservation ceiling is not a hard
-provider billing cap. The VM remains RUNNING with no automatic stop, the
-existing grant remains active, and IAP SSH stays available on demand. Follow
-the [end-to-end live demo SOP](live-demo-sop.md) for the owner-to-recipient
-walkthrough. The sanitized record retains earlier validation checkpoints.
+**Current demo state (2026-09-25):** The private identity-service is running
+the immutable v4 release, including M2 order 5 owner decisions. The bounded
+two-identity order 5 browser/API acceptance passed; see the
+[sanitized release record](validation/m2-access-decisions-release.json). The
+aggregate model reservation ceiling remains $10.00 (1,000 cents), with $6.80
+remaining at this checkpoint. This application reservation ceiling is not a
+hard provider billing cap. The VM remains RUNNING with no automatic stop, and
+on-demand IAP SSH remains configured. Follow the [end-to-end live demo
+SOP](live-demo-sop.md) for the owner-to-recipient walkthrough. Historical
+records retain their original point-in-time budget and grant state.
 
 **Historical owner-path checkpoint (2026-09-23):** The owner-only private
 OIDC service checkpoint passed on the new immutable 29-file release. The
@@ -274,6 +272,74 @@ bounded regular files. The updater copies the other 26 baseline source bytes
 unchanged into a new immutable release. It requires the stopped service,
 Shields Up, a private transfer file, and the updated lifecycle helper before
 installation. Version 1 and 2 packages and records remain supported.
+
+## Immutable v4 release for M2 order 5
+
+Version 4 carries the exact seven source patches changed by the order 5
+increment: `webapp.py`, `app.js`, `identity.py`, `conversation.py`, `sharing.py`,
+`owner.py`, and `handoff.py`. The package command prints the transfer archive
+hash and per-file hashes. Keep these values with the operator's private release
+notes; do not add transient host details or invitation material to repository
+documentation.
+
+The generated `src/prism/static/app.js` is ignored build output. Build it from
+`frontend/` before packaging, then verify the expected output exists; do not
+assume a fresh checkout already contains it. The recorded v4 release reused
+the output built and checked during its preceding local implementation stage.
+
+On the trusted workstation, package the seven files into a canonical archive:
+
+```bash
+cd frontend
+npm exec -- prettier --check src/main.jsx
+npm run build
+cd ..
+test -f src/prism/static/app.js
+python3 scripts/gcp/identity-service-release.py package \
+  --webapp src/prism/webapp.py \
+  --app-js src/prism/static/app.js \
+  --identity src/prism/identity.py \
+  --conversation src/prism/conversation.py \
+  --sharing src/prism/sharing.py \
+  --owner src/prism/owner.py \
+  --handoff src/prism/handoff.py \
+  --output <new-private-absolute-path>/identity-v4.tar
+```
+
+Transfer the archive and the reviewed release/lifecycle helpers over the
+existing private administrative channel. Install using the transfer and
+per-file SHA-256 values emitted by `package`:
+
+```bash
+python3 /usr/local/libexec/prism-identity-service-release.py install \
+  --transfer-tar <private-transfer-path>/identity-v4.tar \
+  --transfer-tar-sha256 <recorded-transfer-sha256> \
+  --webapp-sha256 <recorded-webapp-sha256> \
+  --app-js-sha256 <recorded-app-js-sha256> \
+  --identity-sha256 <recorded-identity-sha256> \
+  --conversation-sha256 <recorded-conversation-sha256> \
+  --sharing-sha256 <recorded-sharing-sha256> \
+  --owner-sha256 <recorded-owner-sha256> \
+  --handoff-sha256 <recorded-handoff-sha256>
+```
+
+The v4 installer rejects partial or extra patch sets and checks every file,
+the canonical archive, the existing oneboot source tree and the stopped
+service/Shields Up preconditions. It publishes an immutable release and update
+record, retaining prior release data and the model ledger. Re-render and
+validate the unit with the corresponding updated lifecycle helper, then start
+the service manually. Confirm the recorded update marker, transfer archive
+hash, complete release source archive hash, active service and private TLS
+self-check before browser acceptance. Roll back by restoring the backed-up
+unit and starting the prior immutable release under the same guarded procedure.
+
+The recorded order 5 deployment used transfer archive SHA-256
+`86bcfbee704fa5692934e18b8fd404406166c4a5a316f975a0362daa27ae4743` and full
+29-source release archive SHA-256
+`d2ff8dbf9002bd3c9db7494e64aa64036eba442c9aebd3843565946184222338`. Server
+installation validation passed, the service is active, and private TLS
+self-check passed. These hashes identify the recorded artifact; reproduce
+them only from the matching source checkout and package inputs.
 
 A version 2 update can carry exactly the reviewed `src/prism/webapp.py` and
 `src/prism/static/app.js` together. The original single-file command and

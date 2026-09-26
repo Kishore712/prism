@@ -26,15 +26,23 @@ HEX64 = re.compile(r"[a-f0-9]{64}\Z")
 PATCH_NAME = "src/prism/webapp.py"
 APP_JS_NAME = "src/prism/static/app.js"
 IDENTITY_NAME = "src/prism/identity.py"
+V4_NAMES = {
+    "conversation": "src/prism/conversation.py",
+    "sharing": "src/prism/sharing.py",
+    "owner": "src/prism/owner.py",
+    "handoff": "src/prism/handoff.py",
+}
 PATCH_LIMITS = {
     PATCH_NAME: 16 * 1024 * 1024,
     APP_JS_NAME: 2 * 1024 * 1024,
     IDENTITY_NAME: 16 * 1024 * 1024,
+    **{name: 16 * 1024 * 1024 for name in V4_NAMES.values()},
 }
 PATCH_SETS = (
     frozenset((PATCH_NAME,)),
     frozenset((PATCH_NAME, APP_JS_NAME)),
     frozenset((PATCH_NAME, APP_JS_NAME, IDENTITY_NAME)),
+    frozenset((PATCH_NAME, APP_JS_NAME, IDENTITY_NAME, *V4_NAMES.values())),
 )
 
 
@@ -63,7 +71,7 @@ def private_directory(path):
         raise ValueError("Expected a root-owned private directory.")
 
 
-def transfer_bytes(data, app_js=None, identity=None):
+def transfer_bytes(data, app_js=None, identity=None, v4=None):
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode="w", format=tarfile.USTAR_FORMAT) as archive:
         files = {PATCH_NAME: data}
@@ -73,6 +81,10 @@ def transfer_bytes(data, app_js=None, identity=None):
             if app_js is None:
                 raise ValueError("Identity update requires the fixed three-file patch.")
             files[IDENTITY_NAME] = identity
+        if v4 is not None:
+            if app_js is None or identity is None or set(v4) != set(V4_NAMES.values()):
+                raise ValueError("V4 requires the fixed seven-file patch.")
+            files.update(v4)
         for name in sorted(files):
             entry = tarfile.TarInfo(name)
             entry.size = len(files[name])
@@ -92,6 +104,13 @@ def package(args):
     data = source.read_bytes()
     app_js_path = getattr(args, "app_js", None)
     identity_path = getattr(args, "identity", None)
+    v4_paths = {key: getattr(args, key, None) for key in V4_NAMES}
+    if any(path is not None for path in v4_paths.values()) and (
+        any(path is None for path in v4_paths.values())
+        or identity_path is None
+        or app_js_path is None
+    ):
+        raise ValueError("V4 requires the fixed seven-file patch.")
     if identity_path is not None and app_js_path is None:
         raise ValueError("Identity update requires --app-js.")
     app_js = None
@@ -102,22 +121,37 @@ def package(args):
     if identity_path is not None:
         regular(identity_path, PATCH_LIMITS[IDENTITY_NAME])
         identity = Path(identity_path).read_bytes()
+    v4 = None
+    if all(path is not None for path in v4_paths.values()):
+        v4 = {}
+        for key, name in V4_NAMES.items():
+            regular(v4_paths[key], PATCH_LIMITS[name])
+            v4[name] = Path(v4_paths[key]).read_bytes()
     with target.open("xb") as raw:
         os.fchmod(raw.fileno(), 0o600)
-        raw.write(transfer_bytes(data, app_js, identity))
+        raw.write(transfer_bytes(data, app_js, identity, v4))
     report = {
         "transfer_tar_sha256": digest(target),
         "webapp_sha256": hashlib.sha256(data).hexdigest(),
     }
     if app_js is not None:
         report["kind"] = (
-            "prism_service_update_v3"
+            "prism_service_update_v4"
+            if v4 is not None
+            else "prism_service_update_v3"
             if identity is not None
             else "prism_service_update_v2"
         )
         report["app_js_sha256"] = hashlib.sha256(app_js).hexdigest()
     if identity is not None:
         report["identity_sha256"] = hashlib.sha256(identity).hexdigest()
+    if v4 is not None:
+        report.update(
+            {
+                key + "_sha256": hashlib.sha256(v4[name]).hexdigest()
+                for key, name in V4_NAMES.items()
+            }
+        )
     print(json.dumps(report, sort_keys=True))
 
 
@@ -163,7 +197,12 @@ def read_patches(tar_path, expected_tar, expected_hashes):
     ):
         raise ValueError("Transferred patch hash mismatch.")
     if raw != transfer_bytes(
-        files[PATCH_NAME], files.get(APP_JS_NAME), files.get(IDENTITY_NAME)
+        files[PATCH_NAME],
+        files.get(APP_JS_NAME),
+        files.get(IDENTITY_NAME),
+        {name: files[name] for name in V4_NAMES.values()}
+        if set(expected_hashes) == set(PATCH_SETS[-1])
+        else None,
     ):
         raise ValueError("Transfer tar contains noncanonical or extra bytes.")
     return files
@@ -316,6 +355,13 @@ def install(args):
     private_directory(transfer_path.parent)
     app_js_sha = getattr(args, "app_js_sha256", None)
     identity_sha = getattr(args, "identity_sha256", None)
+    v4_hashes = {key: getattr(args, key + "_sha256", None) for key in V4_NAMES}
+    if any(value is not None for value in v4_hashes.values()) and (
+        any(value is None for value in v4_hashes.values())
+        or identity_sha is None
+        or app_js_sha is None
+    ):
+        raise ValueError("V4 requires seven fixed SHA-256 digests.")
     if identity_sha is not None and app_js_sha is None:
         raise ValueError("Identity update requires --app-js-sha256.")
     expected_hashes = {PATCH_NAME: args.webapp_sha256}
@@ -323,6 +369,8 @@ def install(args):
         expected_hashes[APP_JS_NAME] = app_js_sha
     if identity_sha is not None:
         expected_hashes[IDENTITY_NAME] = identity_sha
+    if all(value is not None for value in v4_hashes.values()):
+        expected_hashes.update({name: v4_hashes[key] for key, name in V4_NAMES.items()})
     transfer_info = regular(
         transfer_path,
         sum(PATCH_LIMITS[name] for name in expected_hashes) + 20480,
@@ -383,7 +431,9 @@ def install(args):
         )
         record = {
             "kind": (
-                "prism_service_update_v3"
+                "prism_service_update_v4"
+                if all(value is not None for value in v4_hashes.values())
+                else "prism_service_update_v3"
                 if identity_sha is not None
                 else (
                     "prism_service_update_v2"
@@ -403,6 +453,8 @@ def install(args):
             record["app_js_sha256"] = app_js_sha
         if identity_sha is not None:
             record["identity_sha256"] = identity_sha
+        if all(value is not None for value in v4_hashes.values()):
+            record.update({key + "_sha256": value for key, value in v4_hashes.items()})
         for name, value in (
             ("manifest.json", record),
             (
@@ -481,6 +533,8 @@ def main(argv=None):
     build.add_argument("--webapp", required=True)
     build.add_argument("--app-js")
     build.add_argument("--identity")
+    for key in V4_NAMES:
+        build.add_argument("--" + key)
     build.add_argument("--output", required=True)
     deploy = actions.add_parser("install")
     deploy.add_argument("--transfer-tar", required=True)
@@ -488,6 +542,8 @@ def main(argv=None):
     deploy.add_argument("--webapp-sha256", required=True)
     deploy.add_argument("--app-js-sha256")
     deploy.add_argument("--identity-sha256")
+    for key in V4_NAMES:
+        deploy.add_argument("--" + key + "-sha256")
     args = parser.parse_args(argv)
     try:
         (package if args.action == "package" else install)(args)

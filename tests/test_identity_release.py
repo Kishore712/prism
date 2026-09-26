@@ -32,6 +32,304 @@ life = load(
 
 
 class ImmutableReleaseTests(unittest.TestCase):
+    def test_v4_transfer_is_exact_canonical_seven_file_patch(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            names = {
+                "webapp": release_tool.PATCH_NAME,
+                "app_js": release_tool.APP_JS_NAME,
+                "identity": release_tool.IDENTITY_NAME,
+                **release_tool.V4_NAMES,
+            }
+            sources = {}
+            for key, name in names.items():
+                source = root / key
+                source.write_bytes(("v4 " + name).encode())
+                sources[key] = source
+            transfer = root / "patch.tar"
+            with self.assertRaisesRegex(ValueError, "seven-file"):
+                release_tool.package(
+                    SimpleNamespace(
+                        **{
+                            key: str(path)
+                            for key, path in sources.items()
+                            if key != "handoff"
+                        },
+                        output=str(transfer),
+                    )
+                )
+            self.assertFalse(transfer.exists())
+            release_tool.package(
+                SimpleNamespace(
+                    **{key: str(path) for key, path in sources.items()},
+                    output=str(transfer),
+                )
+            )
+            expected = {name: sources[key].read_bytes() for key, name in names.items()}
+            hashes = {
+                name: release_tool.digest(sources[key]) for key, name in names.items()
+            }
+            self.assertEqual(
+                release_tool.read_patches(
+                    transfer, release_tool.digest(transfer), hashes
+                ),
+                expected,
+            )
+            self.assertEqual(
+                transfer.read_bytes(),
+                release_tool.transfer_bytes(
+                    expected[release_tool.PATCH_NAME],
+                    expected[release_tool.APP_JS_NAME],
+                    expected[release_tool.IDENTITY_NAME],
+                    {name: expected[name] for name in release_tool.V4_NAMES.values()},
+                ),
+            )
+            with self.assertRaisesRegex(ValueError, "fixed SHA-256"):
+                release_tool.read_patches(
+                    transfer,
+                    release_tool.digest(transfer),
+                    {
+                        name: value
+                        for name, value in hashes.items()
+                        if name != release_tool.V4_NAMES["owner"]
+                    },
+                )
+            with self.assertRaisesRegex(ValueError, "patch hash mismatch"):
+                release_tool.read_patches(
+                    transfer,
+                    release_tool.digest(transfer),
+                    {**hashes, release_tool.IDENTITY_NAME: "a" * 64},
+                )
+            transfer.write_bytes(transfer.read_bytes() + b"extra")
+            with self.assertRaisesRegex(ValueError, "noncanonical"):
+                release_tool.read_patches(
+                    transfer, release_tool.digest(transfer), hashes
+                )
+            with tarfile.open(transfer, "w") as archive:
+                for name in (*expected, "../extra.py"):
+                    data = expected.get(name, b"bad")
+                    item = tarfile.TarInfo(name)
+                    item.size = len(data)
+                    archive.addfile(item, io.BytesIO(data))
+            with self.assertRaisesRegex(ValueError, "fixed patch sources"):
+                release_tool.read_patches(
+                    transfer, release_tool.digest(transfer), hashes
+                )
+
+    def test_v4_manifest_pins_all_seven_changed_sources(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary).resolve()
+            boot, updates, app = (
+                base / name for name in ("oneboot", "service-updates", "app-releases")
+            )
+            for directory in (boot, updates, app):
+                directory.mkdir(mode=0o700)
+            old_bundle, run_id, transfer = "a" * 64, "b" * 32, "f" * 64
+            old = app / f"{old_bundle}-{run_id}"
+            new = app / f"service-{transfer}"
+            old.mkdir(mode=0o700)
+            new.mkdir(mode=0o700)
+            patch_names = {
+                release_tool.PATCH_NAME,
+                release_tool.APP_JS_NAME,
+                release_tool.IDENTITY_NAME,
+                *release_tool.V4_NAMES.values(),
+            }
+            old_hashes, new_hashes = {}, {}
+            for name in life.SOURCE_FILES:
+                original = name.encode()
+                updated = b"v4 " + original if name in patch_names else original
+                for directory, content in ((old, original), (new, updated)):
+                    path = directory / name
+                    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+                    path.write_bytes(content)
+                    path.chmod(0o600)
+                old_hashes[name] = hashlib.sha256(original).hexdigest()
+                new_hashes[name] = hashlib.sha256(updated).hexdigest()
+
+            def write(path, value):
+                path.write_text(json.dumps(value))
+                path.chmod(0o600)
+
+            write(
+                boot / "installed.json", {"bundle_sha256": old_bundle, "run_id": run_id}
+            )
+            write(
+                boot / "ledger.json",
+                {"run_id": run_id, "next_seq": 6, "complete": True},
+            )
+            write(
+                boot / "manifest.json",
+                {
+                    "kind": "prism_oneboot_app_v1",
+                    "run_id": run_id,
+                    "bundle_sha256": old_bundle,
+                    "raw_sha256": old_bundle,
+                    "file_sha256": old_hashes,
+                },
+            )
+            update = updates / transfer
+            update.mkdir(mode=0o700)
+            tar_hash = release_tool.source_tar(
+                new, life.SOURCE_FILES, update / "source.tar"
+            )
+            manifest = {
+                "kind": "prism_service_update_v4",
+                "base_bundle_sha256": old_bundle,
+                "base_run_id": run_id,
+                "transfer_tar_sha256": transfer,
+                "source_tar_sha256": tar_hash,
+                "release_name": f"service-{transfer}",
+                "file_sha256": new_hashes,
+                "webapp_sha256": new_hashes[release_tool.PATCH_NAME],
+                "app_js_sha256": new_hashes[release_tool.APP_JS_NAME],
+                "identity_sha256": new_hashes[release_tool.IDENTITY_NAME],
+                **{
+                    key + "_sha256": new_hashes[name]
+                    for key, name in release_tool.V4_NAMES.items()
+                },
+            }
+            write(update / "manifest.json", manifest)
+            write(
+                update / "installed.json",
+                {
+                    "source_tar_sha256": tar_hash,
+                    "transfer_tar_sha256": transfer,
+                    "base_bundle_sha256": old_bundle,
+                    "base_run_id": run_id,
+                },
+            )
+            with (
+                patch.object(life, "BASE", base),
+                patch.object(life, "INSTALLED", boot / "installed.json"),
+                patch.object(life, "UPDATE_ROOT", updates),
+                patch.object(life, "OWNER_UID", os.getuid()),
+            ):
+                self.assertEqual(
+                    life.installation(update / "installed.json", tar_hash, run_id),
+                    (str(new), tar_hash, run_id),
+                )
+                for field in (
+                    "identity_sha256",
+                    "conversation_sha256",
+                    "sharing_sha256",
+                    "owner_sha256",
+                    "handoff_sha256",
+                ):
+                    changed = dict(manifest)
+                    changed.pop(field)
+                    write(update / "manifest.json", changed)
+                    with (
+                        self.subTest(field=field),
+                        self.assertRaisesRegex(ValueError, "manifest differs"),
+                    ):
+                        life.installation(update / "installed.json", tar_hash, run_id)
+                write(update / "manifest.json", manifest)
+                (new / release_tool.V4_NAMES["sharing"]).write_bytes(b"tampered")
+                with self.assertRaisesRegex(ValueError, "source hash mismatch"):
+                    life.installation(update / "installed.json", tar_hash, run_id)
+
+    def test_v4_install_stages_all_patches_and_rolls_back_on_failure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary).resolve()
+            boot, app, updates = (
+                base / name for name in ("oneboot", "app-releases", "service-updates")
+            )
+            for directory in (boot, app, updates):
+                directory.mkdir(mode=0o700)
+            old = app / ("a" * 64 + "-" + "b" * 32)
+            old.mkdir(mode=0o700)
+            hashes = {}
+            for name in life.SOURCE_FILES:
+                path = old / name
+                path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+                path.write_bytes(name.encode())
+                path.chmod(0o600)
+                hashes[name] = hashlib.sha256(name.encode()).hexdigest()
+            for name in ("python", "venv"):
+                (old / name).mkdir(mode=0o700)
+            (boot / "manifest.json").write_text(json.dumps({"file_sha256": hashes}))
+            names = {
+                "webapp": release_tool.PATCH_NAME,
+                "app_js": release_tool.APP_JS_NAME,
+                "identity": release_tool.IDENTITY_NAME,
+                **release_tool.V4_NAMES,
+            }
+            sources = {}
+            for key in names:
+                path = base / key
+                path.write_bytes(("new " + key).encode())
+                sources[key] = path
+            transfer = base / "patch.tar"
+            release_tool.package(
+                SimpleNamespace(
+                    **{key: str(path) for key, path in sources.items()},
+                    output=str(transfer),
+                )
+            )
+            transfer_sha = release_tool.digest(transfer)
+            args = SimpleNamespace(
+                transfer_tar=str(transfer),
+                transfer_tar_sha256=transfer_sha,
+                **{
+                    key + "_sha256": release_tool.digest(path)
+                    for key, path in sources.items()
+                },
+            )
+
+            def verify_stage(stage, files, target):
+                for key, name in names.items():
+                    self.assertEqual(
+                        (stage / name).read_bytes(), sources[key].read_bytes()
+                    )
+                self.assertEqual((stage / "README.md").read_bytes(), b"README.md")
+                raise RuntimeError("stage checked")
+
+            with (
+                self.assertRaisesRegex(RuntimeError, "stage checked"),
+                patch.object(release_tool, "BASE", base),
+                patch.object(release_tool, "BASELINE", boot / "installed.json"),
+                patch.object(release_tool, "RELEASE_ROOT", app),
+                patch.object(release_tool, "UPDATE_ROOT", updates),
+                patch.object(release_tool, "load_lifecycle", return_value=life),
+                patch.object(release_tool.os, "geteuid", return_value=0),
+                patch.object(release_tool, "private_directory"),
+                patch.object(
+                    release_tool,
+                    "regular",
+                    return_value=SimpleNamespace(st_uid=0, st_mode=0o100600),
+                ),
+                patch.object(life, "checked_directory"),
+                patch.object(
+                    life, "installation", return_value=(str(old), "a" * 64, "b" * 32)
+                ),
+                patch.object(
+                    life,
+                    "run",
+                    return_value=SimpleNamespace(
+                        stdout=json.dumps(
+                            {
+                                "Self": {
+                                    "TailscaleIPs": ["100.100.100.100"],
+                                    "DNSName": "pilot.example.ts.net",
+                                }
+                            }
+                        )
+                    ),
+                ),
+                patch.object(life, "fixed_host", return_value="pilot.example.ts.net"),
+                patch.object(life, "tailnet_state"),
+                patch.object(release_tool, "assert_service_stopped"),
+                patch.object(release_tool, "source_tar", side_effect=verify_stage),
+            ):
+                release_tool.install(args)
+            self.assertFalse((app / ("service-" + transfer_sha)).exists())
+            self.assertFalse((updates / transfer_sha).exists())
+            self.assertEqual(
+                (old / release_tool.IDENTITY_NAME).read_bytes(),
+                release_tool.IDENTITY_NAME.encode(),
+            )
+
     def test_v3_install_stages_exactly_three_patched_sources(self):
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary).resolve()
