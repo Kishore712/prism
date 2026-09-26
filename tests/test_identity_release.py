@@ -33,6 +33,72 @@ life = load(
 
 
 class ImmutableReleaseTests(unittest.TestCase):
+    def test_v6_transfer_requires_exact_worker_patch_and_pins_hash(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            names = {
+                "webapp": release_tool.PATCH_NAME,
+                "app_js": release_tool.APP_JS_NAME,
+                "identity": release_tool.IDENTITY_NAME,
+                **release_tool.V4_NAMES,
+                "jobs": release_tool.V5_NAME,
+                "worker": release_tool.V6_NAME,
+            }
+            sources = {}
+            for key, name in names.items():
+                source = root / key
+                source.write_bytes(("v6 " + name).encode())
+                sources[key] = source
+            with self.assertRaisesRegex(ValueError, "nine-file"):
+                release_tool.package(
+                    SimpleNamespace(
+                        webapp=str(sources["webapp"]),
+                        worker=str(sources["worker"]),
+                        output=str(root / "invalid.tar"),
+                    )
+                )
+            transfer = root / "patch.tar"
+            output = io.StringIO()
+            with redirect_stdout(output):
+                release_tool.package(
+                    SimpleNamespace(
+                        **{key: str(path) for key, path in sources.items()},
+                        output=str(transfer),
+                    )
+                )
+            report = json.loads(output.getvalue())
+            self.assertEqual(report["kind"], "prism_service_update_v6")
+            self.assertEqual(
+                report["worker_sha256"], release_tool.digest(sources["worker"])
+            )
+            hashes = {
+                name: release_tool.digest(path)
+                for key, name in names.items()
+                for path in (sources[key],)
+            }
+            self.assertEqual(
+                release_tool.read_patches(
+                    transfer, release_tool.digest(transfer), hashes
+                ),
+                {name: sources[key].read_bytes() for key, name in names.items()},
+            )
+            with self.assertRaisesRegex(ValueError, "fixed patch sources"):
+                release_tool.read_patches(
+                    transfer,
+                    release_tool.digest(transfer),
+                    {
+                        name: value
+                        for name, value in hashes.items()
+                        if name != release_tool.V6_NAME
+                    },
+                )
+            with self.assertRaisesRegex(ValueError, "patch hash mismatch"):
+                release_tool.read_patches(
+                    transfer,
+                    release_tool.digest(transfer),
+                    {**hashes, release_tool.V6_NAME: "a" * 64},
+                )
+
     def test_v4_transfer_is_exact_canonical_seven_file_patch(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
@@ -547,6 +613,133 @@ class ImmutableReleaseTests(unittest.TestCase):
                         life.installation(update / "installed.json", tar_hash, run_id)
                 write(update / "manifest.json", manifest)
                 (new / release_tool.V5_NAME).write_bytes(b"tampered")
+                with self.assertRaisesRegex(ValueError, "source hash mismatch"):
+                    life.installation(update / "installed.json", tar_hash, run_id)
+
+    def test_v6_manifest_pins_all_nine_changed_sources(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary).resolve()
+            boot, updates, app = (
+                base / name for name in ("oneboot", "service-updates", "app-releases")
+            )
+            for directory in (boot, updates, app):
+                directory.mkdir(mode=0o700)
+            old_bundle, run_id, transfer = "a" * 64, "b" * 32, "f" * 64
+            old = app / f"{old_bundle}-{run_id}"
+            new = app / f"service-{transfer}"
+            old.mkdir(mode=0o700)
+            new.mkdir(mode=0o700)
+            patch_names = {
+                release_tool.PATCH_NAME,
+                release_tool.APP_JS_NAME,
+                release_tool.IDENTITY_NAME,
+                *release_tool.V4_NAMES.values(),
+                release_tool.V5_NAME,
+                release_tool.V6_NAME,
+            }
+            old_hashes, new_hashes = {}, {}
+            for name in life.SOURCE_FILES:
+                original = name.encode()
+                updated = b"v6 " + original if name in patch_names else original
+                if name == release_tool.V6_NAME:
+                    updated = b'LEASE_RELEASE_MARKER = "v6"\n'
+                for directory, content in ((old, original), (new, updated)):
+                    path = directory / name
+                    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+                    path.write_bytes(content)
+                    path.chmod(0o600)
+                old_hashes[name] = hashlib.sha256(original).hexdigest()
+                new_hashes[name] = hashlib.sha256(updated).hexdigest()
+
+            def write(path, value):
+                path.write_text(json.dumps(value))
+                path.chmod(0o600)
+
+            write(
+                boot / "installed.json", {"bundle_sha256": old_bundle, "run_id": run_id}
+            )
+            write(
+                boot / "ledger.json",
+                {"run_id": run_id, "next_seq": 6, "complete": True},
+            )
+            write(
+                boot / "manifest.json",
+                {
+                    "kind": "prism_oneboot_app_v1",
+                    "run_id": run_id,
+                    "bundle_sha256": old_bundle,
+                    "raw_sha256": old_bundle,
+                    "file_sha256": old_hashes,
+                },
+            )
+            update = updates / transfer
+            update.mkdir(mode=0o700)
+            tar_hash = release_tool.source_tar(
+                new, life.SOURCE_FILES, update / "source.tar"
+            )
+            manifest = {
+                "kind": "prism_service_update_v6",
+                "base_bundle_sha256": old_bundle,
+                "base_run_id": run_id,
+                "transfer_tar_sha256": transfer,
+                "source_tar_sha256": tar_hash,
+                "release_name": f"service-{transfer}",
+                "file_sha256": new_hashes,
+                "webapp_sha256": new_hashes[release_tool.PATCH_NAME],
+                "app_js_sha256": new_hashes[release_tool.APP_JS_NAME],
+                "identity_sha256": new_hashes[release_tool.IDENTITY_NAME],
+                **{
+                    key + "_sha256": new_hashes[name]
+                    for key, name in release_tool.V4_NAMES.items()
+                },
+                "jobs_sha256": new_hashes[release_tool.V5_NAME],
+                "worker_sha256": new_hashes[release_tool.V6_NAME],
+            }
+            write(update / "manifest.json", manifest)
+            write(
+                update / "installed.json",
+                {
+                    "source_tar_sha256": tar_hash,
+                    "transfer_tar_sha256": transfer,
+                    "base_bundle_sha256": old_bundle,
+                    "base_run_id": run_id,
+                },
+            )
+            with (
+                patch.object(life, "BASE", base),
+                patch.object(life, "INSTALLED", boot / "installed.json"),
+                patch.object(life, "UPDATE_ROOT", updates),
+                patch.object(life, "OWNER_UID", os.getuid()),
+            ):
+                self.assertEqual(
+                    life.installation(update / "installed.json", tar_hash, run_id),
+                    (str(new), tar_hash, run_id),
+                )
+                worker_spec = importlib.util.spec_from_file_location(
+                    "v6_worker_release_probe", new / release_tool.V6_NAME
+                )
+                worker_module = importlib.util.module_from_spec(worker_spec)
+                worker_spec.loader.exec_module(worker_module)
+                self.assertEqual(worker_module.LEASE_RELEASE_MARKER, "v6")
+                for field in (
+                    "identity_sha256",
+                    "conversation_sha256",
+                    "sharing_sha256",
+                    "owner_sha256",
+                    "handoff_sha256",
+                    "jobs_sha256",
+                    "worker_sha256",
+                ):
+                    changed = dict(manifest)
+                    changed.pop(field)
+                    write(update / "manifest.json", changed)
+                    with (
+                        self.subTest(field=field),
+                        self.assertRaisesRegex(ValueError, "manifest differs"),
+                    ):
+                        life.installation(update / "installed.json", tar_hash, run_id)
+                write(update / "manifest.json", manifest)
+                (new / release_tool.V6_NAME).write_bytes(b"tampered")
                 with self.assertRaisesRegex(ValueError, "source hash mismatch"):
                     life.installation(update / "installed.json", tar_hash, run_id)
 

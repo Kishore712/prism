@@ -1,16 +1,39 @@
 """Durable, bounded synthetic jobs. Only the trusted worker controls the engine."""
 
 import json
+import os
 import signal
 import subprocess
 import sys
 import threading
 import time
+from pathlib import Path
 
 from prism.engine import IMAGE, EngineError, socket_path
 from prism.projects import json_check_action, json_check_payload
 from prism.reference_runtime import HANDLER, RuntimeRegistry
 from prism.sharing import Denied, bootstrap_action, digest, ident, packed
+
+# The reference worker must lose authority promptly if its Jobs parent dies.
+# Renew twice a second; the worker's three-second timeout is below the
+# 30-second execution deadline and gives slow scheduling some tolerance.
+LEASE_RENEW_SECONDS = 0.5
+SOURCE_ROOT = str(Path(__file__).resolve().parents[1])
+WORKER_BOOTSTRAP = """\
+import importlib.util
+import pathlib
+import runpy
+import sys
+root = pathlib.Path(sys.argv.pop(1)).resolve(strict=True)
+sys.path.insert(0, str(root))
+package = importlib.util.find_spec('prism')
+worker = importlib.util.find_spec('prism.worker')
+if (package is None or worker is None
+        or pathlib.Path(package.origin).resolve() != root / 'prism' / '__init__.py'
+        or pathlib.Path(worker.origin).resolve() != root / 'prism' / 'worker.py'):
+    raise SystemExit(2)
+runpy.run_module('prism.worker', run_name='__main__', alter_sys=True)
+"""
 
 
 class Jobs:
@@ -58,7 +81,9 @@ class Jobs:
             ):
                 try:
                     self.registry.reconcile(
-                        row["runtime_profile"], row["runtime_resource"], row["runtime_token"]
+                        row["runtime_profile"],
+                        row["runtime_resource"],
+                        row["runtime_token"],
                     )
                     error = "Service restarted; the observed owned Kata resource was removed, but controller termination is unconfirmed. No work was retried."
                 except (EngineError, ValueError):
@@ -179,7 +204,7 @@ class Jobs:
                     raise Denied(
                         "This request identifier already belongs to different parameters.",
                         409,
-                )
+                    )
                 return self.public(previous, state)
             try:
                 self.registry.assert_ready(profile)
@@ -246,12 +271,32 @@ class Jobs:
         return self.get(session, actor, run)
 
     def _launch(
-        self, run, session, actor, action, argument, program_hash, parameters,
-        profile="development", resource=None, token=None,
+        self,
+        run,
+        session,
+        actor,
+        action,
+        argument,
+        program_hash,
+        parameters,
+        profile="development",
+        resource=None,
+        token=None,
     ):
         thread = threading.Thread(
             target=self._execute,
-            args=(run, session, actor, action, argument, program_hash, parameters, profile, resource, token),
+            args=(
+                run,
+                session,
+                actor,
+                action,
+                argument,
+                program_hash,
+                parameters,
+                profile,
+                resource,
+                token,
+            ),
             daemon=True,
         )
         self.threads.add(thread)
@@ -303,10 +348,20 @@ class Jobs:
             ]
 
     def _execute(
-        self, run, session, actor, action, argument, program_hash, parameters,
-        profile, resource, token,
+        self,
+        run,
+        session,
+        actor,
+        action,
+        argument,
+        program_hash,
+        parameters,
+        profile,
+        resource,
+        token,
     ):
         process = None
+        lease_read_fd = lease_write_fd = None
         cleanup_confirmed = False
         status, error, result = (
             "failed",
@@ -319,21 +374,25 @@ class Jobs:
                 if self.stop.is_set():
                     raise Denied()
                 db.execute("UPDATE runs SET status='running' WHERE id=?", (run,))
-            # Fixed argv, no shell, no inherited model credentials or source path.
+            # Fixed argv, no shell or inherited model credentials. The trusted
+            # source root selects this release's worker even under Python -I.
             runtime_locator = (
                 self.socket if profile == "development" else "reference-linux-local"
             )
             worker_argv = [
-                    sys.executable,
-                    "-I",
-                    "-m",
-                    "prism.worker",
-                    runtime_locator,
-                    action,
-                    program_hash,
-                ]
+                sys.executable,
+                "-I",
+                "-c",
+                WORKER_BOOTSTRAP,
+                SOURCE_ROOT,
+                runtime_locator,
+                action,
+                program_hash,
+            ]
             if profile == "reference-linux":
-                worker_argv.extend([profile, resource, token])
+                lease_read_fd, lease_write_fd = os.pipe()
+                os.set_blocking(lease_write_fd, False)
+                worker_argv.extend([profile, resource, token, str(lease_read_fd)])
             # Serialize the final authorization check and launch with revoke.
             # A revoke committed before this transaction cannot start a worker;
             # one committed after launch is observed by the cancellation loop.
@@ -341,6 +400,8 @@ class Jobs:
                 self.store.authorized(db, session, actor)
                 if self.stop.is_set():
                     raise Denied()
+                if lease_write_fd is not None:
+                    os.write(lease_write_fd, b"L")
                 process = subprocess.Popen(
                     worker_argv,
                     stdin=subprocess.PIPE,
@@ -348,7 +409,15 @@ class Jobs:
                     stderr=subprocess.DEVNULL,
                     cwd="/",
                     env={"PATH": "/usr/local/bin:/usr/bin:/bin", "LANG": "C.UTF-8"},
+                    **(
+                        {"pass_fds": (lease_read_fd,)}
+                        if lease_read_fd is not None
+                        else {}
+                    ),
                 )
+            if lease_read_fd is not None:
+                os.close(lease_read_fd)
+                lease_read_fd = None
             encoded_argument = argument.encode("ascii")
             if process.stdin is None or len(encoded_argument) > 100 * 1024:
                 raise ValueError("Invalid bounded action payload")
@@ -371,13 +440,27 @@ class Jobs:
             drain = threading.Thread(target=drain_worker, daemon=True)
             drain.start()
             deadline, cancellation = time.monotonic() + 30, False
+            next_renewal = time.monotonic() + LEASE_RENEW_SECONDS
             while process.poll() is None:
                 try:
                     self.store.session(session, actor)
                     allowed = not self.stop.is_set()
                 except Denied:
                     allowed = False
+                if (
+                    allowed
+                    and lease_write_fd is not None
+                    and time.monotonic() >= next_renewal
+                ):
+                    try:
+                        os.write(lease_write_fd, b"L")
+                    except OSError:
+                        allowed = False
+                    next_renewal = time.monotonic() + LEASE_RENEW_SECONDS
                 if not allowed or time.monotonic() > deadline:
+                    if lease_write_fd is not None:
+                        os.close(lease_write_fd)
+                        lease_write_fd = None
                     process.send_signal(signal.SIGTERM)
                     cancellation = True
                     break
@@ -402,7 +485,10 @@ class Jobs:
                 return
             drain.join(timeout=2)
             if drain.is_alive():
-                status, error = "uncertain", "Worker output termination was not confirmed."
+                status, error = (
+                    "uncertain",
+                    "Worker output termination was not confirmed.",
+                )
                 return
             output = bytes(worker_output)
             if process.returncode == 0 and not output_overflow.is_set():
@@ -523,6 +609,9 @@ class Jobs:
                     error = "The run could not be reconciled safely. Owner runtime inspection is required."
                 status = "uncertain"
         finally:
+            for fd in (lease_read_fd, lease_write_fd):
+                if fd is not None:
+                    os.close(fd)
             with self.store.connect() as db:
                 try:
                     self.store.authorized(db, session, actor)

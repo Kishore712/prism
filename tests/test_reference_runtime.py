@@ -1,19 +1,28 @@
 """M2.3 reference-profile policy tests; no local runtime or cloud is used."""
 
+import hashlib
 import importlib.util
 import io
 import json
+import os
 import platform
+import shutil
+import subprocess
+import sys
 import tempfile
+import threading
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import redirect_stdout
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from prism import worker as worker_module
 from prism.conversation import Conversations
 from prism.engine import IMAGE, EngineError
 from prism.handoff import Handoffs, HandoffSelection
-from prism.jobs import Jobs
+from prism.jobs import SOURCE_ROOT, WORKER_BOOTSTRAP, Jobs
 from prism.owner import OwnerIdentity, OwnerWorkspace
 from prism.projects import ProjectSource
 from prism.reference_runtime import (
@@ -32,8 +41,9 @@ from prism.reference_runtime import (
     _verified_image_id,
     reference_argv,
 )
-from prism.runtime import RunResult
-from prism.sharing import Denied, Store, ident, packed
+from prism.runtime import RunResult, action_program
+from prism.sharing import Denied, NamedPrincipal, Store, ident, packed
+from prism.worker import _start_lease_monitor
 
 check_spec = importlib.util.spec_from_file_location(
     "m2_linux_runtime_check",
@@ -423,6 +433,287 @@ class ReferencePolicyTests(unittest.TestCase):
             jobs.submit_json_check(
                 self.session["id"], "reviewer", "blocked-after-worker-loss"
             )
+
+    def test_synthetic_reference_launch_passes_only_lease_read_fd(self):
+        jobs = self.jobs(recover=False)
+        with patch.object(jobs, "_launch") as launch:
+            run = jobs.submit_json_check(
+                self.session["id"], "reviewer", "lease-reference-launch"
+            )
+        arguments = launch.call_args.args
+
+        class Process:
+            def __init__(self):
+                self.stdin = io.BytesIO()
+                self.stdout = io.BytesIO(b"")
+                self.returncode = 2
+
+            def poll(self):
+                return self.returncode
+
+            def wait(self, timeout=None):
+                return self.returncode
+
+        def launched(argv, **options):
+            self.assertEqual(argv[1:5], ["-I", "-c", WORKER_BOOTSTRAP, SOURCE_ROOT])
+            self.assertEqual(
+                argv[-4:-1], ["reference-linux", arguments[8], arguments[9]]
+            )
+            self.assertEqual(options["pass_fds"], (int(argv[-1]),))
+            self.assertEqual(os.read(int(argv[-1]), 1), b"L")
+            self.assertNotIn("preexec_fn", options)
+            self.assertEqual(set(options["env"]), {"PATH", "LANG"})
+            return Process()
+
+        with patch("prism.jobs.subprocess.Popen", side_effect=launched):
+            jobs._execute(*arguments)
+        with self.store.connect() as db:
+            row = db.execute(
+                "SELECT status,result FROM runs WHERE id=?", (run["id"],)
+            ).fetchone()
+        self.assertEqual(row["status"], "uncertain")
+        self.assertIsNone(row["result"])
+
+    def test_synthetic_reference_job_completes_with_valid_lease(self):
+        jobs = self.jobs(recover=False)
+        with patch.object(jobs, "_launch") as launch:
+            run = jobs.submit_json_check(
+                self.session["id"], "reviewer", "lease-valid-result"
+            )
+        arguments = launch.call_args.args
+        payload = {
+            "cleaned_up": True,
+            "program_sha256": arguments[5],
+            "runtime_handler": HANDLER,
+            "image_id": jobs.registry.reference.image_id,
+            "stop_reason": "exited",
+            "exit_code": 0,
+            "output_limited": False,
+            "stdout": json.dumps(
+                {"action": "json-check", "files": arguments[6]["files"]}
+            ),
+            "guest_kernel": "synthetic-kernel",
+            "guest_boot_id": "synthetic-boot",
+            "elapsed_seconds": 0.01,
+        }
+
+        class Process:
+            def __init__(self):
+                self.stdin = io.BytesIO()
+                self.stdout = io.BytesIO(json.dumps(payload).encode())
+                self.returncode = 0
+
+            def poll(self):
+                return self.returncode
+
+            def wait(self, timeout=None):
+                return self.returncode
+
+        with patch("prism.jobs.subprocess.Popen", return_value=Process()) as start:
+            jobs._execute(*arguments)
+        self.assertEqual(len(start.call_args.kwargs["pass_fds"]), 1)
+        result = jobs.get(self.session["id"], "reviewer", run["id"])
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["result"]["output"]["files"], arguments[6]["files"])
+
+    def test_synthetic_reference_grant_revoke_cancels_only_target_run(self):
+        jobs = self.jobs(recover=False)
+        principal = NamedPrincipal("https://idp.example/tenant", "lease-recipient")
+        other = NamedPrincipal("https://idp.example/tenant", "other-recipient")
+        invitation = self.store.create_invitation(
+            self.session["version"], principal, mode="verify", expires_in=3600
+        )
+        other_invitation = self.store.create_invitation(
+            self.session["version"], other, mode="verify", expires_in=3600
+        )
+        session = self.store.redeem_invitation(invitation["token"], principal)
+        other_session = self.store.redeem_invitation(other_invitation["token"], other)
+        with patch.object(jobs, "_launch") as launch:
+            run = jobs.submit_json_check(session["id"], principal, "lease-revoke-run")
+        arguments = launch.call_args.args
+        payload = {
+            "cleaned_up": True,
+            "program_sha256": arguments[5],
+            "runtime_handler": HANDLER,
+            "image_id": jobs.registry.reference.image_id,
+            "stop_reason": "cancelled",
+        }
+        started = threading.Event()
+        signalled = threading.Event()
+
+        class Process:
+            def __init__(self):
+                self.stdin = io.BytesIO()
+                self.stdout = io.BytesIO(json.dumps(payload).encode())
+                self.returncode = None
+                started.set()
+
+            def poll(self):
+                return self.returncode
+
+            def send_signal(self, _signal):
+                self.returncode = 0
+                signalled.set()
+
+            def wait(self, timeout=None):
+                return self.returncode
+
+        with (
+            patch("prism.jobs.subprocess.Popen", side_effect=lambda *a, **k: Process()),
+            ThreadPoolExecutor(max_workers=1) as pool,
+        ):
+            future = pool.submit(jobs._execute, *arguments)
+            self.assertTrue(started.wait(2))
+            self.store.revoke_grant(session["grant_id"])
+            future.result(timeout=3)
+        self.assertTrue(signalled.is_set())
+        with self.store.connect() as db:
+            row = db.execute(
+                "SELECT status,result FROM runs WHERE id=?", (run["id"],)
+            ).fetchone()
+        self.assertEqual(row["status"], "cancelled")
+        self.assertIsNone(row["result"])
+        self.store.session(other_session["id"], other)
+
+
+class WorkerLeaseSyntheticTests(unittest.TestCase):
+    def test_isolated_child_resolves_staged_lease_worker_source(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve() / "immutable-release" / "src"
+            root.mkdir(parents=True)
+            installed = Path(__file__).resolve().parents[1] / "src" / "prism"
+            shutil.copytree(installed, root / "prism")
+            worker_path = root / "prism" / "worker.py"
+            probe = WORKER_BOOTSTRAP.replace(
+                "runpy.run_module('prism.worker', run_name='__main__', alter_sys=True)",
+                "import hashlib, prism.worker; "
+                "print(prism.worker.__file__); "
+                "print(hashlib.sha256(pathlib.Path(prism.worker.__file__).read_bytes()).hexdigest())",
+            )
+            self.assertNotEqual(probe, WORKER_BOOTSTRAP)
+            base = [sys.executable, "-I", "-c"]
+            environment = {"PATH": "/usr/local/bin:/usr/bin:/bin", "LANG": "C.UTF-8"}
+            located = subprocess.run(
+                base + [probe, str(root)],
+                cwd="/",
+                env=environment,
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=True,
+            ).stdout.splitlines()
+            self.assertEqual(
+                located,
+                [
+                    str(worker_path),
+                    hashlib.sha256(worker_path.read_bytes()).hexdigest(),
+                ],
+            )
+            # The exact production bootstrap reaches v6 lease validation and
+            # rejects a malformed descriptor before any Kata client starts.
+            child = subprocess.run(
+                base
+                + [
+                    WORKER_BOOTSTRAP,
+                    str(root),
+                    "reference-linux-local",
+                    "json-check",
+                    hashlib.sha256(action_program("json-check").encode()).hexdigest(),
+                    "reference-linux",
+                    "prism-m23-run-" + "a" * 32,
+                    "b" * 32,
+                    "invalid-fd",
+                ],
+                input=b"{}",
+                cwd="/",
+                env=environment,
+                capture_output=True,
+                timeout=5,
+                check=False,
+            )
+            self.assertEqual(child.returncode, 2)
+            self.assertEqual(child.stdout, b"")
+
+    def test_synthetic_worker_cancel_event_reaches_runtime_on_parent_eof(self):
+        read_fd, write_fd = os.pipe()
+        os.write(write_fd, b"L")
+        entered = threading.Event()
+
+        class FakeRuntime:
+            def run(self, action, argument, *, timeout, cancel, name, token):
+                entered.set()
+                if not cancel.wait(1):
+                    raise AssertionError("Lease EOF did not reach the runtime")
+                return RunResult(
+                    action=action,
+                    exit_code=143,
+                    stop_reason="cancelled",
+                    oom_killed=False,
+                    stdout="",
+                    stderr="",
+                    output_limited=False,
+                    cleaned_up=True,
+                    elapsed_seconds=0.01,
+                    image_id="synthetic-reference",
+                    program_sha256=hashlib.sha256(
+                        action_program("json-check").encode()
+                    ).hexdigest(),
+                )
+
+        def break_parent():
+            self.assertTrue(entered.wait(1))
+            os.close(write_fd)
+
+        breaker = threading.Thread(target=break_parent)
+        breaker.start()
+        output = io.StringIO()
+        with (
+            patch.object(
+                worker_module.sys,
+                "argv",
+                [
+                    "worker",
+                    "reference-linux-local",
+                    "json-check",
+                    hashlib.sha256(action_program("json-check").encode()).hexdigest(),
+                    "reference-linux",
+                    "prism-m23-run-" + "a" * 32,
+                    "b" * 32,
+                    str(read_fd),
+                ],
+            ),
+            patch.object(
+                worker_module.sys, "stdin", SimpleNamespace(buffer=io.BytesIO(b"{}"))
+            ),
+            patch.object(worker_module, "ReferenceLinuxRuntime", FakeRuntime),
+            patch.object(worker_module.signal, "signal"),
+            redirect_stdout(output),
+        ):
+            self.assertEqual(worker_module.main(), 0)
+        breaker.join(timeout=1)
+        self.assertEqual(json.loads(output.getvalue())["stop_reason"], "cancelled")
+
+    def test_missing_and_malformed_lease_fail_closed(self):
+        for value in ("", "-1", "abc", "9999999", "0", "1", "2"):
+            with self.subTest(value=value):
+                self.assertFalse(_start_lease_monitor(value, threading.Event()))
+
+    def test_eof_and_expiry_cancel_worker(self):
+        for mode in ("eof", "expiry", "malformed"):
+            with self.subTest(mode=mode):
+                read_fd, write_fd = os.pipe()
+                cancelled = threading.Event()
+                os.write(write_fd, b"L")
+                with patch("prism.worker.LEASE_TTL_SECONDS", 0.15):
+                    self.assertTrue(_start_lease_monitor(str(read_fd), cancelled))
+                    self.assertFalse(os.get_inheritable(read_fd))
+                    if mode == "eof":
+                        os.close(write_fd)
+                    elif mode == "malformed":
+                        os.write(write_fd, b"X")
+                    self.assertTrue(cancelled.wait(1))
+                if mode == "expiry" or mode == "malformed":
+                    os.close(write_fd)
 
 
 class ReferenceRuntimeUnitTests(unittest.TestCase):

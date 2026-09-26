@@ -234,6 +234,17 @@ def installation(record, expected_bundle=None, expected_run=None):
                 "src/prism/handoff.py",
                 "src/prism/jobs.py",
             },
+            "prism_service_update_v6": {
+                "src/prism/identity.py",
+                "src/prism/webapp.py",
+                "src/prism/static/app.js",
+                "src/prism/conversation.py",
+                "src/prism/sharing.py",
+                "src/prism/owner.py",
+                "src/prism/handoff.py",
+                "src/prism/jobs.py",
+                "src/prism/worker.py",
+            },
         }.get(kind)
         expected_manifest_keys = {
             "kind",
@@ -257,6 +268,7 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "prism_service_update_v3",
                     "prism_service_update_v4",
                     "prism_service_update_v5",
+                    "prism_service_update_v6",
                 )
                 else set()
             )
@@ -267,6 +279,7 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "prism_service_update_v3",
                     "prism_service_update_v4",
                     "prism_service_update_v5",
+                    "prism_service_update_v6",
                 )
                 else set()
             )
@@ -277,10 +290,20 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "owner_sha256",
                     "handoff_sha256",
                 }
-                if kind in ("prism_service_update_v4", "prism_service_update_v5")
+                if kind
+                in (
+                    "prism_service_update_v4",
+                    "prism_service_update_v5",
+                    "prism_service_update_v6",
+                )
                 else set()
             )
-            | ({"jobs_sha256"} if kind == "prism_service_update_v5" else set())
+            | (
+                {"jobs_sha256"}
+                if kind in ("prism_service_update_v5", "prism_service_update_v6")
+                else set()
+            )
+            | ({"worker_sha256"} if kind == "prism_service_update_v6" else set())
             or not isinstance(transfer, str)
             or not BUNDLE_RE.fullmatch(transfer)
             or marker.parent.name != transfer
@@ -297,6 +320,7 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "prism_service_update_v3",
                     "prism_service_update_v4",
                     "prism_service_update_v5",
+                    "prism_service_update_v6",
                 )
                 and manifest.get("app_js_sha256") != hashes["src/prism/static/app.js"]
             )
@@ -306,19 +330,29 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "prism_service_update_v3",
                     "prism_service_update_v4",
                     "prism_service_update_v5",
+                    "prism_service_update_v6",
                 )
                 and manifest.get("identity_sha256") != hashes["src/prism/identity.py"]
             )
             or (
-                kind in ("prism_service_update_v4", "prism_service_update_v5")
+                kind
+                in (
+                    "prism_service_update_v4",
+                    "prism_service_update_v5",
+                    "prism_service_update_v6",
+                )
                 and any(
                     manifest.get(key + "_sha256") != hashes["src/prism/" + key + ".py"]
                     for key in ("conversation", "sharing", "owner", "handoff")
                 )
             )
             or (
-                kind == "prism_service_update_v5"
+                kind in ("prism_service_update_v5", "prism_service_update_v6")
                 and manifest.get("jobs_sha256") != hashes["src/prism/jobs.py"]
+            )
+            or (
+                kind == "prism_service_update_v6"
+                and manifest.get("worker_sha256") != hashes["src/prism/worker.py"]
             )
         ):
             raise ValueError("Service update manifest differs from the marker.")

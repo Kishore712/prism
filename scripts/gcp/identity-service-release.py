@@ -33,12 +33,14 @@ V4_NAMES = {
     "handoff": "src/prism/handoff.py",
 }
 V5_NAME = "src/prism/jobs.py"
+V6_NAME = "src/prism/worker.py"
 PATCH_LIMITS = {
     PATCH_NAME: 16 * 1024 * 1024,
     APP_JS_NAME: 2 * 1024 * 1024,
     IDENTITY_NAME: 16 * 1024 * 1024,
     **{name: 16 * 1024 * 1024 for name in V4_NAMES.values()},
     V5_NAME: 16 * 1024 * 1024,
+    V6_NAME: 16 * 1024 * 1024,
 }
 PATCH_SETS = (
     frozenset((PATCH_NAME,)),
@@ -46,6 +48,9 @@ PATCH_SETS = (
     frozenset((PATCH_NAME, APP_JS_NAME, IDENTITY_NAME)),
     frozenset((PATCH_NAME, APP_JS_NAME, IDENTITY_NAME, *V4_NAMES.values())),
     frozenset((PATCH_NAME, APP_JS_NAME, IDENTITY_NAME, *V4_NAMES.values(), V5_NAME)),
+    frozenset(
+        (PATCH_NAME, APP_JS_NAME, IDENTITY_NAME, *V4_NAMES.values(), V5_NAME, V6_NAME)
+    ),
 )
 
 
@@ -74,7 +79,7 @@ def private_directory(path):
         raise ValueError("Expected a root-owned private directory.")
 
 
-def transfer_bytes(data, app_js=None, identity=None, v4=None, jobs=None):
+def transfer_bytes(data, app_js=None, identity=None, v4=None, jobs=None, worker=None):
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode="w", format=tarfile.USTAR_FORMAT) as archive:
         files = {PATCH_NAME: data}
@@ -92,6 +97,10 @@ def transfer_bytes(data, app_js=None, identity=None, v4=None, jobs=None):
             if v4 is None:
                 raise ValueError("V5 requires the fixed eight-file patch.")
             files[V5_NAME] = jobs
+        if worker is not None:
+            if jobs is None:
+                raise ValueError("V6 requires the fixed nine-file patch.")
+            files[V6_NAME] = worker
         for name in sorted(files):
             entry = tarfile.TarInfo(name)
             entry.size = len(files[name])
@@ -113,6 +122,9 @@ def package(args):
     identity_path = getattr(args, "identity", None)
     v4_paths = {key: getattr(args, key, None) for key in V4_NAMES}
     jobs_path = getattr(args, "jobs", None)
+    worker_path = getattr(args, "worker", None)
+    if worker_path is not None and jobs_path is None:
+        raise ValueError("V6 requires the fixed nine-file patch.")
     if jobs_path is not None and (
         not all(path is not None for path in v4_paths.values())
         or identity_path is None
@@ -145,16 +157,22 @@ def package(args):
     if jobs_path is not None:
         regular(jobs_path, PATCH_LIMITS[V5_NAME])
         jobs = Path(jobs_path).read_bytes()
+    worker = None
+    if worker_path is not None:
+        regular(worker_path, PATCH_LIMITS[V6_NAME])
+        worker = Path(worker_path).read_bytes()
     with target.open("xb") as raw:
         os.fchmod(raw.fileno(), 0o600)
-        raw.write(transfer_bytes(data, app_js, identity, v4, jobs))
+        raw.write(transfer_bytes(data, app_js, identity, v4, jobs, worker))
     report = {
         "transfer_tar_sha256": digest(target),
         "webapp_sha256": hashlib.sha256(data).hexdigest(),
     }
     if app_js is not None:
         report["kind"] = (
-            "prism_service_update_v5"
+            "prism_service_update_v6"
+            if worker is not None
+            else "prism_service_update_v5"
             if jobs is not None
             else "prism_service_update_v4"
             if v4 is not None
@@ -174,6 +192,8 @@ def package(args):
         )
     if jobs is not None:
         report["jobs_sha256"] = hashlib.sha256(jobs).hexdigest()
+    if worker is not None:
+        report["worker_sha256"] = hashlib.sha256(worker).hexdigest()
     print(json.dumps(report, sort_keys=True))
 
 
@@ -226,6 +246,7 @@ def read_patches(tar_path, expected_tar, expected_hashes):
         if set(V4_NAMES.values()).issubset(expected_hashes)
         else None,
         files.get(V5_NAME),
+        files.get(V6_NAME),
     ):
         raise ValueError("Transfer tar contains noncanonical or extra bytes.")
     return files
@@ -380,6 +401,9 @@ def install(args):
     identity_sha = getattr(args, "identity_sha256", None)
     v4_hashes = {key: getattr(args, key + "_sha256", None) for key in V4_NAMES}
     jobs_sha = getattr(args, "jobs_sha256", None)
+    worker_sha = getattr(args, "worker_sha256", None)
+    if worker_sha is not None and jobs_sha is None:
+        raise ValueError("V6 requires nine fixed SHA-256 digests.")
     if jobs_sha is not None and (
         not all(value is not None for value in v4_hashes.values())
         or identity_sha is None
@@ -403,6 +427,8 @@ def install(args):
         expected_hashes.update({name: v4_hashes[key] for key, name in V4_NAMES.items()})
     if jobs_sha is not None:
         expected_hashes[V5_NAME] = jobs_sha
+    if worker_sha is not None:
+        expected_hashes[V6_NAME] = worker_sha
     transfer_info = regular(
         transfer_path,
         sum(PATCH_LIMITS[name] for name in expected_hashes) + 20480,
@@ -463,7 +489,9 @@ def install(args):
         )
         record = {
             "kind": (
-                "prism_service_update_v5"
+                "prism_service_update_v6"
+                if worker_sha is not None
+                else "prism_service_update_v5"
                 if jobs_sha is not None
                 else "prism_service_update_v4"
                 if all(value is not None for value in v4_hashes.values())
@@ -491,6 +519,8 @@ def install(args):
             record.update({key + "_sha256": value for key, value in v4_hashes.items()})
         if jobs_sha is not None:
             record["jobs_sha256"] = jobs_sha
+        if worker_sha is not None:
+            record["worker_sha256"] = worker_sha
         for name, value in (
             ("manifest.json", record),
             (
@@ -572,6 +602,7 @@ def main(argv=None):
     for key in V4_NAMES:
         build.add_argument("--" + key)
     build.add_argument("--jobs")
+    build.add_argument("--worker")
     build.add_argument("--output", required=True)
     deploy = actions.add_parser("install")
     deploy.add_argument("--transfer-tar", required=True)
@@ -582,6 +613,7 @@ def main(argv=None):
     for key in V4_NAMES:
         deploy.add_argument("--" + key + "-sha256")
     deploy.add_argument("--jobs-sha256")
+    deploy.add_argument("--worker-sha256")
     args = parser.parse_args(argv)
     try:
         (package if args.action == "package" else install)(args)
