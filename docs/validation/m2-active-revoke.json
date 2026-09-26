@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "kind": "m2_active_revoke_first_increment",
+  "date": "2026-09-25",
+  "branch": "prototype/m2-revoke-active-work",
+  "release_version": 5,
+  "status": "installed_and_bounded_synthetic_linux_kata_check_passed_owner_acceptance_pending",
+  "owner_accepted": false,
+  "pilot_ready": false,
+  "model_calls_during_increment": 0,
+  "release": {
+    "target": "existing private Linux identity-service",
+    "service_state_after_install": "active",
+    "private_tls_selfcheck": "passed",
+    "transfer_archive_sha256": "2764939727afebf7483cbbee647e441a1d958334780f2f0c958c0b6c5a524d0f",
+    "full_source_archive_sha256": "3fcec81887fb019bca86ef951e79d8756e54d9ec60287a0d5b9ba54681cfed8d",
+    "full_source_file_count": 29,
+    "release_patch_files": [
+      "src/prism/webapp.py",
+      "src/prism/static/app.js",
+      "src/prism/identity.py",
+      "src/prism/conversation.py",
+      "src/prism/sharing.py",
+      "src/prism/owner.py",
+      "src/prism/handoff.py",
+      "src/prism/jobs.py"
+    ],
+    "previous_release_and_service_data": "preserved",
+    "database_integrity": "passed",
+    "model_dispatches_before_and_after": 64,
+    "grants_before_and_after": 9,
+    "application_model_budget_cents": 1000,
+    "vm_automatic_stop": "disabled; VM remains running"
+  },
+  "local_validation": {
+    "full_backend_suite": {
+      "passed": 212,
+      "failed": 0
+    },
+    "focused_release_suite": {
+      "passed": 18,
+      "failed": 0
+    },
+    "targeted_ruff": "passed",
+    "frontend_build": "passed",
+    "focused_independent_static_code_review": "No blocking issue remained after a script cleanup fix; not an audit."
+  },
+  "linux_kata_acceptance": {
+    "installed_v5_code": true,
+    "fixture": "isolated synthetic temporary database and project",
+    "checks_passed": 13,
+    "checks_failed": 0,
+    "observations": {
+      "dedicated_linux_host": "passed",
+      "initial_namespace_empty": "passed",
+      "reference_runtime_ready": "passed",
+      "exact_owned_running_job_observed": "passed",
+      "exact_resource_bound": "passed",
+      "only_temporary_named_grant_revoked": "passed",
+      "subsequent_get_denied": "passed",
+      "subsequent_submit_denied": "passed",
+      "termination_within_script_bound": "passed within 45-second terminal wait bound",
+      "terminal_state": "cancelled",
+      "terminal_result": null,
+      "exact_resource_absent": "passed",
+      "final_namespace_empty": "passed",
+      "cleanup_confirmed": "passed",
+      "worker_dead_after_shutdown": true,
+      "forced_reconciliation": false,
+      "independent_post_run_kata_resource_count": 0
+    },
+    "real_user_or_demo_grant_revoked": false,
+    "provider_credential_touched": false
+  },
+  "limitations": [
+    "The real Google OIDC/HTTPS owner browser revoke path was not exercised.",
+    "Cancellation of a live model-provider request was not exercised; a request already sent to a provider cannot be recalled.",
+    "Crash, host-disconnect lease, and restart behavior were not exercised.",
+    "Streaming and downloads are not implemented and were not exercised.",
+    "The 30-second lease target was not exercised.",
+    "The independent code review was static and does not establish broad security or pilot readiness.",
+    "Owner acceptance is pending and pilot_ready remains false."
+  ]
+}

@@ -1704,6 +1704,56 @@ class IdentityTests(unittest.TestCase):
                     "revoked-question",
                 )
             )
+        with self.store.connect() as db:
+            interrupted = db.execute(
+                "SELECT status,answer FROM turns WHERE session=? AND request_key=?",
+                (session["id"], "revoked-question"),
+            ).fetchone()
+        self.assertEqual(interrupted["status"], "interrupted")
+        self.assertIsNone(interrupted["answer"])
+
+        late_principal, late_session = self.named_session(
+            candidate["id"], "recipient-c", mode="verify"
+        )
+
+        async def late_answer(messages, info):
+            return ModelResponse(
+                parts=[ToolCallPart(info.output_tools[0].name, answer)]
+            )
+
+        late_conversations = Conversations(
+            self.store, jobs, test_model=FunctionModel(late_answer), budget_cents=100
+        )
+        validate = late_conversations.validate_answer
+
+        def revoke_after_validation(scope, output):
+            validated = validate(scope, output)
+            self.store.revoke_grant(late_session["grant_id"])
+            return validated
+
+        with (
+            mock_patch.object(
+                late_conversations,
+                "validate_answer",
+                side_effect=revoke_after_validation,
+            ),
+            self.assertRaises(Denied),
+        ):
+            asyncio.run(
+                late_conversations.ask(
+                    late_session["id"],
+                    late_principal,
+                    "Does the source still report 7?",
+                    "late-revoke-answer",
+                )
+            )
+        with self.store.connect() as db:
+            discarded = db.execute(
+                "SELECT status,answer FROM turns WHERE session=? AND request_key=?",
+                (late_session["id"], "late-revoke-answer"),
+            ).fetchone()
+        self.assertEqual(discarded["status"], "interrupted")
+        self.assertIsNone(discarded["answer"])
 
 
 if __name__ == "__main__":

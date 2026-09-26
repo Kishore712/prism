@@ -1,15 +1,19 @@
 # Private guest identity-service preparation
 
 **Current demo state (2026-09-25):** The private identity-service is running
-the immutable v4 release, including M2 order 5 owner decisions. The bounded
-two-identity order 5 browser/API acceptance passed; see the
-[sanitized release record](validation/m2-access-decisions-release.json). The
-aggregate model reservation ceiling remains $10.00 (1,000 cents), with $6.80
-remaining at this checkpoint. This application reservation ceiling is not a
-hard provider billing cap. The VM remains RUNNING with no automatic stop, and
-on-demand IAP SSH remains configured. Follow the [end-to-end live demo
-SOP](live-demo-sop.md) for the owner-to-recipient walkthrough. Historical
-records retain their original point-in-time budget and grant state.
+the immutable v5 release, including the first M2 order 6 increment for active
+revocation of in-flight collaborator work. Its transfer archive SHA-256 is
+`2764939727afebf7483cbbee647e441a1d958334780f2f0c958c0b6c5a524d0f`; the full
+29-source release archive SHA-256 is
+`3fcec81887fb019bca86ef951e79d8756e54d9ec60287a0d5b9ba54681cfed8d`. The
+service is active and private TLS self-check passed. The application model
+reservation ceiling is 1,000 cents; this is not a provider billing cap. The VM
+remains RUNNING with no automatic stop, and on-demand IAP SSH remains
+configured. Existing database integrity passed; `model_dispatches` remained
+64 and grants remained 9. No new model call occurred and no user/demo grant
+was revoked. Follow the [end-to-end live demo SOP](live-demo-sop.md) for
+owner-path operations. Order 6 acceptance and pilot readiness remain pending.
+See the [sanitized v5 record](validation/m2-active-revoke.json).
 
 **Historical owner-path checkpoint (2026-09-23):** The owner-only private
 OIDC service checkpoint passed on the new immutable 29-file release. The
@@ -340,6 +344,68 @@ The recorded order 5 deployment used transfer archive SHA-256
 installation validation passed, the service is active, and private TLS
 self-check passed. These hashes identify the recorded artifact; reproduce
 them only from the matching source checkout and package inputs.
+
+## Immutable v5 release for the first M2 order 6 increment
+
+Version 5 adds exactly `src/prism/jobs.py` to the seven v4 release files. The
+canonical eight-file package was installed on the existing private service.
+The transfer archive SHA-256 is
+`2764939727afebf7483cbbee647e441a1d958334780f2f0c958c0b6c5a524d0f`; the
+complete 29-source release archive SHA-256 is
+`3fcec81887fb019bca86ef951e79d8756e54d9ec60287a0d5b9ba54681cfed8d`.
+Frontend build, full backend suite (212 passed), the focused release suite
+(18 passed), and targeted Ruff passed. The exact canonical paths are the seven
+v4 paths above plus `src/prism/jobs.py`. With generated
+`src/prism/static/app.js` present, package all eight with the v5-capable release
+tool:
+
+```bash
+python3 scripts/gcp/identity-service-release.py package \
+  --webapp src/prism/webapp.py \
+  --app-js src/prism/static/app.js \
+  --identity src/prism/identity.py \
+  --conversation src/prism/conversation.py \
+  --sharing src/prism/sharing.py \
+  --owner src/prism/owner.py \
+  --handoff src/prism/handoff.py \
+  --jobs src/prism/jobs.py \
+  --output <new-private-absolute-path>/identity-v5.tar
+```
+
+Transfer the archive and reviewed release/lifecycle helpers over the existing
+private administrative channel. Install with the transfer and per-file
+SHA-256 values emitted by `package`:
+
+```bash
+python3 /usr/local/libexec/prism-identity-service-release.py install \
+  --transfer-tar <private-transfer-path>/identity-v5.tar \
+  --transfer-tar-sha256 <recorded-transfer-sha256> \
+  --webapp-sha256 <recorded-webapp-sha256> \
+  --app-js-sha256 <recorded-app-js-sha256> \
+  --identity-sha256 <recorded-identity-sha256> \
+  --conversation-sha256 <recorded-conversation-sha256> \
+  --sharing-sha256 <recorded-sharing-sha256> \
+  --owner-sha256 <recorded-owner-sha256> \
+  --handoff-sha256 <recorded-handoff-sha256> \
+  --jobs-sha256 <recorded-jobs-sha256>
+```
+
+The v5 installer rejects partial or extra patch sets, validates the canonical
+archive and stopped service/Shields Up preconditions, and publishes an
+immutable release and update record while retaining prior releases and service
+data. Re-render and validate the unit with its corresponding lifecycle helper,
+then start the service manually. Confirm the update marker, archive hashes,
+active service and private TLS self-check. Keep the previous immutable release,
+release data and database in place. No service data migration occurred.
+
+Post-install checks confirmed active service, passing private TLS self-check,
+and database integrity. The existing `model_dispatches` count remained 64 and
+grant count remained 9. The configured application model ceiling is 1,000
+cents; the VM has no automatic stop. The v5 behavior checks and limits are in
+the [focused guide](m2-active-revoke.md) and
+[sanitized validation record](validation/m2-active-revoke.json). Order 6
+owner acceptance remains pending; this checkpoint makes no pilot-readiness
+claim.
 
 A version 2 update can carry exactly the reviewed `src/prism/webapp.py` and
 `src/prism/static/app.js` together. The original single-file command and

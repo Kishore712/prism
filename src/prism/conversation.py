@@ -936,6 +936,14 @@ class Conversations:
             if client:
                 await client.aclose()
             with self.store.connect() as db:
+                try:
+                    self.store.authorized(db, session, actor)
+                except Denied:
+                    # Revoke and answer publication use the same SQLite write
+                    # lock. A late model response can never become a saved answer.
+                    status = "interrupted"
+                    result = None
+                    error = "Access ended; this turn was cancelled and its answer was discarded."
                 db.execute(
                     "UPDATE turns SET status=?,answer=?,error=?,finished=?,usage=? WHERE id=?",
                     (

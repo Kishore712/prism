@@ -307,16 +307,17 @@ class Jobs:
         profile, resource, token,
     ):
         process = None
+        cleanup_confirmed = False
         status, error, result = (
             "failed",
             "Runtime unavailable. Confirm that the fixed image and local engine are ready.",
             None,
         )
         try:
-            self.store.session(session, actor)
-            if self.stop.is_set():
-                raise Denied()
             with self.store.connect() as db:
+                self.store.authorized(db, session, actor)
+                if self.stop.is_set():
+                    raise Denied()
                 db.execute("UPDATE runs SET status='running' WHERE id=?", (run,))
             # Fixed argv, no shell, no inherited model credentials or source path.
             runtime_locator = (
@@ -333,14 +334,21 @@ class Jobs:
                 ]
             if profile == "reference-linux":
                 worker_argv.extend([profile, resource, token])
-            process = subprocess.Popen(
-                worker_argv,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
-                cwd="/",
-                env={"PATH": "/usr/local/bin:/usr/bin:/bin", "LANG": "C.UTF-8"},
-            )
+            # Serialize the final authorization check and launch with revoke.
+            # A revoke committed before this transaction cannot start a worker;
+            # one committed after launch is observed by the cancellation loop.
+            with self.store.connect() as db:
+                self.store.authorized(db, session, actor)
+                if self.stop.is_set():
+                    raise Denied()
+                process = subprocess.Popen(
+                    worker_argv,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    cwd="/",
+                    env={"PATH": "/usr/local/bin:/usr/bin:/bin", "LANG": "C.UTF-8"},
+                )
             encoded_argument = argument.encode("ascii")
             if process.stdin is None or len(encoded_argument) > 100 * 1024:
                 raise ValueError("Invalid bounded action payload")
@@ -414,6 +422,7 @@ class Jobs:
                     or record.get("image_id") != self.registry.reference.image_id
                 ):
                     raise ValueError("Invalid reference runtime provenance")
+                cleanup_confirmed = True
                 if cancellation or record.get("stop_reason") == "cancelled":
                     status, error = (
                         "cancelled",
@@ -515,6 +524,25 @@ class Jobs:
                 status = "uncertain"
         finally:
             with self.store.connect() as db:
+                try:
+                    self.store.authorized(db, session, actor)
+                except Denied:
+                    # The same write transaction serializes result publication
+                    # with owner revoke. Keep uncertain termination uncertain.
+                    if status != "uncertain":
+                        if process is None or cleanup_confirmed:
+                            status, error = (
+                                "cancelled",
+                                "Access ended before result publication; worker exit and cleanup were confirmed."
+                                if process is not None
+                                else "Access ended before execution started.",
+                            )
+                        else:
+                            status, error = (
+                                "uncertain",
+                                "Access ended, but worker and runtime termination were not confirmed. Owner inspection is required.",
+                            )
+                    result = None
                 db.execute(
                     "UPDATE runs SET status=?,finished=?,result=?,error=? WHERE id=?",
                     (
