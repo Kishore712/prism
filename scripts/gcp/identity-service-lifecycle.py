@@ -19,6 +19,9 @@ BASE = Path("/var/lib/prism/identity-pilot")
 INSTALLED = BASE / "oneboot/installed.json"
 UPDATE_ROOT = BASE / "service-updates"
 UNIT = Path("/etc/systemd/system/prism-identity-service.service")
+WATCHDOG_UNIT = Path("/etc/systemd/system/prism-identity-host-watchdog.service")
+WATCHDOG_SOCKET = "/run/prism-host-watchdog/watchdog.sock"
+WATCHDOG_DB = "/var/lib/prism-identity/service-state/demo.sqlite"
 OWNER_UID = 0
 HELPER = "/usr/local/libexec/prism-identity-service-guest.py"
 LIFECYCLE = "/usr/local/libexec/prism-identity-service-lifecycle.py"
@@ -72,6 +75,7 @@ SOURCE_FILES = frozenset(
         "uv.lock",
     )
 )
+SOURCE_FILES_V7 = SOURCE_FILES | {"src/prism/host_watchdog.py"}
 
 
 def checked_directory(path):
@@ -199,11 +203,14 @@ def installation(record, expected_bundle=None, expected_run=None):
                 "Installation ledger is incomplete or differs from the marker."
             )
     hashes = manifest.get("file_sha256")
-    if not isinstance(hashes, dict) or set(hashes) != SOURCE_FILES:
+    kind = manifest.get("kind")
+    source_files = (
+        SOURCE_FILES_V7 if kind == "prism_service_update_v7" else SOURCE_FILES
+    )
+    if not isinstance(hashes, dict) or set(hashes) != source_files:
         raise ValueError("Installation manifest differs from the marker.")
     if update:
         transfer = installed.get("transfer_tar_sha256")
-        kind = manifest.get("kind")
         patch_names = {
             "prism_service_update_v1": {"src/prism/webapp.py"},
             "prism_service_update_v2": {
@@ -245,6 +252,18 @@ def installation(record, expected_bundle=None, expected_run=None):
                 "src/prism/jobs.py",
                 "src/prism/worker.py",
             },
+            "prism_service_update_v7": {
+                "src/prism/identity.py",
+                "src/prism/webapp.py",
+                "src/prism/static/app.js",
+                "src/prism/conversation.py",
+                "src/prism/sharing.py",
+                "src/prism/owner.py",
+                "src/prism/handoff.py",
+                "src/prism/jobs.py",
+                "src/prism/worker.py",
+                "src/prism/host_watchdog.py",
+            },
         }.get(kind)
         expected_manifest_keys = {
             "kind",
@@ -269,6 +288,7 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "prism_service_update_v4",
                     "prism_service_update_v5",
                     "prism_service_update_v6",
+                    "prism_service_update_v7",
                 )
                 else set()
             )
@@ -280,6 +300,7 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "prism_service_update_v4",
                     "prism_service_update_v5",
                     "prism_service_update_v6",
+                    "prism_service_update_v7",
                 )
                 else set()
             )
@@ -295,15 +316,26 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "prism_service_update_v4",
                     "prism_service_update_v5",
                     "prism_service_update_v6",
+                    "prism_service_update_v7",
                 )
                 else set()
             )
             | (
                 {"jobs_sha256"}
-                if kind in ("prism_service_update_v5", "prism_service_update_v6")
+                if kind
+                in (
+                    "prism_service_update_v5",
+                    "prism_service_update_v6",
+                    "prism_service_update_v7",
+                )
                 else set()
             )
-            | ({"worker_sha256"} if kind == "prism_service_update_v6" else set())
+            | (
+                {"worker_sha256"}
+                if kind in ("prism_service_update_v6", "prism_service_update_v7")
+                else set()
+            )
+            | ({"host_watchdog_sha256"} if kind == "prism_service_update_v7" else set())
             or not isinstance(transfer, str)
             or not BUNDLE_RE.fullmatch(transfer)
             or marker.parent.name != transfer
@@ -321,6 +353,7 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "prism_service_update_v4",
                     "prism_service_update_v5",
                     "prism_service_update_v6",
+                    "prism_service_update_v7",
                 )
                 and manifest.get("app_js_sha256") != hashes["src/prism/static/app.js"]
             )
@@ -331,6 +364,7 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "prism_service_update_v4",
                     "prism_service_update_v5",
                     "prism_service_update_v6",
+                    "prism_service_update_v7",
                 )
                 and manifest.get("identity_sha256") != hashes["src/prism/identity.py"]
             )
@@ -340,6 +374,7 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "prism_service_update_v4",
                     "prism_service_update_v5",
                     "prism_service_update_v6",
+                    "prism_service_update_v7",
                 )
                 and any(
                     manifest.get(key + "_sha256") != hashes["src/prism/" + key + ".py"]
@@ -347,12 +382,22 @@ def installation(record, expected_bundle=None, expected_run=None):
                 )
             )
             or (
-                kind in ("prism_service_update_v5", "prism_service_update_v6")
+                kind
+                in (
+                    "prism_service_update_v5",
+                    "prism_service_update_v6",
+                    "prism_service_update_v7",
+                )
                 and manifest.get("jobs_sha256") != hashes["src/prism/jobs.py"]
             )
             or (
-                kind == "prism_service_update_v6"
+                kind in ("prism_service_update_v6", "prism_service_update_v7")
                 and manifest.get("worker_sha256") != hashes["src/prism/worker.py"]
+            )
+            or (
+                kind == "prism_service_update_v7"
+                and manifest.get("host_watchdog_sha256")
+                != hashes["src/prism/host_watchdog.py"]
             )
         ):
             raise ValueError("Service update manifest differs from the marker.")
@@ -378,7 +423,10 @@ def installation(record, expected_bundle=None, expected_run=None):
             raise ValueError("Service source tar hash mismatch.")
         with tarfile.open(archive, "r:") as tar:
             members = tar.getmembers()
-            if len(members) != 29 or {item.name for item in members} != SOURCE_FILES:
+            if (
+                len(members) != len(source_files)
+                or {item.name for item in members} != source_files
+            ):
                 raise ValueError("Service source tar inventory mismatch.")
             for item in members:
                 stream = tar.extractfile(item) if item.isfile() else None
@@ -405,7 +453,7 @@ def installation(record, expected_bundle=None, expected_run=None):
         or info.st_mode & 0o077
     ):
         raise ValueError("Installed release directory is unavailable.")
-    for name in sorted(SOURCE_FILES):
+    for name in sorted(source_files):
         expected = hashes[name]
         if (
             not isinstance(name, str)
@@ -468,7 +516,17 @@ def project_inventory(expected=None):
     return value
 
 
-def unit_text(host, ip, record, release, bundle, run_id, budget=0, project_sha256=None):
+def unit_text(
+    host,
+    ip,
+    record,
+    release,
+    bundle,
+    run_id,
+    budget=0,
+    project_sha256=None,
+    watchdog=False,
+):
     if project_sha256 is not None and not BUNDLE_RE.fullmatch(project_sha256):
         raise ValueError("Invalid fixed project inventory hash.")
     common = f"--hostname {host} --bind-host {ip}"
@@ -483,11 +541,17 @@ def unit_text(host, ip, record, release, bundle, run_id, budget=0, project_sha25
         f"--tls-key-file {KEY}"
     )
     model = f" --model-budget-cents {budget}"
+    dependency = " prism-identity-host-watchdog.service" if watchdog else ""
+    watchdog_preflight = (
+        f"ExecStartPre=/usr/bin/python3 {LIFECYCLE} watchdog-ready {pinned}\n"
+        if watchdog
+        else ""
+    )
     return f"""[Unit]
 Description=Prism private named identity service
-Requires=tailscaled.service prism-identify-boot-restore.service
-BindsTo=tailscaled.service
-After=tailscaled.service prism-identify-boot-restore.service
+Requires=tailscaled.service prism-identify-boot-restore.service{dependency}
+BindsTo=tailscaled.service{dependency}
+After=tailscaled.service prism-identify-boot-restore.service{dependency}
 
 [Service]
 Type=exec
@@ -499,10 +563,39 @@ TimeoutStopSec=240
 StandardOutput=null
 StandardError=journal
 ExecStartPre=/usr/bin/python3 {LIFECYCLE} prepare {pinned}
-ExecStartPre=/usr/bin/python3 {HELPER} preflight {prism}{model}{project}
+{watchdog_preflight}ExecStartPre=/usr/bin/python3 {HELPER} preflight {prism}{model}{project}
 ExecStart=/usr/bin/python3 {LIFECYCLE} serve {pinned}{model}
 ExecStartPost=/usr/bin/python3 {LIFECYCLE} open {pinned}
 ExecStopPost=/usr/bin/python3 {LIFECYCLE} close {common}
+"""
+
+
+def watchdog_unit_text(host, ip, record, release, bundle, run_id):
+    pinned = (
+        f"--hostname {host} --bind-host {ip} --installed-record {record} "
+        f"--bundle-sha256 {bundle} --run-id {run_id} "
+        f"--release {release} --db {WATCHDOG_DB}"
+    )
+    return f"""[Unit]
+Description=Prism private host watchdog
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=exec
+User=root
+UMask=0077
+RuntimeDirectory=prism-host-watchdog
+RuntimeDirectoryMode=0700
+Restart=on-failure
+RestartSec=1
+TimeoutStartSec=60
+TimeoutStopSec=240
+StandardOutput=null
+StandardError=journal
+ExecStartPre=/usr/bin/python3 {LIFECYCLE} watchdog-prepare {pinned}
+ExecStart=/usr/bin/python3 {LIFECYCLE} watchdog-serve {pinned}
+ExecStopPost=/usr/bin/python3 {LIFECYCLE} close --hostname {host} --bind-host {ip}
 """
 
 
@@ -513,6 +606,7 @@ def render(args):
     ip = bind_ip(args.bind_host)
     selected = Path(args.installed_record) if args.installed_record else INSTALLED
     release, bundle, run_id = installation(selected)
+    watchdog = uses_watchdog(selected)
     budget = model_budget(args.model_budget_cents)
     project_sha256 = None
     if args.enable_project:
@@ -522,20 +616,46 @@ def render(args):
     target = Path(args.output)
     if target != UNIT or target.is_symlink():
         raise ValueError("Expected the fixed new service unit path.")
+    if watchdog and (WATCHDOG_UNIT.exists() or WATCHDOG_UNIT.is_symlink()):
+        raise ValueError("Expected the fixed new watchdog unit path.")
     descriptor = os.open(
         target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600
     )
+    watchdog_created = False
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
             stream.write(
                 unit_text(
-                    host, ip, selected, release, bundle, run_id, budget, project_sha256
+                    host,
+                    ip,
+                    selected,
+                    release,
+                    bundle,
+                    run_id,
+                    budget,
+                    project_sha256,
+                    watchdog,
                 )
             )
             stream.flush()
             os.fsync(stream.fileno())
+        if watchdog:
+            watchdog_descriptor = os.open(
+                WATCHDOG_UNIT,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                0o600,
+            )
+            watchdog_created = True
+            with os.fdopen(watchdog_descriptor, "w", encoding="utf-8") as stream:
+                stream.write(
+                    watchdog_unit_text(host, ip, selected, release, bundle, run_id)
+                )
+                stream.flush()
+                os.fsync(stream.fileno())
     except BaseException:
         target.unlink(missing_ok=True)
+        if watchdog_created:
+            WATCHDOG_UNIT.unlink(missing_ok=True)
         raise
     print(
         "Private service unit rendered; it has no Install section and is not enabled."
@@ -679,9 +799,91 @@ def prepare(host, ip, record, bundle, run_id, project_sha256=None):
     print("Private service guard and closed tailnet state passed.")
 
 
+def uses_watchdog(record):
+    return (
+        Path(record) != INSTALLED
+        and json.loads(
+            (Path(record).parent / "manifest.json").read_text(encoding="utf-8")
+        ).get("kind")
+        == "prism_service_update_v7"
+    )
+
+
+def watchdog_release(record, bundle, run_id):
+    release, _, _ = installation(record, bundle, run_id)
+    if not uses_watchdog(record):
+        raise ValueError("The fixed release has no host watchdog.")
+    return release
+
+
+def verify_watchdog_unit(host, ip, record, release, bundle, run_id):
+    info = WATCHDOG_UNIT.lstat()
+    if (
+        not stat.S_ISREG(info.st_mode)
+        or info.st_uid != OWNER_UID
+        or info.st_nlink != 1
+        or info.st_mode & 0o022
+        or info.st_size > 8192
+        or WATCHDOG_UNIT.read_text(encoding="utf-8")
+        != watchdog_unit_text(host, ip, record, release, bundle, run_id)
+    ):
+        raise ValueError("The fixed host watchdog unit differs from the release.")
+
+
+def watchdog_command(release, action):
+    argv = [str(Path(release) / "venv/bin/python"), "-m", "prism.host_watchdog", action]
+    if action == "serve":
+        argv += ["--db", WATCHDOG_DB]
+    return argv
+
+
+def watchdog_environment(release):
+    return {**ENV, "PYTHONPATH": str(Path(release) / "src"), "PYTHONUNBUFFERED": "1"}
+
+
+def watchdog_prepare(host, ip, record, bundle, run_id, expected_release, db):
+    release = watchdog_release(record, bundle, run_id)
+    if expected_release != release or db != WATCHDOG_DB:
+        raise ValueError("The host watchdog unit differs from the fixed release or DB.")
+    verify_watchdog_unit(host, ip, record, release, bundle, run_id)
+
+
+def watchdog_serve(host, ip, record, bundle, run_id, expected_release, db):
+    release = watchdog_release(record, bundle, run_id)
+    if expected_release != release or db != WATCHDOG_DB:
+        raise ValueError("The host watchdog unit differs from the fixed release or DB.")
+    verify_watchdog_unit(host, ip, record, release, bundle, run_id)
+    argv = watchdog_command(release, "serve")
+    os.execve(argv[0], argv, watchdog_environment(release))
+
+
+def watchdog_ready(host, ip, record, bundle, run_id):
+    release = watchdog_release(record, bundle, run_id)
+    verify_watchdog_unit(host, ip, record, release, bundle, run_id)
+    for attempt in range(10):
+        try:
+            run("systemctl", "is-active", "--quiet", WATCHDOG_UNIT.name)
+            subprocess.run(
+                watchdog_command(release, "health"),
+                env=watchdog_environment(release),
+                cwd=release,
+                capture_output=True,
+                text=True,
+                timeout=3,
+                check=True,
+            )
+            return
+        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            if attempt == 9:
+                raise ValueError("The fixed host watchdog is not healthy.")
+            time.sleep(1)
+
+
 def open_service(host, ip, record, bundle, run_id, project_sha256=None):
     try:
         installation(record, bundle, run_id)
+        if uses_watchdog(record):
+            watchdog_ready(host, ip, record, bundle, run_id)
         if project_sha256 is not None:
             project_inventory(project_sha256)
         guard_ready()
@@ -727,6 +929,8 @@ def open_service(host, ip, record, bundle, run_id, project_sha256=None):
 def serve(host, ip, record, bundle, run_id, budget=0, project_sha256=None):
     model_budget(budget)
     release, _, _ = installation(record, bundle, run_id)
+    if uses_watchdog(record):
+        watchdog_ready(host, ip, record, bundle, run_id)
     if project_sha256 is not None:
         project_inventory(project_sha256)
     guard_ready()
@@ -763,7 +967,16 @@ def serve(host, ip, record, bundle, run_id, budget=0, project_sha256=None):
 def parser():
     root = argparse.ArgumentParser(description=__doc__)
     actions = root.add_subparsers(dest="action", required=True)
-    for name in ("render", "prepare", "serve", "open", "close"):
+    for name in (
+        "render",
+        "prepare",
+        "serve",
+        "open",
+        "close",
+        "watchdog-prepare",
+        "watchdog-serve",
+        "watchdog-ready",
+    ):
         item = actions.add_parser(name)
         item.add_argument("--bind-host", required=True)
         if name == "render":
@@ -779,6 +992,9 @@ def parser():
             item.add_argument("--project-sha256")
             if name == "serve":
                 item.add_argument("--model-budget-cents", type=int, default=0)
+            if name in ("watchdog-prepare", "watchdog-serve"):
+                item.add_argument("--release", required=True)
+                item.add_argument("--db", required=True)
         else:
             item.add_argument("--hostname", required=True)
     return root
@@ -811,6 +1027,30 @@ def main(argv=None):
                         args.bundle_sha256,
                         args.run_id,
                         args.project_sha256,
+                    )
+                elif args.action == "watchdog-prepare":
+                    watchdog_prepare(
+                        host,
+                        ip,
+                        args.installed_record,
+                        args.bundle_sha256,
+                        args.run_id,
+                        args.release,
+                        args.db,
+                    )
+                elif args.action == "watchdog-serve":
+                    watchdog_serve(
+                        host,
+                        ip,
+                        args.installed_record,
+                        args.bundle_sha256,
+                        args.run_id,
+                        args.release,
+                        args.db,
+                    )
+                elif args.action == "watchdog-ready":
+                    watchdog_ready(
+                        host, ip, args.installed_record, args.bundle_sha256, args.run_id
                     )
                 elif args.action == "serve":
                     serve(

@@ -10,6 +10,7 @@ import time
 from pathlib import Path
 
 from prism.engine import IMAGE, EngineError, socket_path
+from prism.host_watchdog import WatchdogClient, WatchdogError
 from prism.projects import json_check_action, json_check_payload
 from prism.reference_runtime import HANDLER, RuntimeRegistry
 from prism.sharing import Denied, bootstrap_action, digest, ident, packed
@@ -37,12 +38,15 @@ runpy.run_module('prism.worker', run_name='__main__', alter_sys=True)
 
 
 class Jobs:
-    def __init__(self, store, socket=None, *, recover=True, registry=None):
+    def __init__(
+        self, store, socket=None, *, recover=True, registry=None, watchdog=None
+    ):
         self.store = store
         self.socket = str(socket_path(socket))
         self.registry = registry or RuntimeRegistry(
             profile="development", socket=self.socket
         )
+        self.watchdog = watchdog or WatchdogClient()
         self.threads = set()
         self.stop = threading.Event()
         with store.connect() as db:
@@ -61,10 +65,19 @@ class Jobs:
             for name in ("runtime_profile", "runtime_resource", "runtime_token"):
                 if name not in columns:
                     db.execute(f"ALTER TABLE runs ADD COLUMN {name} TEXT")
-        if recover:
+        if self.registry.profile == "reference-linux":
+            try:
+                self.watchdog.health()
+            except WatchdogError:
+                self.registry.blocked = True
+        if recover and not self.registry.blocked:
             self._recover()
             if self.registry.profile == "reference-linux" and not self.registry.blocked:
-                self.registry.activate()
+                try:
+                    self.watchdog.health()
+                    self.registry.activate()
+                except WatchdogError:
+                    self.registry.blocked = True
 
     def _recover(self):
         with self.store.connect() as db:
@@ -362,6 +375,8 @@ class Jobs:
     ):
         process = None
         lease_read_fd = lease_write_fd = None
+        registered = False
+        trusted_finish = False
         cleanup_confirmed = False
         status, error, result = (
             "failed",
@@ -374,6 +389,9 @@ class Jobs:
                 if self.stop.is_set():
                     raise Denied()
                 db.execute("UPDATE runs SET status='running' WHERE id=?", (run,))
+            if profile == "reference-linux":
+                self.watchdog.register(run, resource, token)
+                registered = True
             # Fixed argv, no shell or inherited model credentials. The trusted
             # source root selects this release's worker even under Python -I.
             runtime_locator = (
@@ -400,8 +418,6 @@ class Jobs:
                 self.store.authorized(db, session, actor)
                 if self.stop.is_set():
                     raise Denied()
-                if lease_write_fd is not None:
-                    os.write(lease_write_fd, b"L")
                 process = subprocess.Popen(
                     worker_argv,
                     stdin=subprocess.PIPE,
@@ -415,6 +431,9 @@ class Jobs:
                         else {}
                     ),
                 )
+                if profile == "reference-linux":
+                    self.watchdog.attach(run, resource, token, process.pid)
+                    os.write(lease_write_fd, b"L")
             if lease_read_fd is not None:
                 os.close(lease_read_fd)
                 lease_read_fd = None
@@ -453,8 +472,9 @@ class Jobs:
                     and time.monotonic() >= next_renewal
                 ):
                     try:
+                        self.watchdog.renew(run, resource, token)
                         os.write(lease_write_fd, b"L")
-                    except OSError:
+                    except (OSError, WatchdogError):
                         allowed = False
                     next_renewal = time.monotonic() + LEASE_RENEW_SECONDS
                 if not allowed or time.monotonic() > deadline:
@@ -567,6 +587,9 @@ class Jobs:
                     error = (
                         "Verification did not complete successfully within its limits."
                     )
+                if profile == "reference-linux" and cleanup_confirmed:
+                    self.watchdog.finishing(run, resource, token)
+                    trusted_finish = True
             elif process.returncode == 3:
                 status = "uncertain"
                 error = "Worker could not confirm cleanup. Owner runtime inspection is required."
@@ -583,7 +606,15 @@ class Jobs:
                 except (EngineError, ValueError):
                     error = "The reference worker returned no trusted cleanup record and cleanup is unconfirmed."
                 status = "uncertain"
-        except (Denied, OSError, ValueError, KeyError, TypeError, AttributeError):
+        except (
+            Denied,
+            OSError,
+            ValueError,
+            KeyError,
+            TypeError,
+            AttributeError,
+            WatchdogError,
+        ):
             if process is None:
                 status, error = (
                     "cancelled",
@@ -612,6 +643,14 @@ class Jobs:
             for fd in (lease_read_fd, lease_write_fd):
                 if fd is not None:
                     os.close(fd)
+            if registered and process is not None and not trusted_finish:
+                status, result = "uncertain", None
+                error = "The reference worker ended without trusted cleanup; host watchdog abort was required."
+                try:
+                    self.watchdog.abort(run, resource, token)
+                except WatchdogError:
+                    self.registry.blocked = True
+                registered = False
             with self.store.connect() as db:
                 try:
                     self.store.authorized(db, session, actor)
@@ -643,6 +682,23 @@ class Jobs:
                     ),
                 )
                 self.store.event(db, "run_finished", actor, run, status)
+            if registered:
+                try:
+                    self.watchdog.release(run, resource, token)
+                except WatchdogError:
+                    self.registry.blocked = True
+                    result = None
+                    with self.store.connect() as db:
+                        db.execute(
+                            "UPDATE runs SET status='uncertain',result=NULL,error=? WHERE id=?",
+                            (
+                                "Host watchdog release was not confirmed. Owner runtime inspection is required.",
+                                run,
+                            ),
+                        )
+                        self.store.event(
+                            db, "run_reclassified", actor, run, "uncertain"
+                        )
             if result:
                 self.store.measure("runtime_seconds", result["elapsed_seconds"])
             self.threads.discard(threading.current_thread())

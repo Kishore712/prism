@@ -6,6 +6,7 @@ import io
 import json
 import os
 import platform
+import select
 import shutil
 import subprocess
 import sys
@@ -22,6 +23,7 @@ from prism import worker as worker_module
 from prism.conversation import Conversations
 from prism.engine import IMAGE, EngineError
 from prism.handoff import Handoffs, HandoffSelection
+from prism.host_watchdog import WatchdogError
 from prism.jobs import SOURCE_ROOT, WORKER_BOOTSTRAP, Jobs
 from prism.owner import OwnerIdentity, OwnerWorkspace
 from prism.projects import ProjectSource
@@ -106,6 +108,32 @@ class FakeRegistry(RuntimeRegistry):
         self.activated = True
 
 
+class FakeWatchdog:
+    def __init__(self):
+        self.calls = []
+
+    def health(self):
+        self.calls.append("health")
+
+    def register(self, *args):
+        self.calls.append("register")
+
+    def attach(self, *args):
+        self.calls.append("attach")
+
+    def renew(self, *args):
+        self.calls.append("renew")
+
+    def finishing(self, *args):
+        self.calls.append("finishing")
+
+    def abort(self, *args):
+        self.calls.append("abort")
+
+    def release(self, *args):
+        self.calls.append("release")
+
+
 class ReferencePolicyTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -125,6 +153,7 @@ class ReferencePolicyTests(unittest.TestCase):
             self.store,
             recover=recover,
             registry=FakeRegistry(reference or FakeReference()),
+            watchdog=FakeWatchdog(),
         )
 
     def test_dispatch_observation_requires_exact_owned_running_resource(self):
@@ -409,6 +438,7 @@ class ReferencePolicyTests(unittest.TestCase):
 
         class Process:
             def __init__(self):
+                self.pid = os.getpid()
                 self.stdin = io.BytesIO()
                 self.stdout = io.BytesIO(b"not-a-trusted-record")
                 self.returncode = 2
@@ -444,6 +474,7 @@ class ReferencePolicyTests(unittest.TestCase):
 
         class Process:
             def __init__(self):
+                self.pid = os.getpid()
                 self.stdin = io.BytesIO()
                 self.stdout = io.BytesIO(b"")
                 self.returncode = 2
@@ -454,18 +485,26 @@ class ReferencePolicyTests(unittest.TestCase):
             def wait(self, timeout=None):
                 return self.returncode
 
+        lease_fd = []
+
         def launched(argv, **options):
             self.assertEqual(argv[1:5], ["-I", "-c", WORKER_BOOTSTRAP, SOURCE_ROOT])
             self.assertEqual(
                 argv[-4:-1], ["reference-linux", arguments[8], arguments[9]]
             )
             self.assertEqual(options["pass_fds"], (int(argv[-1]),))
-            self.assertEqual(os.read(int(argv[-1]), 1), b"L")
+            lease_fd.append(int(argv[-1]))
             self.assertNotIn("preexec_fn", options)
             self.assertEqual(set(options["env"]), {"PATH", "LANG"})
             return Process()
 
-        with patch("prism.jobs.subprocess.Popen", side_effect=launched):
+        def attached(*_args):
+            self.assertEqual(select.select(lease_fd, [], [], 0)[0], [])
+
+        with (
+            patch("prism.jobs.subprocess.Popen", side_effect=launched),
+            patch.object(jobs.watchdog, "attach", side_effect=attached),
+        ):
             jobs._execute(*arguments)
         with self.store.connect() as db:
             row = db.execute(
@@ -499,6 +538,7 @@ class ReferencePolicyTests(unittest.TestCase):
 
         class Process:
             def __init__(self):
+                self.pid = os.getpid()
                 self.stdin = io.BytesIO()
                 self.stdout = io.BytesIO(json.dumps(payload).encode())
                 self.returncode = 0
@@ -515,6 +555,62 @@ class ReferencePolicyTests(unittest.TestCase):
         result = jobs.get(self.session["id"], "reviewer", run["id"])
         self.assertEqual(result["status"], "completed")
         self.assertEqual(result["result"]["output"]["files"], arguments[6]["files"])
+
+    def test_watchdog_release_failure_reclassifies_result_and_event(self):
+        jobs = self.jobs(recover=False)
+        with patch.object(jobs, "_launch") as launch:
+            run = jobs.submit_json_check(
+                self.session["id"], "reviewer", "watchdog-release-failure"
+            )
+        arguments = launch.call_args.args
+        payload = {
+            "cleaned_up": True,
+            "program_sha256": arguments[5],
+            "runtime_handler": HANDLER,
+            "image_id": jobs.registry.reference.image_id,
+            "stop_reason": "exited",
+            "exit_code": 0,
+            "output_limited": False,
+            "stdout": json.dumps(
+                {"action": "json-check", "files": arguments[6]["files"]}
+            ),
+            "guest_kernel": "synthetic-kernel",
+            "guest_boot_id": "synthetic-boot",
+            "elapsed_seconds": 0.01,
+        }
+
+        class Process:
+            pid = os.getpid()
+            returncode = 0
+
+            def __init__(self):
+                self.stdin = io.BytesIO()
+                self.stdout = io.BytesIO(json.dumps(payload).encode())
+
+            def poll(self):
+                return self.returncode
+
+            def wait(self, timeout=None):
+                return self.returncode
+
+        with (
+            patch("prism.jobs.subprocess.Popen", return_value=Process()),
+            patch.object(jobs.watchdog, "release", side_effect=WatchdogError("lost")),
+        ):
+            jobs._execute(*arguments)
+        with self.store.connect() as db:
+            row = db.execute(
+                "SELECT status,result FROM runs WHERE id=?", (run["id"],)
+            ).fetchone()
+            events = list(
+                db.execute(
+                    "SELECT kind,outcome FROM events WHERE resource=? ORDER BY id",
+                    (run["id"],),
+                )
+            )
+        self.assertEqual((row["status"], row["result"]), ("uncertain", None))
+        self.assertEqual(events[-1]["kind"], "run_reclassified")
+        self.assertEqual(events[-1]["outcome"], "uncertain")
 
     def test_synthetic_reference_grant_revoke_cancels_only_target_run(self):
         jobs = self.jobs(recover=False)
@@ -543,6 +639,7 @@ class ReferencePolicyTests(unittest.TestCase):
 
         class Process:
             def __init__(self):
+                self.pid = os.getpid()
                 self.stdin = io.BytesIO()
                 self.stdout = io.BytesIO(json.dumps(payload).encode())
                 self.returncode = None
