@@ -1,8 +1,10 @@
 # M2 Order 6: Active Revocation of In-Flight Collaborator Work
 
-**Status (2026-09-25):** The private Linux identity-service runs immutable v6,
-which retains the v5 active-revoke behavior and adds a colocated worker lease.
-An isolated synthetic Linux/Kata
+**Status (2026-09-25):** The private Linux identity-service runs immutable v7,
+which retains the v5 active-revoke behavior and v6 colocated worker lease, and
+adds an independent root host watchdog. The bounded v7 results and limits are
+recorded in the [host-watchdog validation record](validation/m2-host-watchdog.json).
+At the earlier v5/v6 checkpoints, an isolated synthetic Linux/Kata
 check passed 13/13 checks. A subsequent browser/API end-to-end run with two
 verified identities on an approved synthetic Document version independently
 observed a Kata job running, then revoked its grant from the same-origin owner
@@ -159,18 +161,72 @@ against or point it at the live service database.
 ## Acceptance boundary and remaining work
 
 The live owner browser revoke path over private HTTPS/OIDC was exercised with
-synthetic data. V6 adds bounded in-process parent-loss evidence, but does not
-cover a remote-host disconnect lease, worker-SIGKILL handling, cancellation of
-a live model-provider request, restarts, streams, or downloads.
-Streaming and downloads are not implemented. The separate test-only lease
-check observed removal by its 30-second deadline; the hard timing target under
-runtime stalls was not established. The focused code review was static and independent, found no
-remaining blocker after a script cleanup fix, and was not a security audit.
-The service remains active on a VM with no automatic stop. Owner acceptance
-remains pending; private-pilot readiness remains false.
+synthetic data. V6 added colocated parent-loss evidence, and v7 adds an
+independent host watchdog with bounded worker-SIGKILL and watchdog-crash
+probes. These checks do not establish host-disconnect handling, an absolute
+30-second guarantee, cancellation of a live model-provider request, or broad
+security assurance. Streaming and downloads are not implemented. The
+independent high static review found no code-level blocker; it was not a
+security audit. The service is active on a VM with no automatic stop. Owner
+acceptance remains pending; private-pilot readiness remains false.
 
-The immediate next action is to present the v5 active-revoke and v6 worker-
-lease evidence for owner review and resolve feedback. Further order 6 work
-must cover the remaining lifecycle conditions and applicable acceptance gates
-before claiming reliable revocation across streams, downloads, failures, or
-restarts.
+At the v6 checkpoint, the immediate next action was to present the v5
+active-revoke and v6 worker-lease evidence for owner review. That historical
+next-step note is superseded by the v7 checkpoint below; owner review is still
+pending. Further order 6 work must cover remaining lifecycle conditions and
+applicable acceptance gates before claiming reliable revocation across
+failures or restarts.
+
+## Independent root host watchdog (immutable v7)
+
+The immutable v7 release adds a root-owned host watchdog in a separate
+systemd cgroup and socket. Before the worker starts Kata, the Jobs controller
+registers the exact run identity with the watchdog and waits for its
+acknowledgment; the controller renews the watchdog lease. The worker also
+maintains a separate colocated pipe lease. Worker death or lease loss causes
+the watchdog to kill the identity-service cgroup and reconcile the run's exact
+runtime resource; an uncertain or null identity fails closed. If the watchdog crashes,
+systemd stops the bound identity unit. A separate watchdog `ExecStopPost`
+restores Shields Up before the watcher restarts, so the watcher does not take
+the existing tailnet guard down with it.
+
+The normal synthetic fixed `json-check` completed through
+`io.containerd.kata.v2`, recorded guest-kernel evidence, cleaned up, and left
+the namespace empty. In the worker-death probe, SIGSTOP was sent to the exact
+`nerdctl` client and SIGKILL to the exact worker. The exact resource was not
+observed before the kill. At +8.05 seconds, the app had failed and stopped, the
+run was `uncertain` with a null result, and the exact resource was absent. No
+resource reappeared during the next five seconds; the namespace was empty and
+Shields Up was true. In the watchdog-crash probe with the exact
+client active, at +22.07 seconds the watcher was activating and the app was
+deactivating; the run was `uncertain` with a null result, the resource was
+absent after the crash, the client was dead, and Shields Up was true. Eight
+seconds later the watcher was active, the app inactive, and the namespace
+empty. A separate preliminary watchdog-crash probe also began before a runtime
+resource was observed. Neither watchdog-crash probe established removal of a
+previously observed resource; they establish the reported fail-closed and
+service-state observations, not a termination bound.
+
+Three synthetic uncertain rows were resolved manually to `failed`/null only
+after inspection confirmed there was no matching Kata resource or process and
+Shields Up was true. Resolution used root-only SQLite access; private backups
+were retained. This was an inspected operator repair, not an automatic trusted
+result or watchdog recovery proof.
+
+The v7 release is immutable. Its transfer archive SHA-256 is
+`eb9e409032696fe4b6159cc2d338e548e6c1100d723a45b4b0607549f80bd501`; the
+complete 30-source archive SHA-256 is
+`1f09da7467b1d76b20ad82ee039e906cd0f18befa359fd851e61d1bf437954dd`. Local
+backend checks passed 247/247, targeted Ruff and diff checks passed, and an
+independent high static review found no code-level blocker; this was not a
+security audit. Final host checks confirmed both units active, private HTTPS
+200, Shields Up false in the final active-state check, database integrity
+passed, zero uncertain or active runs, and an empty Kata namespace. Three
+manual-resolution events were recorded. The model dispatch count is 77, compared with 64 before this
+increment; grants total 11, the application model ceiling remains 1,000 cents,
+and the VM has no automatic stop.
+
+The probes do not establish host-disconnect behavior, a hard 30-second
+termination guarantee, or broad security assurance. No absolute timing SLA is
+claimed. Owner acceptance remains pending and `pilot_ready=false`. The
+sanitized results are in the [v7 host-watchdog validation](validation/m2-host-watchdog.json).

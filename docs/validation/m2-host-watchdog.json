@@ -1,0 +1,115 @@
+{
+  "schema": 1,
+  "kind": "m2-host-watchdog-validation",
+  "date": "2026-09-25",
+  "status": "bounded-validation-passed-owner-acceptance-pending",
+  "release": {
+    "version": 7,
+    "transfer_archive_sha256": "eb9e409032696fe4b6159cc2d338e548e6c1100d723a45b4b0607549f80bd501",
+    "complete_30_source_archive_sha256": "1f09da7467b1d76b20ad82ee039e906cd0f18befa359fd851e61d1bf437954dd",
+    "identity_unit_binds_to_watchdog": true,
+    "v7_hash_pinned_in_both_unit_files": true
+  },
+  "implementation": {
+    "watchdog_privilege": "root",
+    "watchdog_isolation": "separate systemd cgroup and socket",
+    "exact_run_registration_and_ack_before_kata": "Jobs controller registers and receives acknowledgment before Kata; it renews the watchdog lease",
+    "worker_lease": "separate colocated pipe lease",
+    "worker_death_or_lease_loss_kills_identity_cgroup": true,
+    "exact_resource_reconciliation": true,
+    "uncertain_or_null_identity_fails_closed": true,
+    "watchdog_crash_stops_identity_unit": true,
+    "watchdog_exec_stop_post_protects_shields_up_before_restart": true
+  },
+  "local_validation": {
+    "backend_tests": "247/247 passed",
+    "targeted_ruff": "passed",
+    "diff_check": "passed",
+    "independent_high_static_review": "no code-level blocker; not a security audit"
+  },
+  "linux_kata_validation": {
+    "normal_owner_synthetic_json_check": {
+      "outcome": "completed",
+      "runtime_handler": "io.containerd.kata.v2",
+      "guest_kernel_evidence": true,
+      "cleaned_up": true,
+      "namespace_empty_after_run": true
+    },
+    "worker_sigkill": {
+      "exact_nerdctl_client_received_sigstop": true,
+      "exact_worker_killed": true,
+      "exact_resource_observed_before_kill": false,
+      "observed_after_seconds": 8.05,
+      "app_state": "failed_and_stopped",
+      "run_state": "uncertain",
+      "result": null,
+      "exact_resource_absent": true,
+      "followup_observation_seconds": 5,
+      "resource_recreated": false,
+      "namespace_empty": true,
+      "shields_up": true
+    },
+    "watchdog_crash": {
+      "pre_resource_probe": {
+        "resource_observed_before_crash": false,
+        "classification": "limited observation; no resource cleanup claim"
+      },
+      "active_client_probe": {
+        "exact_nerdctl_client_active_at_probe": true,
+        "resource_observed_before_crash": false,
+        "first_observation_after_seconds": 22.07,
+        "first_observed_watcher_state": "activating",
+        "first_observed_app_state": "deactivating",
+        "first_observed_run_state": "uncertain",
+        "first_observed_result": null,
+        "first_observed_exact_resource_absent": true,
+        "first_observed_client_dead": true,
+        "first_observed_shields_up": true,
+        "seconds_until_recovery_observation": 8,
+        "recovered_watcher_state": "active",
+        "recovered_app_state": "inactive",
+        "recovered_namespace_empty": true,
+        "timing_claim": "Observed state transition only; not a termination guarantee"
+      }
+    },
+    "manual_uncertain_resolution": {
+      "synthetic_rows": 3,
+      "resolution": "failed with null result",
+      "resolution_method": "manual inspected root-only SQLite operation",
+      "pre_resolution_checks": [
+        "no matching Kata resource",
+        "no matching process",
+        "Shields Up true"
+      ],
+      "private_backups_retained": true,
+      "automatic_trusted_result": false
+    }
+  },
+  "final_host_state": {
+    "identity_unit_active_and_running": true,
+    "watcher_active_and_running": true,
+    "private_https_status": 200,
+    "final_active_state_shields_up": false,
+    "database_integrity": "passed",
+    "uncertain_runs": 0,
+    "active_runs": 0,
+    "manual_resolution_events": 3,
+    "kata_namespace_empty": true,
+    "model_dispatches": 77,
+    "model_dispatches_before": 64,
+    "grants": 11,
+    "application_model_ceiling_cents": 1000,
+    "vm_automatic_stop": false
+  },
+  "not_established": [
+    "absolute 30-second termination guarantee",
+    "host-disconnect handling",
+    "broad security assurance",
+    "owner acceptance",
+    "private-pilot readiness"
+  ],
+  "model_calls_during_validation": "not separately reported",
+  "owner_acceptance": "pending",
+  "pilot_ready": false,
+  "privacy": "Contains no host name, project identifier, credentials, email address, run identifier, or private path."
+}

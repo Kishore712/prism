@@ -1,22 +1,26 @@
 # Private guest identity-service preparation
 
 **Current demo state (2026-09-25):** The private identity-service is running
-the immutable v6 release. It includes the v5 active-revoke path and the
-colocated parent-to-worker liveness lease for reference-Linux fixed jobs. Its
-transfer archive SHA-256 is
-`774c8125bf190849b97993dafcaf43caeaac0b07ea0088dafb2d2c66e7a1869d`; the full
-29-source release archive SHA-256 is
-`866e68832298af417ff18cba589657c47f20e3e4909b6baff5a6c708d23bb595`. The
-release and lifecycle helpers were updated, the service is active, and private
-TLS self-check passed. The application model
-reservation ceiling is 1,000 cents; this is not a provider billing cap. The VM
-remains RUNNING with no automatic stop, and on-demand IAP SSH remains
-configured. Existing database integrity passed; `model_dispatches` remained
-64 and grants remained 9. No new model call occurred and no user/demo grant
-was revoked. Follow the [end-to-end live demo SOP](live-demo-sop.md) for
+the immutable v7 release, with the separate root host watchdog active. It
+includes v5 active revoke, v6 worker lease, and v7 exact-run registration,
+acknowledgment, renewal, identity-cgroup cleanup, and watchdog-crash handling.
+The transfer archive SHA-256 is
+`eb9e409032696fe4b6159cc2d338e548e6c1100d723a45b4b0607549f80bd501`; the
+complete 30-source archive SHA-256 is
+`1f09da7467b1d76b20ad82ee039e906cd0f18befa359fd851e61d1bf437954dd`. Both
+service units were restored active after bounded Linux/Kata checks. Final host
+checks confirmed private HTTPS returned 200, Shields Up was false in the final
+active-state check,
+database integrity passed, there were zero uncertain or active runs, and the
+Kata namespace was empty. Three manual-resolution events were recorded. The
+application model reservation ceiling is 1,000 cents; this is not a provider
+billing cap. The VM has no automatic stop. The recorded model dispatch count is
+77 (64 before this validation), and grants total 11. Follow the
+[end-to-end live demo SOP](live-demo-sop.md) for
 owner-path operations. Order 6 acceptance and pilot readiness remain pending.
-See the [sanitized v6 worker-lease record](validation/m2-worker-lease.json)
-and the earlier [v5 active-revoke record](validation/m2-active-revoke.json).
+See the [sanitized v7 host-watchdog record](validation/m2-host-watchdog.json),
+the [v6 worker-lease record](validation/m2-worker-lease.json), and the earlier
+[v5 active-revoke record](validation/m2-active-revoke.json).
 
 **Historical owner-path checkpoint (2026-09-23):** The owner-only private
 OIDC service checkpoint passed on the new immutable 29-file release. The
@@ -524,9 +528,9 @@ backed-up old unit, reload systemd, and manually start the baseline release.
 Leave both immutable releases and records available for audit; no historical
 data migration is involved.
 
-## Recorded immutable-release and owner-path result
+## Historical first immutable-release and owner-path result
 
-The currently deployed service uses a new immutable 29-file release. The
+At that checkpoint, the deployed service used a new immutable 29-file release. The
 release source-tar SHA-256 passed verification, and independent byte comparison
 confirmed the original oneboot marker, manifest, and ledger were unchanged.
 The first updater attempt rejected simultaneous IPv4/IPv6 addresses before
