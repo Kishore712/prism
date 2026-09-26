@@ -600,6 +600,43 @@ def create_app(
             raise Denied("Named identity mode is not configured.", 404)
         return store.invitations()
 
+    @app.get("/api/owner/active-task")
+    def owner_active_task(request: Request):
+        auth.authenticate(request, owner=True)
+        if not identity_mode:
+            raise Denied("Named identity mode is not configured.", 404)
+        run = store.active_grant_run()
+        if run is None:
+            return {"grant_id": None, "status": "idle", "owned_running": False}
+        owned_running = False
+        if run["runtime_profile"] == "reference-linux":
+            if (
+                not run["runtime_resource"]
+                or not run["runtime_token"]
+                or runtime_registry.reference is None
+            ):
+                owned_running = None
+            else:
+                try:
+                    info = runtime_registry.reference.inspect_owned(
+                        run["runtime_resource"], run["runtime_token"]
+                    )
+                    state = info.get("State", {}) if info else {}
+                    owned_running = isinstance(state, dict) and (
+                        state.get("Status") == "running" or state.get("Running") is True
+                    )
+                except (EngineError, ValueError):
+                    owned_running = None
+        # An inspect can race with completion; do not report ownership after
+        # the run has already left its active database state.
+        if store.active_grant_run() != run:
+            return {"grant_id": None, "status": "idle", "owned_running": False}
+        return {
+            "grant_id": run["grant_id"],
+            "status": run["status"],
+            "owned_running": owned_running,
+        }
+
     @app.post("/api/owner/versions/{version}/invitations")
     def create_invitation(version: str, body: InvitationInput, request: Request):
         auth.authenticate(request, owner=True)

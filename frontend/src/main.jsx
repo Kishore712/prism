@@ -1487,12 +1487,70 @@ function InvitationManager({ version, invitations, refresh, act, busy }) {
   const [copyStatus, setCopyStatus] = useState("");
   const [discovery, setDiscovery] = useState(null);
   const [discoveryCopy, setDiscoveryCopy] = useState("");
+  const [activeTask, setActiveTask] = useState(null);
+  const [revokingGrant, setRevokingGrant] = useState(null);
   const records = invitations.filter((item) => item.version === version.id);
+  const hasVerifyGrant = records.some(
+    (item) => item.grant_id && item.mode === "verify",
+  );
+  useEffect(() => {
+    if (!hasVerifyGrant) return;
+    let active = true;
+    let pending = false;
+    async function checkTasks() {
+      if (pending || document.hidden) return;
+      pending = true;
+      if (active)
+        setActiveTask({
+          grant_id: null,
+          status: "checking",
+          owned_running: null,
+        });
+      let result;
+      try {
+        result = await api("/owner/active-task");
+      } catch {
+        result = { grant_id: null, status: "unavailable", owned_running: null };
+      }
+      if (active) setActiveTask(result);
+      pending = false;
+    }
+    checkTasks();
+    const timer = setInterval(checkTasks, 1500);
+    document.addEventListener("visibilitychange", checkTasks);
+    return () => {
+      active = false;
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", checkTasks);
+    };
+  }, [hasVerifyGrant]);
   const status = (item) => {
     if (item.revoked) return "Revoked";
     if (item.expires <= Date.now() / 1000) return "Expired";
     if (item.redeemed) return "Active grant";
     return "Awaiting recipient";
+  };
+  const taskStatus = (item) => {
+    if (item.revoked)
+      return activeTask === null ||
+        activeTask.status === "checking" ||
+        activeTask.status === "unavailable" ||
+        activeTask.grant_id === item.grant_id
+        ? "Access revoked; task status pending"
+        : "Access revoked; no active task";
+    if (revokingGrant === item.grant_id)
+      return "Revoking access; task status pending";
+    if (activeTask?.status === "checking" || activeTask === null)
+      return "Checking task status";
+    if (activeTask?.status === "unavailable") return "Task status unavailable";
+    if (activeTask?.grant_id !== item.grant_id) return "No active task";
+    if (activeTask.owned_running) return "Kata running at last check";
+    if (activeTask.status === "queued") return "Task starting";
+    if (activeTask.status === "running")
+      return activeTask.owned_running === null
+        ? "Task status unavailable"
+        : "Task starting/running";
+    return "No active task";
   };
   return (
     <div className="handoff invitation-manager">
@@ -1715,6 +1773,9 @@ function InvitationManager({ version, invitations, refresh, act, busy }) {
               <Badge tone={!item.revoked && item.redeemed ? "green" : ""}>
                 {status(item)}
               </Badge>
+              {item.grant_id && item.mode === "verify" && (
+                <small role="status">{taskStatus(item)}</small>
+              )}
               {item.grant_id && !item.revoked && (
                 <button
                   type="button"
@@ -1722,8 +1783,19 @@ function InvitationManager({ version, invitations, refresh, act, busy }) {
                   disabled={busy}
                   onClick={() =>
                     act(async () => {
-                      await api(`/owner/grants/${item.grant_id}/revoke`, {});
-                      await refresh();
+                      setRevokingGrant(item.grant_id);
+                      setActiveTask({
+                        grant_id: null,
+                        status: "checking",
+                        owned_running: null,
+                      });
+                      try {
+                        await api(`/owner/grants/${item.grant_id}/revoke`, {});
+                        await refresh();
+                      } catch (error) {
+                        setRevokingGrant(null);
+                        throw error;
+                      }
                     })
                   }
                 >

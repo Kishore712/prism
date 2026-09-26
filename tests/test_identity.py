@@ -784,6 +784,224 @@ class IdentityTests(unittest.TestCase):
             )
             self.assertEqual(response.status_code, 403)
 
+    def test_oidc_owner_revoke_cancels_running_json_check_without_cross_grant_leak(
+        self,
+    ):
+        project = self.project_source("revoke-json-check")
+        candidate = self.store.candidate(
+            project.freeze(["README.md", "valid.json"], "Revoke test", "verify")
+        )
+        self.store.approve(candidate["id"], candidate["digest"])
+        jobs = Jobs(self.store, registry=FakeRegistry())
+        app = create_app(
+            self.store,
+            self.source,
+            auth=self.auth,
+            jobs=jobs,
+            project_sources=[project],
+        )
+        started, signalled = threading.Event(), threading.Event()
+
+        # Synthetic cleanup receipt tests HTTP revocation; a separate host test
+        # verifies actual worker termination and Kata resource removal.
+        class RunningWorker:
+            def __init__(self, *args, **kwargs):
+                self.stdin = io.BytesIO()
+                self.stdout = io.BytesIO(
+                    json.dumps(
+                        {
+                            "cleaned_up": True,
+                            "program_sha256": candidate["manifest"]["action"][
+                                "program_sha256"
+                            ],
+                            "stop_reason": "cancelled",
+                            "exit_code": 143,
+                            "output_limited": False,
+                            "stdout": "",
+                            "image_id": "synthetic-runtime-double",
+                            "elapsed_seconds": 0.01,
+                        }
+                    ).encode()
+                )
+                self.returncode = None
+                started.set()
+
+            def poll(self):
+                return self.returncode
+
+            def send_signal(self, signal):
+                signalled.set()
+                self.returncode = 0
+
+            def wait(self, timeout=None):
+                return self.returncode
+
+        def oidc_callback(browser, subject, start):
+            query = urllib.parse.parse_qs(urllib.parse.urlsplit(start).query)
+            self.transport.claims = self.claims(subject, query["nonce"][0])
+            return browser.get(
+                "/auth/oidc/callback",
+                params={"state": query["state"][0], "code": "test-code"},
+                follow_redirects=False,
+            )
+
+        def invite(owner, owner_headers, recipient, subject):
+            response = owner.post(
+                f"/api/owner/versions/{candidate['id']}/invitations",
+                headers=owner_headers,
+                json={
+                    "recipient_issuer": self.config.issuer,
+                    "recipient_subject": subject,
+                    "mode": "verify",
+                    "expires_in": 600,
+                },
+            )
+            self.assertEqual(response.status_code, 200, response.text)
+            token = urllib.parse.parse_qs(
+                urllib.parse.urlsplit(response.json()["url"]).fragment
+            )["token"][0]
+            login = recipient.post(
+                "/api/auth/oidc/invitation",
+                headers={"Origin": self.config.public_origin},
+                json={"token": token},
+            )
+            self.assertEqual(login.status_code, 200, login.text)
+            callback = oidc_callback(
+                recipient, subject, login.json()["authorization_url"]
+            )
+            self.assertEqual(callback.status_code, 303, callback.text)
+            state = recipient.get("/api/review/state")
+            self.assertEqual(state.status_code, 200, state.text)
+            return token, state.json()
+
+        with (
+            mock_patch("prism.jobs.subprocess.Popen", side_effect=RunningWorker),
+            TestClient(app, base_url="https://prism.example") as owner,
+            TestClient(app, base_url="https://prism.example") as recipient,
+            TestClient(app, base_url="https://prism.example") as unaffected,
+        ):
+            owner_login = owner.get("/auth/oidc/owner", follow_redirects=False)
+            self.assertEqual(owner_login.status_code, 303)
+            self.assertEqual(
+                oidc_callback(
+                    owner, "owner-subject", owner_login.headers["location"]
+                ).status_code,
+                303,
+            )
+            owner_state = owner.get("/api/owner/state")
+            self.assertEqual(owner_state.status_code, 200, owner_state.text)
+            owner_headers = {
+                "Origin": self.config.public_origin,
+                "X-Prism-CSRF": owner_state.json()["csrf"],
+            }
+            token, target = invite(owner, owner_headers, recipient, "recipient-a")
+            _, other = invite(owner, owner_headers, unaffected, "recipient-b")
+            target_session, other_session = target["session"], other["session"]
+            self.assertNotEqual(target_session, other_session)
+            evidence_id = candidate["manifest"]["files"][0]["id"]
+            target_path = f"/api/review/sessions/{target_session}"
+            other_path = f"/api/review/sessions/{other_session}"
+            target_headers = {
+                "Origin": self.config.public_origin,
+                "X-Prism-CSRF": target["csrf"],
+            }
+            other_headers = {
+                "Origin": self.config.public_origin,
+                "X-Prism-CSRF": other["csrf"],
+            }
+            self.assertEqual(
+                recipient.get(f"{target_path}/evidence/{evidence_id}").status_code, 200
+            )
+            self.assertEqual(unaffected.get(target_path).status_code, 403)
+            submitted = recipient.post(
+                f"{target_path}/runs",
+                headers=target_headers,
+                json={
+                    "action": "json-check",
+                    "request_key": "revoke-running-json-check",
+                },
+            )
+            self.assertEqual(submitted.status_code, 200, submitted.text)
+            run_id = submitted.json()["id"]
+            self.assertTrue(started.wait(3))
+            running = recipient.get(f"{target_path}/runs/{run_id}")
+            self.assertEqual(running.status_code, 200, running.text)
+            self.assertEqual(running.json()["status"], "running")
+            with self.store.connect() as db:
+                grant = db.execute(
+                    "SELECT grant_id FROM sessions WHERE id=?", (target_session,)
+                ).fetchone()["grant_id"]
+                other_grant = db.execute(
+                    "SELECT grant_id FROM sessions WHERE id=?", (other_session,)
+                ).fetchone()["grant_id"]
+            self.assertNotEqual(grant, other_grant)
+            revoked = owner.post(
+                f"/api/owner/grants/{grant}/revoke", headers=owner_headers, json={}
+            )
+            self.assertEqual(revoked.status_code, 200, revoked.text)
+            self.assertEqual(recipient.get(target_path).status_code, 403)
+            self.assertEqual(
+                recipient.get(f"{target_path}/runs/{run_id}").status_code, 403
+            )
+            self.assertEqual(
+                recipient.get(f"{target_path}/evidence/{evidence_id}").status_code, 403
+            )
+            self.assertEqual(
+                recipient.post(
+                    f"{target_path}/runs",
+                    headers=target_headers,
+                    json={
+                        "action": "json-check",
+                        "request_key": "revoke-running-json-check",
+                    },
+                ).status_code,
+                403,
+            )
+            self.assertEqual(
+                recipient.post(
+                    f"{target_path}/requests",
+                    headers=target_headers,
+                    json={"description": "Replay after revoke"},
+                ).status_code,
+                403,
+            )
+            for thread in list(jobs.threads):
+                thread.join(timeout=5)
+                self.assertFalse(thread.is_alive())
+            self.assertTrue(signalled.is_set())
+            with self.store.connect() as db:
+                row = db.execute(
+                    "SELECT status,result,error FROM runs WHERE id=?", (run_id,)
+                ).fetchone()
+            self.assertEqual(row["status"], "cancelled")
+            self.assertIsNone(row["result"])
+            self.assertIn("cleanup were confirmed", row["error"])
+            self.assertEqual(unaffected.get(other_path).status_code, 200)
+            self.assertEqual(
+                unaffected.get(f"{other_path}/evidence/{evidence_id}").status_code, 200
+            )
+            self.assertEqual(
+                unaffected.post(
+                    f"{other_path}/requests",
+                    headers=other_headers,
+                    json={"description": "Separate grant remains usable"},
+                ).status_code,
+                200,
+            )
+            self.assertEqual(
+                unaffected.get(f"{target_path}/runs/{run_id}").status_code, 403
+            )
+            self.assertEqual(recipient.get(other_path).status_code, 403)
+            with TestClient(app, base_url="https://prism.example") as replay:
+                self.assertEqual(
+                    replay.post(
+                        "/api/auth/oidc/invitation",
+                        headers={"Origin": self.config.public_origin},
+                        json={"token": token},
+                    ).status_code,
+                    404,
+                )
+
     def test_owner_mediated_identity_discovery_is_one_use_and_grants_nothing(self):
         app = create_app(self.store, self.source, auth=self.auth)
         with (

@@ -714,6 +714,18 @@ class Store:
                 )
             ]
 
+    def active_grant_run(self):
+        """Look up the one active fixed job and its named grant, if any."""
+        with self.connect() as db:
+            row = db.execute(
+                "SELECT r.id,r.status,r.runtime_profile,r.runtime_resource,"
+                "r.runtime_token,s.grant_id FROM runs r "
+                "LEFT JOIN sessions s ON s.id=r.session "
+                "WHERE r.status IN ('queued','running') "
+                "ORDER BY r.created DESC LIMIT 1",
+            ).fetchone()
+        return dict(row) if row and row["grant_id"] else None
+
     def _check_request_invitation(self, db, request_id, invitation):
         if request_id is None:
             return
