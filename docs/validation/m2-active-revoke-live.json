@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "kind": "m2_active_revoke_live_e2e",
+  "date": "2026-09-25",
+  "status": "live_active_revocation_observed_owner_acceptance_pending",
+  "owner_accepted": false,
+  "pilot_ready": false,
+  "fixture": "approved synthetic Document version",
+  "identities": "two distinct verified identities; identifying attributes omitted",
+  "earlier_attempt": {
+    "owned_running_observed": true,
+    "revoke_timing": "after job completion",
+    "classification": "inconclusive for cancellation of active work"
+  },
+  "live_e2e": {
+    "host_kata_exact_run_pre_revoke": "owned_running",
+    "owner_same_origin_browser_poll_owned_running": true,
+    "owner_revoke_http_status": 200,
+    "host_database_terminal_status": "cancelled",
+    "terminal_result": null,
+    "terminal_error_evidence": "worker exit recorded and cleanup confirmed",
+    "grant_status": "revoked",
+    "grant_revision": 2,
+    "revocation_event_count": 1,
+    "owner_forced_refresh_same_version_invitations": "both show Revoked",
+    "owner_target_action_after_refresh": "Revoke button absent",
+    "stale_page_state_explained": "brief Active grant display came from old page state and cleared after refresh",
+    "exact_owned_resource_absent": true,
+    "reference_namespace_resource_count": 0,
+    "recipient_get_exact_run_http_status": 403,
+    "recipient_get_review_state_http_status": 403,
+    "model_dispatches_before_and_after": 64
+  },
+  "deployment": {
+    "release_format": "immutable v5",
+    "transfer_archive_sha256": "1d889cb868f16322eb3b8e167b461d9586a45e09bf68930c68ca6ad03e92d45b",
+    "full_source_archive_sha256": "33a90a6c4cb9a472358ffc5a6f6f1bebba7a883f98393116af96f2cfdd57b83d",
+    "service_state": "active",
+    "exposure": "private HTTPS",
+    "private_client_tls_probe": "passed",
+    "automatic_vm_stop": false
+  },
+  "checks": {
+    "prior_local_full_backend_suite": "212 passed; see m2-active-revoke.json",
+    "prior_focused_release_suite": "18 passed; see m2-active-revoke.json",
+    "latest_full_backend_suite": "217 passed",
+    "latest_focused_tests": "25 passed",
+    "targeted_ruff": "passed on changed Python files",
+    "frontend_build": "passed in prior implementation validation",
+    "isolated_synthetic_linux_kata": "13/13 passed against installed v5; details in m2-active-revoke.json",
+    "real_browser_oidc_https_active_revoke": "observed in this live run"
+  },
+  "limitations": [
+    "The earlier browser attempt remains inconclusive because revoke followed job completion.",
+    "The owner UI uses sampled polling; this does not prove cancellation at every timing boundary.",
+    "Crash, host-disconnect lease, restart, streaming, downloads, and in-flight response races were not tested; streaming and downloads are not implemented.",
+    "Live model-provider request cancellation was not tested; a request already sent cannot be recalled.",
+    "The 30-second lease target was not tested.",
+    "Synthetic fake-worker tests are not evidence of Kata runtime behavior.",
+    "Owner acceptance remains pending and pilot_ready remains false."
+  ]
+}
