@@ -421,7 +421,9 @@ class Handoffs:
                 "source_kind": state["manifest"].get("source_kind", "synthetic"),
                 "context": context,
             }
-            version = self.store.insert_candidate(db, manifest)
+            version = self.store.insert_candidate(
+                db, manifest, project_id=actor.project
+            )
             db.execute(
                 "INSERT INTO owner_handoff_sources VALUES(?,?,?,?,?,?)",
                 (

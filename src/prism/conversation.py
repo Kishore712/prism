@@ -33,7 +33,7 @@ from pydantic_ai.models.openai import OpenAIResponsesModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.usage import UsageLimits
 
-from prism.sharing import Denied, ident, packed
+from prism.sharing import Denied, NamedPrincipal, ident, packed
 
 pydantic_ai.BANNER_ENABLED = False
 
@@ -284,6 +284,39 @@ class Conversations:
                     id TEXT PRIMARY KEY, session TEXT NOT NULL, description TEXT NOT NULL,
                     status TEXT NOT NULL, created REAL NOT NULL);
             """)
+            request_columns = {
+                row["name"] for row in db.execute("PRAGMA table_info(access_requests)")
+            }
+            for name, definition in (
+                ("source_grant", "TEXT"),
+                ("source_revision", "INTEGER"),
+                ("source_version", "TEXT"),
+                ("recipient_issuer", "TEXT"),
+                ("recipient_subject", "TEXT"),
+                ("decision_version", "TEXT"),
+                ("decision_mode", "TEXT"),
+                ("decision_action", "TEXT"),
+                ("decision_expires", "REAL"),
+                ("decision_invitation", "TEXT"),
+                ("decided", "REAL"),
+            ):
+                if name not in request_columns:
+                    db.execute(
+                        f"ALTER TABLE access_requests ADD COLUMN {name} {definition}"
+                    )
+            # Legacy requests were authorized when created. Bind them to the
+            # original session revision; a later revoke still invalidates it.
+            db.execute("""
+                UPDATE access_requests SET
+                    source_grant=(SELECT grant_id FROM sessions WHERE id=access_requests.session),
+                    source_revision=(SELECT grant_revision FROM sessions WHERE id=access_requests.session),
+                    source_version=(SELECT version FROM sessions WHERE id=access_requests.session),
+                    recipient_issuer=(SELECT g.recipient_issuer FROM sessions s
+                        JOIN grants g ON g.id=s.grant_id WHERE s.id=access_requests.session),
+                    recipient_subject=(SELECT g.recipient_subject FROM sessions s
+                        JOIN grants g ON g.id=s.grant_id WHERE s.id=access_requests.session)
+                WHERE source_grant IS NULL AND status='pending'
+            """)
             if recover:
                 db.execute(
                     "UPDATE turns SET status='interrupted',error='Service restarted. No uncertain model or tool request was replayed.' WHERE status='running'"
@@ -380,7 +413,7 @@ class Conversations:
         if not isinstance(description, str) or not 5 <= len(description) <= 500:
             raise Denied("Describe the needed access in 5 to 500 characters.", 400)
         with self.store.connect() as db:
-            self.store.authorized(db, session, actor)
+            state = self.store.authorized(db, session, actor)
             if (
                 db.execute(
                     "SELECT count(*) FROM access_requests WHERE session=?", (session,)
@@ -389,15 +422,29 @@ class Conversations:
             ):
                 raise Denied("The demo's access-request limit is reached.", 429)
             request_id = ident()
+            named = isinstance(actor, NamedPrincipal)
             db.execute(
-                "INSERT INTO access_requests VALUES(?,?,?,?,?)",
-                (request_id, session, description, "pending", time.time()),
+                "INSERT INTO access_requests(id,session,description,status,created,"
+                "source_grant,source_revision,source_version,recipient_issuer,recipient_subject) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?)",
+                (
+                    request_id,
+                    session,
+                    description,
+                    "pending",
+                    time.time(),
+                    state["grant_id"] if named else None,
+                    state["grant_revision"] if named else None,
+                    state["version"] if named else None,
+                    actor.issuer if named else None,
+                    actor.subject if named else None,
+                ),
             )
             self.store.event(db, "access_requested", actor, request_id, "pending")
         return {
             "id": request_id,
             "status": "pending",
-            "notice": "The owner can review this request. It grants nothing; adding evidence requires a newly reviewed version. Permission expansion is planned for M2.",
+            "notice": "The owner can review this request. It grants nothing; adding evidence requires a newly reviewed version and a separate invitation.",
         }
 
     def requests(self, session=None, actor=None):

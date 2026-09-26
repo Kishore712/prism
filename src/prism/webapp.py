@@ -65,6 +65,13 @@ class AccessInput(Input):
     description: str = Field(min_length=5, max_length=500)
 
 
+class AccessDecisionInput(Input):
+    decision: Literal["approve", "deny"]
+    version: str | None = Field(default=None, pattern=r"^[0-9a-f]{32}$")
+    mode: Literal["inspect", "verify"] | None = None
+    expires_in: int | None = Field(default=None, ge=300, le=86400)
+
+
 class InvitationInput(Input):
     recipient_issuer: str = Field(min_length=8, max_length=2048)
     recipient_subject: str = Field(min_length=1, max_length=512)
@@ -559,7 +566,10 @@ def create_app(
     @app.post("/api/owner/candidates")
     def candidate(body: Candidate, request: Request):
         auth.authenticate(request, owner=True)
-        return store.candidate(source.freeze(body.files, body.purpose, body.mode))
+        return store.candidate(
+            source.freeze(body.files, body.purpose, body.mode),
+            project_id="paired-evaluation",
+        )
 
     @app.post("/api/owner/projects/{project}/candidates")
     def project_candidate(project: str, body: Candidate, request: Request):
@@ -611,6 +621,22 @@ def create_app(
             raise Denied("Named identity mode is not configured.", 404)
         store.revoke_grant(grant)
         return {"status": "revoked"}
+
+    @app.post("/api/owner/requests/{request_id}/decision")
+    def decide_request(request_id: str, body: AccessDecisionInput, request: Request):
+        auth.authenticate(request, owner=True)
+        if not identity_mode:
+            raise Denied("Named identity mode is not configured.", 404)
+        result = store.decide_access_request(
+            request_id,
+            decision=body.decision,
+            version=body.version,
+            mode=body.mode,
+            expires_in=body.expires_in,
+        )
+        if "token" in result:
+            result["url"] = origin + "/invite#token=" + result.pop("token")
+        return result
 
     @app.get("/api/owner/sessions/{session}/turns")
     def owner_history(session: str, request: Request):

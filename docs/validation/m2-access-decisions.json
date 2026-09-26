@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "kind": "m2_access_decisions",
+  "date": "2026-09-25",
+  "branch": "prototype/m2-access-decisions",
+  "status": "implemented_local_checks_passed_awaiting_private_release_and_owner_acceptance",
+  "owner_accepted": false,
+  "pilot_ready": false,
+  "model_calls": 0,
+  "local_validation": {
+    "focused_identity_handoff_owner_access_tests": {
+      "reported_passed": 57,
+      "failed": 0,
+      "command": "Exact focused-test command was not captured in the validation handoff."
+    },
+    "full_unittest": {
+      "command": "uv run --no-editable python -m unittest discover -s tests -q",
+      "passed": 202,
+      "failed": 0
+    },
+    "targeted_ruff": "passed",
+    "frontend_prettier": {
+      "command": "npm exec -- prettier --check src/main.jsx",
+      "working_directory": "frontend",
+      "status": "passed"
+    },
+    "frontend_production_build": {
+      "command": "npm run build",
+      "working_directory": "frontend",
+      "status": "passed"
+    },
+    "focused_independent_read_only_code_review": "Two findings were fixed and re-reviewed; no further high-severity findings. This was a focused static review, not an audit."
+  },
+  "release_and_acceptance": {
+    "private_service_release": "older than this branch; order 5 is not deployed",
+    "existing_release_updater": "supports exact webapp, app-js, and identity source patches; this increment changes multiple backend modules and cannot be packaged through that reviewed path as-is",
+    "package_update_for_order_5": "not implemented",
+    "browser_acceptance": "not run",
+    "live_oidc_provider_acceptance": "not run",
+    "live_model_behavior": "not run",
+    "cloud_runtime": "not run"
+  },
+  "implemented_behavior": {
+    "request_alone_grants_access": false,
+    "owner_can_deny_without_eligible_version": true,
+    "approval_requires_exact_project_provenance_or_same_legacy_source_version": true,
+    "approval_binds_verified_recipient_version_mode_action_and_expiry": true,
+    "approval_creates_separate_single_use_invitation": true,
+    "redemption_creates_fresh_session": true,
+    "source_grant_and_version_rechecked_before_redemption": true,
+    "redeemed_followup_grant_has_separate_revocation_lifecycle": true
+  },
+  "limitations": [
+    "This record covers local tests and static/security review only; it does not establish live identity-provider or browser behavior.",
+    "A redeemed follow-up grant must be revoked separately from the originating grant.",
+    "Revocation controls subsequent access and cannot retrieve information already viewed or saved by the recipient.",
+    "The feature is limited to named identity sessions and the existing reviewed-version/action model; it does not add arbitrary tools or runtime lifecycle guarantees."
+  ]
+}

@@ -219,7 +219,9 @@ class OwnerWorkspace:
             self.project(db, actor)
         source = self.sources[actor.project]
         names = self.selected_names(source, selected, required=True)
-        return self.base.candidate(source.freeze(names, purpose, mode))
+        return self.base.candidate(
+            source.freeze(names, purpose, mode), project_id=actor.project
+        )
 
     def authorized(self, db, session, actor):
         self.project(db, actor)

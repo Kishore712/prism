@@ -328,12 +328,22 @@ class Store:
                     mode TEXT NOT NULL, action TEXT, revision INTEGER NOT NULL,
                     expires REAL NOT NULL, revoked INTEGER NOT NULL DEFAULT 0,
                     created REAL NOT NULL);
+                CREATE TABLE IF NOT EXISTS version_provenance (
+                    version TEXT PRIMARY KEY, project_id TEXT NOT NULL);
+                CREATE TRIGGER IF NOT EXISTS immutable_version_provenance
+                    BEFORE UPDATE ON version_provenance
+                    BEGIN SELECT RAISE(ABORT, 'Immutable version provenance'); END;
             """)
             columns = {row["name"] for row in db.execute("PRAGMA table_info(sessions)")}
             if "grant_id" not in columns:
                 db.execute("ALTER TABLE sessions ADD COLUMN grant_id TEXT")
             if "grant_revision" not in columns:
                 db.execute("ALTER TABLE sessions ADD COLUMN grant_revision INTEGER")
+            invitation_columns = {
+                row["name"] for row in db.execute("PRAGMA table_info(invitations)")
+            }
+            if "origin_request" not in invitation_columns:
+                db.execute("ALTER TABLE invitations ADD COLUMN origin_request TEXT")
 
     @contextmanager
     def connect(self):
@@ -370,12 +380,12 @@ class Store:
                     "DELETE FROM measurements WHERE id <= (SELECT max(id)-2000 FROM measurements)"
                 )
 
-    def candidate(self, manifest):
+    def candidate(self, manifest, *, project_id=None):
         with self.connect() as db:
-            version = self.insert_candidate(db, manifest)
+            version = self.insert_candidate(db, manifest, project_id=project_id)
         return self.owner_version(version)
 
-    def insert_candidate(self, db, manifest):
+    def insert_candidate(self, db, manifest, *, project_id=None):
         """Insert frozen bytes in the caller's transaction, including source mapping."""
         body, version = packed(manifest), ident()
         if db.execute("SELECT count(*) FROM versions").fetchone()[0] >= 24:
@@ -384,6 +394,11 @@ class Store:
             "INSERT INTO versions(id,digest,manifest,created) VALUES(?,?,?,?)",
             (version, digest(body), body, time.time()),
         )
+        if project_id is not None:
+            db.execute(
+                "INSERT INTO version_provenance(version,project_id) VALUES(?,?)",
+                (version, project_id),
+            )
         self.event(db, "candidate_created", "owner", version)
         return version
 
@@ -392,7 +407,31 @@ class Store:
             row = db.execute("SELECT * FROM versions WHERE id=?", (version,)).fetchone()
             if row is None:
                 raise Denied()
-            return {**dict(row), "manifest": json.loads(row["manifest"])}
+            return {
+                **dict(row),
+                "manifest": json.loads(row["manifest"]),
+                "project_id": self.version_project(db, version),
+            }
+
+    @staticmethod
+    def version_project(db, version):
+        row = db.execute(
+            "SELECT project_id FROM version_provenance WHERE version=?", (version,)
+        ).fetchone()
+        if row is not None:
+            return row["project_id"]
+        # Older contextual handoffs already have an immutable source mapping.
+        if db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' "
+            "AND name='owner_handoff_sources'"
+        ).fetchone():
+            row = db.execute(
+                "SELECT project FROM owner_handoff_sources WHERE version=?",
+                (version,),
+            ).fetchone()
+            if row is not None:
+                return row["project"]
+        return None
 
     def approve(self, version, expected_digest):
         with self.connect() as db:
@@ -419,7 +458,9 @@ class Store:
                     "revoked": bool(r["revoked"]),
                     "created": r["created"],
                     "project": json.loads(r["manifest"])["project"],
+                    "project_id": self.version_project(db, r["id"]) if owner else None,
                     "purpose": json.loads(r["manifest"])["purpose"],
+                    "mode": json.loads(r["manifest"])["mode"],
                     "schema": json.loads(r["manifest"])["schema"],
                 }
                 for r in rows
@@ -523,7 +564,9 @@ class Store:
             action = self.grant_action(manifest, mode)
             invitation = ident()
             db.execute(
-                "INSERT INTO invitations VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO invitations(id,token_hash,version,recipient_issuer,"
+                "recipient_subject,mode,action,expires,created,redeemed,grant_id) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     invitation,
                     digest(token),
@@ -561,13 +604,14 @@ class Store:
     def invitation_activation(self, invitation):
         with self.connect() as db:
             row = db.execute(
-                "SELECT i.mode,i.action,v.manifest,v.digest FROM invitations i "
+                "SELECT i.mode,i.action,i.origin_request,v.manifest,v.digest FROM invitations i "
                 "JOIN versions v ON v.id=i.version WHERE i.id=? AND i.redeemed IS NULL "
                 "AND i.expires>? AND v.approved=1 AND v.revoked=0",
                 (invitation, time.time()),
             ).fetchone()
             if row is None:
                 raise Denied("This invitation cannot be activated.", 403)
+            self._check_request_invitation(db, row["origin_request"], invitation)
             manifest = self.checked_manifest(row)
             return {
                 "mode": row["mode"],
@@ -611,6 +655,7 @@ class Store:
                 or row["recipient_subject"] != recipient.subject
             ):
                 raise Denied("This invitation cannot be redeemed.", 403)
+            self._check_request_invitation(db, row["origin_request"], invitation)
             manifest = self.checked_manifest(row)
             expected_action = self.grant_action(manifest, row["mode"])
             if row["action"] != expected_action:
@@ -668,6 +713,163 @@ class Store:
                     "ORDER BY i.created DESC LIMIT 48"
                 )
             ]
+
+    def _check_request_invitation(self, db, request_id, invitation):
+        if request_id is None:
+            return
+        origin = db.execute(
+            "SELECT r.status,r.session,r.recipient_issuer,r.recipient_subject,"
+            "r.source_grant,r.source_revision,r.decision_invitation,"
+            "g.revision,g.expires,g.revoked FROM access_requests r "
+            "JOIN grants g ON g.id=r.source_grant WHERE r.id=?",
+            (request_id,),
+        ).fetchone()
+        if (
+            origin is None
+            or origin["status"] != "approved"
+            or origin["decision_invitation"] != invitation
+            or origin["source_revision"] != origin["revision"]
+            or origin["revoked"]
+            or origin["expires"] <= time.time()
+        ):
+            raise Denied("The invitation's originating grant is no longer active.", 403)
+        self.authorized(
+            db,
+            origin["session"],
+            NamedPrincipal(origin["recipient_issuer"], origin["recipient_subject"]),
+        )
+
+    def decide_access_request(
+        self, request_id, *, decision, version=None, mode=None, expires_in=None
+    ):
+        if decision not in ("deny", "approve"):
+            raise Denied("Choose an access decision.", 400)
+        now = time.time()
+        with self.connect() as db:
+            request = db.execute(
+                "SELECT r.*,s.version AS session_version,s.grant_id AS session_grant,"
+                "s.grant_revision AS session_revision,g.recipient_issuer AS grant_issuer,"
+                "g.recipient_subject AS grant_subject,g.revision AS grant_revision,"
+                "g.expires AS grant_expires,g.revoked AS grant_revoked,"
+                "v.manifest AS source_manifest,v.digest AS source_digest "
+                "FROM access_requests r JOIN sessions s ON s.id=r.session "
+                "JOIN grants g ON g.id=s.grant_id "
+                "JOIN versions v ON v.id=s.version WHERE r.id=?",
+                (request_id,),
+            ).fetchone()
+            if request is None or request["status"] != "pending":
+                raise Denied(
+                    "This access request is unavailable or already decided.", 409
+                )
+            if (
+                request["source_grant"] != request["session_grant"]
+                or request["source_revision"] != request["session_revision"]
+                or request["source_version"] != request["session_version"]
+                or request["recipient_issuer"] != request["grant_issuer"]
+                or request["recipient_subject"] != request["grant_subject"]
+            ):
+                raise Denied("This access request no longer matches its source.", 409)
+            if decision == "deny":
+                if version is not None or mode is not None or expires_in is not None:
+                    raise Denied("A denial does not select new access.", 400)
+                db.execute(
+                    "UPDATE access_requests SET status='denied',decided=? WHERE id=?",
+                    (now, request_id),
+                )
+                self.event(db, "access_decided", "owner", request_id, "denied")
+                return {"id": request_id, "status": "denied"}
+            if (
+                not isinstance(version, str)
+                or mode not in ("inspect", "verify")
+                or type(expires_in) is not int
+                or not 300 <= expires_in <= 86400
+            ):
+                raise Denied(
+                    "Choose an approved version, mode and 5-minute to 24-hour lifetime.",
+                    400,
+                )
+            if (
+                request["grant_revoked"]
+                or request["grant_revision"] != request["source_revision"]
+                or request["grant_expires"] <= now + expires_in
+            ):
+                raise Denied(
+                    "The originating grant cannot cover this invitation lifetime.", 409
+                )
+            # Recheck the full original session/version boundary in this same
+            # transaction. A revoked version or expired session cannot sponsor
+            # a new invitation even if its grant row still looks current.
+            self.authorized(
+                db,
+                request["session"],
+                NamedPrincipal(
+                    request["recipient_issuer"], request["recipient_subject"]
+                ),
+            )
+            self.checked_manifest(
+                {
+                    "manifest": request["source_manifest"],
+                    "digest": request["source_digest"],
+                }
+            )
+            target = db.execute(
+                "SELECT * FROM versions WHERE id=? AND approved=1 AND revoked=0",
+                (version,),
+            ).fetchone()
+            if target is None:
+                raise Denied("Choose a separately approved version.", 409)
+            manifest = self.checked_manifest(target)
+            source_project = self.version_project(db, request["source_version"])
+            target_project = self.version_project(db, version)
+            if version != request["source_version"] and (
+                source_project is None
+                or target_project is None
+                or source_project != target_project
+            ):
+                raise Denied("The selected version belongs to another project.", 409)
+            if mode == "verify" and manifest["mode"] != "verify":
+                raise Denied("This reviewed version does not permit verification.", 409)
+            action = self.grant_action(manifest, mode)
+            if db.execute("SELECT count(*) FROM invitations").fetchone()[0] >= 48:
+                raise Denied("The invitation limit is reached.", 429)
+            invitation, token = ident(), secrets.token_urlsafe(32)
+            db.execute(
+                "INSERT INTO invitations(id,token_hash,version,recipient_issuer,"
+                "recipient_subject,mode,action,expires,created,redeemed,grant_id,origin_request) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    invitation,
+                    digest(token),
+                    version,
+                    request["recipient_issuer"],
+                    request["recipient_subject"],
+                    mode,
+                    action,
+                    now + expires_in,
+                    now,
+                    None,
+                    None,
+                    request_id,
+                ),
+            )
+            db.execute(
+                "UPDATE access_requests SET status='approved',decision_version=?,"
+                "decision_mode=?,decision_action=?,decision_expires=?,"
+                "decision_invitation=?,decided=? WHERE id=?",
+                (version, mode, action, now + expires_in, invitation, now, request_id),
+            )
+            self.event(db, "access_decided", "owner", request_id, "approved")
+            self.event(db, "invitation_created", "owner", invitation)
+        return {
+            "id": request_id,
+            "status": "approved",
+            "version": version,
+            "mode": mode,
+            "action": action,
+            "expires": now + expires_in,
+            "invitation": invitation,
+            "token": token,
+        }
 
     def revoke_grant(self, grant):
         with self.connect() as db:

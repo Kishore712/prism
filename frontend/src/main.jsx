@@ -699,7 +699,7 @@ function Owner({ state, refresh, act, busy }) {
       id: "requests",
       icon: "inbox",
       label: "Access requests",
-      count: state.requests?.length,
+      count: state.requests?.filter((item) => item.status === "pending").length,
     },
     { id: "conversations", icon: "chat", label: "Collaborator chats" },
     { id: "activity", icon: "shield", label: "Sharing activity" },
@@ -1305,9 +1305,10 @@ function Owner({ state, refresh, act, busy }) {
               </button>
             </Heading>
             <Notice>
-              Requests do not grant access. To include more evidence in this
-              demo, create a newly reviewed version. Approval and denial
-              controls are planned for M2.
+              A request alone grants nothing. Approval creates a separate,
+              one-use invitation for the same verified recipient. The current
+              session stays unchanged. To include more evidence, first approve a
+              newly reviewed version.
             </Notice>
             {!state.requests?.length ? (
               <Empty icon="inbox" title="Nothing waiting for you.">
@@ -1315,14 +1316,15 @@ function Owner({ state, refresh, act, busy }) {
               </Empty>
             ) : (
               state.requests.map((r) => (
-                <article className="surface request-card" key={r.id}>
-                  <div className="section-heading">
-                    <span className="eyebrow">COLLABORATOR REQUEST</span>
-                    <Badge tone="amber">{r.status}</Badge>
-                  </div>
-                  <p>{r.description}</p>
-                  <span className="muted">Session {short(r.session)}</span>
-                </article>
+                <OwnerAccessDecision
+                  key={r.id}
+                  request={r}
+                  versions={state.versions}
+                  identityMode={state.identity_mode}
+                  act={act}
+                  refresh={refresh}
+                  busy={busy}
+                />
               ))
             )}
           </>
@@ -2666,10 +2668,168 @@ function OwnerConversations({ sessions, act, busy }) {
     </>
   );
 }
+function OwnerAccessDecision({
+  request,
+  versions,
+  identityMode,
+  act,
+  refresh,
+  busy,
+}) {
+  const source = versions.find((item) => item.id === request.source_version);
+  const choices = versions.filter(
+    (item) =>
+      item.approved &&
+      !item.revoked &&
+      (item.id === request.source_version ||
+        (source?.project_id && item.project_id === source.project_id)),
+  );
+  const [version, setVersion] = useState(request.source_version || "");
+  const [mode, setMode] = useState("inspect");
+  const [created, setCreated] = useState(null);
+  const [copied, setCopied] = useState("");
+  const selected = choices.find((item) => item.id === version);
+  async function decide(decision) {
+    const result = await api(
+      `/owner/requests/${request.id}/decision`,
+      decision === "deny"
+        ? { decision }
+        : { decision, version, mode, expires_in: 300 },
+    );
+    setCreated(result);
+    await refresh();
+  }
+  return (
+    <article className="surface request-card">
+      <div className="section-heading">
+        <span className="eyebrow">COLLABORATOR REQUEST</span>
+        <Badge tone={request.status === "pending" ? "amber" : "green"}>
+          {request.status}
+        </Badge>
+      </div>
+      <p>{request.description}</p>
+      <p className="muted wrap">
+        Recipient{" "}
+        {request.recipient_issuer && request.recipient_subject
+          ? `${request.recipient_issuer} / ${request.recipient_subject}`
+          : "local demo identity"}{" "}
+        · Session {short(request.session)}
+      </p>
+      {request.status === "pending" && identityMode && (
+        <button
+          className="secondary"
+          disabled={busy}
+          onClick={() => act(() => decide("deny"))}
+        >
+          Deny request
+        </button>
+      )}
+      {request.status === "pending" && identityMode && choices.length > 0 && (
+        <div className="access-decision-controls">
+          <label className="field">
+            Exact approved version
+            <select
+              value={version}
+              onChange={(event) => {
+                setVersion(event.target.value);
+                setMode("inspect");
+              }}
+            >
+              {choices.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {cleanProject(item.project)} · {short(item.id)} ·{" "}
+                  {item.purpose}
+                </option>
+              ))}
+            </select>
+          </label>
+          {selected && (
+            <p className="muted wrap">Frozen digest {selected.digest}</p>
+          )}
+          <label className="field">
+            Allowed capability
+            <select
+              value={mode}
+              onChange={(event) => setMode(event.target.value)}
+            >
+              <option value="inspect">Read and converse</option>
+              <option value="verify" disabled={selected?.mode !== "verify"}>
+                Read, converse and run the reviewed action
+              </option>
+            </select>
+          </label>
+          <p className="muted fine">
+            Invitation expires after five minutes and is shown once. It is bound
+            to this request's verified recipient. The new grant has its own
+            lifecycle after redemption; revoke it separately if needed.
+          </p>
+          <div className="panel-actions">
+            <button
+              disabled={busy || !selected}
+              onClick={() => act(() => decide("approve"))}
+            >
+              Approve and create invitation
+            </button>
+          </div>
+        </div>
+      )}
+      {request.status === "pending" && identityMode && !choices.length && (
+        <Notice>
+          Review and approve a project version before deciding this request.
+        </Notice>
+      )}
+      {request.status === "pending" && !identityMode && (
+        <Notice>Named identity mode is required for an access decision.</Notice>
+      )}
+      {created?.url && (
+        <div role="status" className="one-time-invitation">
+          <strong>Share this one-use link with the same recipient</strong>
+          <input
+            aria-label="Approved request invitation link"
+            readOnly
+            value={created.url}
+            onFocus={(event) => event.target.select()}
+          />
+          <button
+            className="secondary"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(created.url);
+                setCopied("Copied");
+              } catch {
+                setCopied("Copy failed; select the link above.");
+              }
+            }}
+          >
+            Copy invitation link
+          </button>
+          {copied && <p className="muted">{copied}</p>}
+        </div>
+      )}
+      {request.status === "approved" && !created?.url && (
+        <p className="muted">
+          A separate invitation was created. The link was shown once to the
+          owner.
+        </p>
+      )}
+      {request.status === "denied" && (
+        <p className="muted">No access was granted.</p>
+      )}
+    </article>
+  );
+}
+
 function AccessRequest({ session, act, busy }) {
   const [description, setDescription] = useState(""),
     [sent, setSent] = useState(false),
-    [open, setOpen] = useState(false);
+    [open, setOpen] = useState(false),
+    [requests, setRequests] = useState([]);
+  async function refreshRequests() {
+    setRequests(await api(`/review/sessions/${session.id}/requests`));
+  }
+  useEffect(() => {
+    act(refreshRequests);
+  }, [session.id]);
   return (
     <div className="access-form">
       <button
@@ -2688,6 +2848,7 @@ function AccessRequest({ session, act, busy }) {
               await api(`/review/sessions/${session.id}/requests`, {
                 description,
               });
+              await refreshRequests();
               setSent(true);
               setDescription("");
               setOpen(false);
@@ -2719,6 +2880,23 @@ function AccessRequest({ session, act, busy }) {
           <Notice>Request recorded. Your permissions are unchanged.</Notice>
         </div>
       )}
+      <div className="access-request-status">
+        <button
+          className="text-button"
+          disabled={busy}
+          onClick={() => act(refreshRequests)}
+        >
+          Refresh request status
+        </button>
+        {requests.map((item) => (
+          <p key={item.id} className="muted">
+            {item.description} — <strong>{item.status}</strong>
+            {item.status === "approved" &&
+              " · Ask the owner for the separate one-use invitation link. Your current session is unchanged."}
+            {item.status === "denied" && " · No additional access was granted."}
+          </p>
+        ))}
+      </div>
     </div>
   );
 }

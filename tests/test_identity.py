@@ -610,6 +610,87 @@ class IdentityTests(unittest.TestCase):
                 ).status_code,
                 200,
             )
+            request_id = recipient.get(
+                f"/api/review/sessions/{session}/requests"
+            ).json()[0]["id"]
+            decision_path = f"/api/owner/requests/{request_id}/decision"
+            decision_body = {
+                "decision": "approve",
+                "version": self.verify["id"],
+                "mode": "verify",
+                "expires_in": 300,
+            }
+            with TestClient(app, base_url="https://prism.example") as outsider:
+                self.assertEqual(
+                    outsider.post(
+                        decision_path,
+                        headers={"Origin": self.config.public_origin},
+                        json=decision_body,
+                    ).status_code,
+                    401,
+                )
+            self.assertEqual(
+                owner.post(
+                    decision_path,
+                    headers={"Origin": self.config.public_origin},
+                    json=decision_body,
+                ).status_code,
+                403,
+            )
+            self.assertEqual(
+                recipient.post(
+                    decision_path, headers=review_headers, json=decision_body
+                ).status_code,
+                401,
+            )
+            decided = owner.post(decision_path, headers=headers, json=decision_body)
+            self.assertEqual(decided.status_code, 200, decided.text)
+            self.assertIn("/invite#token=", decided.json()["url"])
+            decision_token = urllib.parse.parse_qs(
+                urllib.parse.urlsplit(decided.json()["url"]).fragment
+            )["token"][0]
+            with TestClient(app, base_url="https://prism.example") as mismatch:
+                mismatch_start = mismatch.post(
+                    "/api/auth/oidc/invitation",
+                    headers={"Origin": self.config.public_origin},
+                    json={"token": decision_token},
+                )
+                self.assertEqual(mismatch_start.status_code, 200)
+                mismatch_query = urllib.parse.parse_qs(
+                    urllib.parse.urlsplit(
+                        mismatch_start.json()["authorization_url"]
+                    ).query
+                )
+                self.transport.claims = self.claims(
+                    "wrong-recipient", mismatch_query["nonce"][0]
+                )
+                self.assertEqual(
+                    mismatch.get(
+                        "/auth/oidc/callback",
+                        params={
+                            "state": mismatch_query["state"][0],
+                            "code": "wrong-recipient-code",
+                        },
+                        follow_redirects=False,
+                    ).status_code,
+                    403,
+                )
+            self.assertEqual(
+                recipient.get(f"/api/review/sessions/{session}/requests").json()[0][
+                    "status"
+                ],
+                "approved",
+            )
+            self.assertEqual(
+                recipient.get(f"/api/review/sessions/{session}").json()["mode"],
+                "inspect",
+            )
+            self.assertEqual(
+                owner.post(
+                    decision_path, headers=headers, json={"decision": "deny"}
+                ).status_code,
+                409,
+            )
             self.assertEqual(
                 recipient.post(
                     f"/api/review/sessions/{session}/runs",
