@@ -1,0 +1,103 @@
+{
+  "record_type": "sanitized_bounded_host_validation",
+  "date": "2026-09-26",
+  "timezone": "America/Los_Angeles",
+  "scope": "root-only inspect/resolve for one exact uncertain reference-Linux run",
+  "host": "existing private reference-Linux host; identifying details omitted",
+  "implementation": {
+    "status": "installed separately from immutable v7 for bounded validation",
+    "version_specificity": "pinned v7 service and watchdog unit/release identity checked",
+    "sha256": "85bb030f23189398f0b7956367c440cc04938670c92ffc7b8fa709a0dfd9a97c",
+    "owner": "root",
+    "group": "root",
+    "mode": "0700",
+    "file_type": "single-link regular file",
+    "actions": ["inspect", "resolve"],
+    "operator_scope": "root-only"
+  },
+  "local_verification": {
+    "focused_tests": {"count": 12, "result": "passed"},
+    "full_backend_tests": {"count": 259, "result": "passed", "exit_code": 0},
+    "targeted_ruff": "passed",
+    "targeted_diff_check": "passed",
+    "independent_high_static_review": "no code-level blocker for bounded host validation; not a security audit"
+  },
+  "production_cli_checks": {
+    "inspect_while_application_active": {
+      "result": "denied as expected",
+      "reason": "Identity service lock is occupied",
+      "changed": false
+    },
+    "inspect_nonexistent_exact_id_after_stop_and_prechecks": {
+      "result": "denied as expected",
+      "reason": "Exact run is missing or ambiguous",
+      "pinned_unit_and_host_prechecks": "passed before exact-row lookup",
+      "changed": false
+    },
+    "real_uncertain_production_row_resolved": false
+  },
+  "synthetic_isolated_database_validation": {
+    "database": "root-private temporary database using the complete live schema; temporary location omitted",
+    "test_row": "one synthetic uncertain reference-Linux row; identifier omitted",
+    "helper_used": "exact installed helper with test-only database-path override",
+    "real_pinned_unit_and_host_checks": "ran against the host",
+    "preconditions": {
+      "application_stopped_and_process_free": "passed",
+      "watchdog_active_and_running": "passed",
+      "shields_up": "true while application was stopped",
+      "fixed_prism_m0_namespace_empty": "passed",
+      "live_database_integrity": "passed"
+    },
+    "inspect": {"ready": true, "changed": false},
+    "matching_process_guard": {
+      "test_process": "harmless Python process carrying the exact synthetic resource argument",
+      "resolve_result": "denied as expected"
+    },
+    "resolve_after_test_process_exit": {
+      "status": "failed",
+      "result": null,
+      "execution_outcome": "unknown",
+      "original_error_preserved_in_audit": true,
+      "audit_event_written": true,
+      "repeat_resolution": "denied as expected"
+    },
+    "temporary_database_removed": true,
+    "live_database_sha256_unchanged": true
+  },
+  "post_validation_host_state": {
+    "application_service": "active",
+    "independent_watchdog": "active and running",
+    "shields_up": "false in the final active-state check",
+    "private_https": "returned 200",
+    "fixed_prism_m0_namespace": "empty",
+    "database_integrity": "passed",
+    "runs": 12,
+    "uncertain_runs": 0,
+    "active_runs": 0,
+    "grants": 11,
+    "model_dispatches": 77,
+    "model_calls_during_validation": 0,
+    "demo_grants_changed": false,
+    "vm_state": "running"
+  },
+  "audit": {
+    "event_kind": "run_uncertain_resolved",
+    "actor_label": "local-root-operator",
+    "actor_identity": "generic label; not an authenticated or named human identity",
+    "synthetic_row_original_error_preserved": true,
+    "execution_success_claimed": false
+  },
+  "acceptance": {
+    "owner_acceptance": "pending",
+    "pilot_ready": false,
+    "claim_limit": "The positive resolve path used an isolated synthetic database and test-only database-path override. It is not a successful production resolution of a real uncertain row. No broad safety proof or hard timing guarantee is established."
+  },
+  "privacy": {
+    "contains_hostnames_or_addresses": false,
+    "contains_project_ids": false,
+    "contains_emails_or_user_identity": false,
+    "contains_run_ids_or_tokens": false,
+    "contains_private_filesystem_paths": false,
+    "contains_urls": false
+  }
+}

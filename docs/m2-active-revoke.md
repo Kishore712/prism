@@ -18,6 +18,42 @@ live validation record](validation/m2-active-revoke-live.json), [synthetic
 validation record](validation/m2-active-revoke.json), [release guide](m2-recipient-guest-service.md),
 and the preserved [order 5 decision guide](m2-access-decisions.md).
 
+**Uncertain-run resolution host validation (2026-09-26):** The root-only
+`inspect`/`resolve` helper was installed separately from immutable v7 on the
+existing private Linux host. The installed file was a root-owned, mode-0700,
+single-link regular file with SHA-256
+`85bb030f23189398f0b7956367c440cc04938670c92ffc7b8fa709a0dfd9a97c`. While
+the application was active, production `inspect` correctly denied access
+because the shared service lock was occupied and reported no change. After
+stopping the app, the production CLI passed the pinned-unit and host prechecks;
+an inspect for a nonexistent exact ID was denied as missing/ambiguous. No real
+uncertain production row was resolved.
+
+The positive path used an isolated root-private temporary database made from
+the complete live schema with one synthetic uncertain reference-Linux row. The
+exact installed helper was imported with a test-only database-path override;
+real pinned units and real systemd, tailnet, watchdog, namespace, and process
+checks still ran. `inspect` returned ready with no change. A harmless Python
+process carrying the exact synthetic resource argument caused `resolve` to be
+denied. After that process exited, `resolve` changed the synthetic row to
+`failed`/null, preserved the original error in the audit event, and reported
+the execution outcome as unknown; a repeat resolution was denied. The
+temporary database was removed, and the live database SHA-256 was unchanged.
+
+After validation, the service and watchdog were active, the active-state
+Shields Up check was false, private HTTPS returned 200, the fixed namespace was
+empty, database integrity passed, and live counts remained 12 runs, zero
+uncertain/active runs, 11 grants, and 77 model dispatches. No model calls or
+demo grants were changed, and the VM remained running. Local validation also
+passed 12 focused tests and 259 backend tests, targeted Ruff/diff checks, and
+independent high static review with no code-level blocker for bounded host
+validation; that review was not a security audit. This establishes a bounded
+host run of a synthetic resolution path, not resolution of a real uncertain
+production task, broad safety, a hard timing guarantee, owner acceptance, or
+pilot readiness. `local-root-operator` remains a generic audit label, not an
+authenticated human identity. See the [sanitized validation record](validation/m2-uncertain-resolution.json)
+and the [guest service guide](m2-recipient-guest-service.md).
+
 ## Behavior delivered
 
 The owner can revoke a named collaborator grant while its job is running. The
@@ -39,6 +75,52 @@ confirmed by the terminal job state, dead worker, and empty Kata namespace.
 The result does not establish every possible host failure or termination
 timing. A model request already sent to a provider cannot be recalled; this
 increment does not claim to cancel a live provider-side model call.
+
+## Local handling of an uncertain reference-Linux row
+
+The watchdog probes recorded above can leave an exact run in `uncertain` with
+no result. The separately installed helper offers two root-only actions for
+one exact 32-character hexadecimal run ID. Get that ID from the exact task
+details or host audit record. Stop the identity service and confirm the
+required host state before invoking the CLI:
+
+```bash
+sudo python3 /usr/local/libexec/prism-identity-uncertain-resolution.py inspect <32-character-run-id>
+sudo python3 /usr/local/libexec/prism-identity-uncertain-resolution.py resolve <32-character-run-id>
+```
+
+The installed host CLI is version-specific to the pinned v7 unit/release
+identity and is separate from immutable v7. Its production lock-denial checks
+used this installed copy. The repository source script is used for local
+development and its focused tests only.
+
+`inspect` checks readiness and makes no database change. `resolve` repeats the
+checks inside a transaction, then changes only the exact uniquely bound
+`reference-linux` row from `uncertain` to `failed`, keeps `result` null, and
+commits an audit event that preserves the original `finished`, `error`, and
+`result` values. Its replacement error says the execution outcome is unknown;
+neither the output nor the state means that the action succeeded.
+
+Both actions require the stopped identity service with no service processes,
+Tailscale Shields Up confirmed with unsafe route/SSH preferences disabled, the
+independent root watchdog active and healthy, and an unoccupied private
+root-owned `server.lock` shared with the service. The stopped service unit and
+installed immutable release must also match the pinned v7 identity. The fixed
+private database must contain exactly one matching row and no queued or
+running work. The row must have status `uncertain`, runtime profile
+`reference-linux`, its exact `prism-m23-run-<run-id>` resource, a unique valid
+runtime token, and a null result. The fixed `prism-m0` containerd namespace
+must be empty, and `/proc` must contain no process whose command line matches
+that exact resource or token. Host checks are repeated around the inspection
+to reduce state-change races. Any failed check denies the operation without
+changing the run or audit log; an audit insert failure rolls back the row
+update. The event's `local-root-operator` actor value is a fixed label and does
+not establish which human operated the host.
+
+The bounded host validation above used a test-only database override for the
+isolated synthetic row; the production database was never mutated. The helper
+does not stop or start services, remove runtime resources, or establish that a
+real uncertain action succeeded. See the [sanitized validation record](validation/m2-uncertain-resolution.json).
 
 ## Exact acceptance observed
 

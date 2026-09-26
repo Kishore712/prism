@@ -22,6 +22,27 @@ See the [sanitized v7 host-watchdog record](validation/m2-host-watchdog.json),
 the [v6 worker-lease record](validation/m2-worker-lease.json), and the earlier
 [v5 active-revoke record](validation/m2-active-revoke.json).
 
+**Bounded uncertain-run resolution host validation (2026-09-26):** A separate
+root-only `inspect`/`resolve` helper was installed on the private Linux host,
+bound to the pinned v7 unit/release identity, and fails closed on mismatch.
+The installed file was root-owned, mode 0700, single-link regular, with the
+SHA-256 recorded in the [sanitized validation record](validation/m2-uncertain-resolution.json).
+Production inspection while the app was active denied on the occupied shared
+lock. With the app stopped, host checks passed and an exact nonexistent ID was
+denied at row lookup. The successful resolution path used an isolated
+full-schema synthetic database and test-only database override; it confirmed
+read-only inspect, matching-process denial, failed/null resolution with the
+original error preserved in audit, unknown outcome, and repeat denial. No real
+production uncertain row was resolved. Afterward, app and watchdog were
+active, private HTTPS returned 200, database integrity passed, the fixed
+namespace was empty, and live counts were unchanged (12 runs, zero uncertain
+or active, 11 grants, 77 model dispatches). No model calls or demo grants were
+changed, and the VM remained running. This is bounded synthetic-path evidence,
+not owner acceptance, a broad safety proof, or a hard timing guarantee.
+`local-root-operator` is a generic audit label, not a human identity. See the
+[order 6 guide](m2-active-revoke.md#local-handling-of-an-uncertain-reference-linux-row)
+and [sanitized host record](validation/m2-uncertain-resolution.json).
+
 **Historical owner-path checkpoint (2026-09-23):** The owner-only private
 OIDC service checkpoint passed on the new immutable 29-file release. The
 release source-tar SHA-256 was verified; the original oneboot marker, manifest, and ledger remained
