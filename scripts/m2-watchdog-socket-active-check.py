@@ -61,6 +61,9 @@ REQUIRED = (
     "live_state_scoped_to_one_synthetic_run",
     "service_and_watchdog_restored",
 )
+SHIELD_REQUIRED = tuple(
+    name for name in REQUIRED if name != "maintenance_shields_up"
+) + ("serving_shields_down_at_fault", "watchdog_close_raised_shields")
 
 
 def parent_module():
@@ -231,7 +234,7 @@ def driver(release: Path, key: str, status_path: Path) -> int:
         if (
             not scope["owner_matches"]
             or scope["projects"] > 1
-            or scope["lab_chats"] > 2
+            or scope["lab_chats"] > 3
         ):
             raise RuntimeError("Test-only project scope differs")
         stage = "create_lab_chat"
@@ -301,6 +304,24 @@ def children_all_threads(pid: int, *, proc_root: Path = Path("/proc")) -> list[i
         return []
 
 
+def guard_stopped_service(base, *, faulted: bool) -> bool:
+    """Fail closed if a fault left the service stopped without Shields Up."""
+    try:
+        state = base.show(base.SERVICE, "ActiveState")
+    except Exception:  # noqa: BLE001 - unknown service state needs the guard.
+        state = "unknown"
+    if not faulted and state == "active":
+        return False
+    try:
+        shield = base.shield_state()
+    except Exception:  # noqa: BLE001 - unknown tailnet state needs the guard.
+        shield = None
+    if shield is True:
+        return False
+    base.command("/usr/bin/tailscale", "set", "--shields-up=true")
+    return True
+
+
 def preflight_only(release: Path) -> dict:
     if platform.system() != "Linux" or os.geteuid() != 0:
         raise RuntimeError("Preflight requires the root Linux test host")
@@ -356,10 +377,15 @@ def preflight_only(release: Path) -> dict:
         shutil.rmtree(root)
 
 
-def run_check(release: Path) -> dict:
-    checks = {name: False for name in REQUIRED}
+def run_check(release: Path, *, prove_shield_close: bool = False) -> dict:
+    required = SHIELD_REQUIRED if prove_shield_close else REQUIRED
+    checks = {name: False for name in required}
     report = {
-        "kind": "m2-watchdog-socket-active-check",
+        "kind": (
+            "m2-watchdog-shield-transition-check"
+            if prove_shield_close
+            else "m2-watchdog-socket-active-check"
+        ),
         "schema": 1,
         "test_only_source_variant": True,
         "production_json_program_tested": False,
@@ -375,6 +401,7 @@ def run_check(release: Path) -> dict:
         "driver_error_kind": None,
         "driver_error_stage": None,
         "evidence_retained": False,
+        "fallback_shield_applied": False,
         "observation": {
             "inspect_calls": 0,
             "max_inspect_milliseconds": 0,
@@ -430,7 +457,7 @@ def run_check(release: Path) -> dict:
             baseline["pending"]
             or baseline["runs"] >= 24
             or lab_baseline["chats"] >= 47
-            or lab_baseline["lab_chats"] > 2
+            or lab_baseline["lab_chats"] > 3
             or runtime.all_resources()
             or base.shield_state()
             or set(host_watchdog._group_processes(group)) != {main_pid}
@@ -451,10 +478,14 @@ def run_check(release: Path) -> dict:
         checks["installed_watchdog_socket_healthy"] = True
         phase = "maintenance"
         shield_changed = True
-        base.command("/usr/bin/tailscale", "set", "--shields-up=true")
-        if not base.wait_for(lambda: base.shield_state() is True, 5):
-            raise RuntimeError("Maintenance Shields Up not confirmed")
-        checks["maintenance_shields_up"] = True
+        if prove_shield_close:
+            if base.shield_state() is not False:
+                raise RuntimeError("Service is not currently accepting tailnet traffic")
+        else:
+            base.command("/usr/bin/tailscale", "set", "--shields-up=true")
+            if not base.wait_for(lambda: base.shield_state() is True, 5):
+                raise RuntimeError("Maintenance Shields Up not confirmed")
+            checks["maintenance_shields_up"] = True
         if base.live_counts() != baseline or lab_counts(parent) != lab_baseline:
             raise RuntimeError("Live state changed during maintenance admission")
         root = Path(tempfile.mkdtemp(prefix="prism-active-socket-"))
@@ -600,6 +631,9 @@ def run_check(release: Path) -> dict:
         ] != "running" or not observed.expiry_ready(runtime, resource, token, [client]):
             report["outcome"] = "inconclusive"
             return report
+        if prove_shield_close and base.shield_state() is not False:
+            report["outcome"] = "inconclusive"
+            return report
         parent.signal_exact(client.pidfd, signal.SIGSTOP)
         frozen.append(client.pidfd)
         parent.signal_exact(worker_fd, signal.SIGSTOP)
@@ -607,6 +641,11 @@ def run_check(release: Path) -> dict:
         if not observed.owned_running(runtime, resource, token):
             report["outcome"] = "inconclusive"
             return report
+        if prove_shield_close:
+            checks["serving_shields_down_at_fault"] = base.shield_state() is False
+            if not checks["serving_shields_down_at_fault"]:
+                report["outcome"] = "inconclusive"
+                return report
         fault_at = time.monotonic()
         parent.signal_exact(driver_fd, signal.SIGSTOP)
         frozen.append(driver_fd)
@@ -616,6 +655,12 @@ def run_check(release: Path) -> dict:
         if not base.wait_for(lambda: observed.gone(main_pid, main_identity[0]), 25):
             raise RuntimeError("Installed watchdog did not stop service main process")
         checks["installed_watchdog_stopped_service"] = True
+        if prove_shield_close:
+            checks["watchdog_close_raised_shields"] = base.wait_for(
+                lambda: base.shield_state() is True, 25
+            )
+            if not checks["watchdog_close_raised_shields"]:
+                raise RuntimeError("Service close hook did not enable Shields Up")
         while time.monotonic() < fault_at + 30:
             if runtime.inspect_owned(resource, token) is None:
                 checks["exact_resource_absent_within_30s"] = True
@@ -641,6 +686,13 @@ def run_check(release: Path) -> dict:
             None,
         )
     finally:
+        if prove_shield_close and shield_changed and base is not None:
+            try:
+                report["fallback_shield_applied"] = guard_stopped_service(
+                    base, faulted=faulted
+                )
+            except Exception as exc:  # noqa: BLE001 - preserve the failure result.
+                report["error_kind"] = report["error_kind"] or type(exc).__name__
         for fd in reversed(frozen):
             try:
                 parent.signal_exact(fd, signal.SIGCONT)
@@ -765,7 +817,10 @@ def run_check(release: Path) -> dict:
                         and not faulted
                         and (proc is None or proc.poll() is not None)
                     ):
-                        base.command("/usr/bin/tailscale", "set", "--shields-up=false")
+                        if not prove_shield_close:
+                            base.command(
+                                "/usr/bin/tailscale", "set", "--shields-up=false"
+                            )
                     elif state in ("inactive", "failed") and (
                         checks["resolver_inspected_and_resolved"]
                         or (
@@ -791,7 +846,11 @@ def run_check(release: Path) -> dict:
                     report["evidence_retained"] = True
             else:
                 report["evidence_retained"] = True
-    report["passed"] = report["error_kind"] is None and all(checks.values())
+    report["passed"] = (
+        report["error_kind"] is None
+        and not report["fallback_shield_applied"]
+        and all(checks.values())
+    )
     if report["passed"]:
         report["outcome"] = "passed"
     return report
@@ -802,6 +861,7 @@ def main() -> int:
     parser.add_argument("--release", required=True, type=Path)
     parser.add_argument("--driver", nargs=2, metavar=("KEY", "STATUS_PATH"))
     parser.add_argument("--preflight-only", action="store_true")
+    parser.add_argument("--prove-shield-close", action="store_true")
     args = parser.parse_args()
     if args.preflight_only:
         if args.driver:
@@ -813,7 +873,7 @@ def main() -> int:
         return 0
     if args.driver:
         return driver(args.release, args.driver[0], Path(args.driver[1]))
-    report = run_check(args.release)
+    report = run_check(args.release, prove_shield_close=args.prove_shield_close)
     print(
         "PRISM_WATCHDOG_ACTIVE_RESULT " + json.dumps(report, sort_keys=True), flush=True
     )

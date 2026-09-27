@@ -7,7 +7,7 @@ import types
 import unittest
 from contextlib import closing
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts/m2-watchdog-socket-active-check.py"
@@ -17,6 +17,38 @@ SPEC.loader.exec_module(CHECK)
 
 
 class WatchdogSocketActiveCheckTests(unittest.TestCase):
+    def test_shield_mode_requires_observed_transition(self):
+        self.assertIn("serving_shields_down_at_fault", CHECK.SHIELD_REQUIRED)
+        self.assertIn("watchdog_close_raised_shields", CHECK.SHIELD_REQUIRED)
+        self.assertNotIn("maintenance_shields_up", CHECK.SHIELD_REQUIRED)
+        self.assertEqual(len(CHECK.SHIELD_REQUIRED), len(CHECK.REQUIRED) + 1)
+
+    def test_stopped_service_without_shields_gets_fallback_guard(self):
+        base = types.SimpleNamespace(
+            SERVICE="prism-test.service",
+            show=Mock(return_value="inactive"),
+            shield_state=Mock(return_value=False),
+            command=Mock(),
+        )
+        self.assertTrue(CHECK.guard_stopped_service(base, faulted=True))
+        base.command.assert_called_once_with(
+            "/usr/bin/tailscale", "set", "--shields-up=true"
+        )
+
+    def test_active_service_or_existing_shield_needs_no_fallback(self):
+        base = types.SimpleNamespace(
+            SERVICE="prism-test.service",
+            show=Mock(return_value="active"),
+            shield_state=Mock(return_value=False),
+            command=Mock(),
+        )
+        self.assertFalse(CHECK.guard_stopped_service(base, faulted=False))
+        base.shield_state.assert_not_called()
+        base.show.return_value = "inactive"
+        base.shield_state.return_value = True
+        self.assertFalse(CHECK.guard_stopped_service(base, faulted=True))
+        base.command.assert_not_called()
+
     def test_unsupported_host_stops_before_remote_or_live_state(self):
         with (
             patch.object(CHECK.platform, "system", return_value="Darwin"),

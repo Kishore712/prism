@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "kind": "m2-watchdog-shield-transition-validation",
+  "date": "2026-09-26",
+  "status": "passed-bounded-live-shield-transition",
+  "scope": "One root-only diagnostic run on the existing private Linux/Kata host used byte-verified immutable v7 Jobs/worker source, the installed watchdog socket and the installed identity-service cgroup. Only a private test copy of the synthetic JSON fixture received a 20-second delay. Shields Up was observed false while the service was running and again at fault injection. The installed watchdog stopped the service after lease loss; the installed service lifecycle close hook then made Shields Up true. The test's emergency fallback did not run.",
+  "installed_v7_transfer_sha256": "eb9e409032696fe4b6159cc2d338e548e6c1100d723a45b4b0607549f80bd501",
+  "installed_test_script_sha256": "a0971f257d5429380c3433c3d77da8b55ab5cf4fe9beef095cac655c9b59eab0",
+  "preflight": {
+    "service_and_watchdog_active": true,
+    "shields_up_before_test": false,
+    "live_runs": 16,
+    "queued_running_or_uncertain_live_runs": 0,
+    "lab_chats": 3,
+    "reference_namespace_empty": true,
+    "service_cgroup_only_main_process": true,
+    "database_integrity": "ok",
+    "test_only_source_copy_and_fixed_action_verified": true
+  },
+  "observed_result": {
+    "passed": true,
+    "required_checks_passed": 20,
+    "exact_owned_resource_running_before_fault": true,
+    "worker_and_client_in_installed_service_cgroup": true,
+    "shields_up_false_at_fault": true,
+    "installed_watchdog_stopped_service": true,
+    "lifecycle_close_raised_shields_up": true,
+    "emergency_fallback_applied": false,
+    "exact_resource_absent_within_30_second_poll": true,
+    "no_recreation_over_five_seconds": true,
+    "run_uncertain_with_null_result_before_resolution": true,
+    "root_only_inspection_and_resolution": true,
+    "resolution_status": "failed",
+    "resolution_execution_outcome": "unknown",
+    "model_calls": 0
+  },
+  "independent_postcheck": {
+    "service_and_watchdog_active": true,
+    "private_https_status": 200,
+    "shields_up_while_serving": false,
+    "live_runs": 17,
+    "queued_running_or_uncertain_live_runs": 0,
+    "live_grants": 11,
+    "live_model_dispatches": 77,
+    "lab_chats": 4,
+    "last_synthetic_run_failed_after_resolution": true,
+    "last_synthetic_run_result_null": true,
+    "reference_namespace_empty": true,
+    "service_cgroup_only_main_process": true,
+    "database_integrity": "ok",
+    "vm_still_running": true
+  },
+  "local_validation": {
+    "focused_diagnostic_tests": "8/8 passed",
+    "targeted_ruff_and_format": "passed",
+    "pilot_ready": false
+  },
+  "limits": [
+    "The root driver supplied synthetic owner scope directly; OIDC/browser authorization and the unchanged production JSON action were not exercised by this fault check.",
+    "The observation verifies a false-to-true Shields Up transition after watchdog-induced service stop with no diagnostic fallback. It does not isolate every internal systemd timing step or establish a hard fail-close deadline.",
+    "One bounded resource-absence poll is not a 30-second SLA under arbitrary runtime stalls or host disconnects.",
+    "The installed socket messages were not independently packet-traced. The test exercised the pinned Jobs/worker code and installed socket.",
+    "One synthetic chat/run and audit events remain in the live database. The uncertain result was manually resolved to failed/null with unknown execution outcome; no trusted result was reconstructed.",
+    "No model-provider cancellation, authenticated cross-role API coverage, broad security assurance, owner acceptance or private-pilot readiness is established."
+  ],
+  "privacy": "Contains no host name, cloud project, account, credential, private path, transcript, run ID, request key or private URL."
+}

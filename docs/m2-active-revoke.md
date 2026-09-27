@@ -181,6 +181,31 @@ OIDC/browser authorization, provider-call cancellation, broad security, owner
 acceptance or pilot readiness. See the
 [sanitized active-fault record](validation/m2-watchdog-socket-active.json).
 
+### Watchdog-triggered service close and Shields Up (2026-09-26)
+
+A separate bounded run used the same verified test-only delayed fixture and
+installed v7 Jobs/socket path, but left Shields Up **false** while the service
+was serving. It confirmed that state again at fault injection, after observing
+the exact Kata resource RUNNING and matching the worker/client to the installed
+service cgroup. Lease loss caused the installed watchdog to stop the service.
+The installed service lifecycle `ExecStopPost` then made Shields Up true; the
+diagnostic's emergency fallback was not invoked. The exact resource was absent
+within the test's 30-second poll and did not reappear during five more seconds.
+The real synthetic run became uncertain/null and was inspected and resolved to
+failed/null with explicitly unknown execution outcome.
+
+All 20 bounded checks passed. An independent postcheck found both units
+active, private HTTPS 200, Shields Up false while serving, an empty Kata
+namespace, only the service main process in its cgroup, database integrity
+`ok`, and 17 total runs with zero pending, 11 grants and 77 model dispatches.
+The test added one synthetic chat/run and audit events. It did not change the
+immutable production release, grants or model dispatches. The server remains
+running. This establishes one observed false-to-true transition after an
+installed watchdog-induced stop, not a universal fail-close deadline. Host
+disconnect, stalled runtime operations, authenticated cross-role API coverage,
+provider-call cancellation and pilot readiness remain separate gates. See the
+[sanitized transition record](validation/m2-watchdog-shield-transition.json).
+
 ## Behavior delivered
 
 The owner can revoke a named collaborator grant while its job is running. The
@@ -373,8 +398,9 @@ The live owner browser revoke path over private HTTPS/OIDC was exercised with
 synthetic data. V6 added colocated parent-loss evidence, and v7 adds an
 independent host watchdog. The later installed Jobs/socket active-fault test
 adds bounded cleanup evidence for an observed RUNNING resource, using a trusted
-root driver and a test-only delayed fixture. These checks do not establish
-host-disconnect handling, watchdog-triggered Shields Up from false, an absolute
+root driver and a test-only delayed fixture. A subsequent run observed the
+service-close hook raise Shields Up from false without fallback. These checks
+do not establish host-disconnect handling or an absolute
 30-second guarantee, cancellation of a live model-provider request, or broad
 security assurance. Streaming and downloads are not implemented. The
 independent high static review found no code-level blocker; it was not a
