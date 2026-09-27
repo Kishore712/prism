@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "kind": "m2-systemd-cgroup-validation",
+  "date": "2026-09-26",
+  "status": "bounded-host-validation-passed",
+  "scope": "One isolated real-Kata resource was placed under the installed identity-service cgroup. The pinned immutable v7 watchdog algorithm was invoked directly with its real systemd service-kill function; the installed watchdog socket and live Jobs submission were not exercised.",
+  "installed_v7_transfer_sha256": "eb9e409032696fe4b6159cc2d338e548e6c1100d723a45b4b0607549f80bd501",
+  "installed_test_script_sha256": "ad47761d678762d4ce036e5be402348ac7de83464ab2e3574fb024afe406b2e8",
+  "preflight": {
+    "installed_units_and_source_pinned": true,
+    "service_and_watchdog_active": true,
+    "live_runs": 12,
+    "queued_running_or_uncertain_live_runs": 0,
+    "live_grants": 11,
+    "live_model_dispatches": 77,
+    "reference_namespace_empty": true,
+    "service_cgroup_only_main_process": true,
+    "shields_up_while_serving": false
+  },
+  "test": {
+    "maintenance_shields_up_confirmed": true,
+    "test_worker_moved_into_real_service_cgroup": true,
+    "exact_owned_kata_resource_and_client_observed_running": true,
+    "worker_loss_grace_observed": true,
+    "real_systemd_service_cgroup_kill": true,
+    "service_main_and_exact_test_client_dead": true,
+    "shields_up_after_service_stop": true,
+    "isolated_synthetic_row": "uncertain with null result",
+    "exact_resource_absent_within_test_30s_window": true,
+    "late_recreation_observed": false,
+    "namespace_and_service_cgroup_drained": true,
+    "all_16_required_checks": true,
+    "outcome": "passed",
+    "evidence_retained": false
+  },
+  "independent_postcheck": {
+    "service_and_watchdog_active": true,
+    "live_runs": 12,
+    "queued_running_or_uncertain_live_runs": 0,
+    "live_grants": 11,
+    "live_model_dispatches": 77,
+    "reference_namespace_empty": true,
+    "service_cgroup_only_main_process": true,
+    "shields_up_while_serving": false,
+    "private_https_status": 200,
+    "vm_still_running": true
+  },
+  "local_validation": {
+    "focused_harness_and_watchdog_tests": "31/31 passed",
+    "full_backend_tests": "275/275 passed",
+    "targeted_ruff_and_format": "passed",
+    "diff_check": "passed",
+    "model_calls": 0,
+    "pilot_ready": false
+  },
+  "limits": [
+    "The installed watchdog socket and authenticated live Jobs submission were not exercised; the pinned v7 algorithm was called directly from an independent maintenance process.",
+    "Shields Up was enabled before fault injection, so the watchdog-triggered transition to Shields Up was not established.",
+    "The isolated synthetic row does not prove behavior for an existing production run or a real collaborator session.",
+    "The observed 30-second test window is not a hard termination SLA under all host failures.",
+    "Host disconnect, provider-call cancellation, broad security assurance, owner acceptance, and pilot readiness remain unverified."
+  ],
+  "privacy": "Contains no host name, project identifier, credentials, identity, live transcript, run ID, or private URL."
+}

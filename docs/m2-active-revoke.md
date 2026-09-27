@@ -89,6 +89,36 @@ transition, host-disconnect behavior, or a hard 30-second SLA. Broader order 6
 owner acceptance remains pending and `pilot_ready=false`; use the [sanitized
 observed-watchdog record](validation/m2-observed-watchdog.json).
 
+**Installed service-cgroup host validation (2026-09-26):** A separate root-only
+maintenance check used the pinned immutable v7 source on the existing private
+Linux/Kata host. Preflight confirmed the installed unit identities, both
+services active, zero queued/running/uncertain live runs, an empty fixed Kata
+namespace, and no other process in the service cgroup. The check enabled
+Shields Up, created a temporary synthetic SQLite run, and moved only its test
+worker into the real identity-service cgroup before allowing it to start Kata.
+It observed the exact owned resource and client RUNNING in that cgroup before
+fault injection. The pinned v7 watchdog algorithm was called directly from a
+separate maintenance process with its real systemd service-kill function. After
+worker loss and grace, it killed the real service cgroup, terminated the
+service main process and exact client, and reconciled the resource within the
+test's 30-second window. The isolated row became `uncertain` with a null
+result; no late recreation occurred, and the namespace and cgroup drained.
+
+The check then restored the service. An independent read-only postcheck found
+both units active, Shields Up false while serving, private HTTPS 200, an empty
+namespace, only the service main process in its cgroup, and unchanged live
+counts: 12 runs, zero queued/running/uncertain, 11 grants, and 77 model
+dispatches. The check directly wrote no live database rows and made no model
+calls. Its final root-only script SHA-256 is
+`ad47761d678762d4ce036e5be402348ac7de83464ab2e3574fb024afe406b2e8`.
+Focused local checks passed 31/31 with targeted Ruff and format checks. This
+does not test the installed watchdog socket or authenticated Jobs submission:
+the real v7 algorithm was invoked directly with an isolated row. Shields Up
+was enabled before fault injection, so a watchdog-triggered Shields Up
+transition was not established. The 30-second observation is not a hard SLA;
+host disconnect and broader order 6 acceptance remain pending. See the
+[sanitized service-cgroup record](validation/m2-systemd-cgroup.json).
+
 ## Behavior delivered
 
 The owner can revoke a named collaborator grant while its job is running. The
