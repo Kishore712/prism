@@ -23,6 +23,22 @@ acceptance; `pilot_ready` remains false. See the [release validation
 record](validation/m2-access-decisions-release.json) and the preserved
 [local validation record](validation/m2-access-decisions.json).
 
+**Local cross-role regression (2026-09-26):** A later focused test signs in an
+owner and two distinct recipients through a deterministic OIDC transport and
+uses valid session cookies and CSRF tokens. Recipient calls to owner reads and
+revoke, owner calls to recipient reads and access requests, and cross-recipient
+session reads and requests are denied. The test confirms the domain tables are
+unchanged by the denials and only expected denial audit events are added. Each
+recipient first submits a valid request to its own session, proving its CSRF
+token can authorize a write. All 22 identity tests and targeted Ruff/format
+checks passed. The private HTTPS service loaded in Chrome, and a Google
+identity that was not the configured owner was rejected at owner login. A
+separately authenticated owner received a sign-in-required response from the
+review-state API while owner access remained available. This is one live
+owner-to-review read denial; recipient-to-owner and cross-role writes are
+still untested on the private service. See the [bounded cross-role
+record](validation/m2-cross-role-api.json).
+
 ## Reproduce the local checks
 
 From the repository root, rerun the full backend suite:

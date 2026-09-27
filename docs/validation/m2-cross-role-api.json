@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "kind": "m2-cross-role-api-validation",
+  "date": "2026-09-26",
+  "status": "passed-local-authenticated-role-regression",
+  "scope": "A local HTTPS TestClient regression signs in a configured owner and two distinct invited recipients through a deterministic fake OIDC transport. Each denial request uses its own authenticated session and valid CSRF token where required.",
+  "local_observations": {
+    "owner_to_review_state_and_session_get_denied": true,
+    "owner_to_review_request_post_denied": true,
+    "recipient_to_owner_state_and_version_get_denied": true,
+    "recipient_to_owner_revoke_post_denied": true,
+    "cross_recipient_session_get_and_request_post_denied": true,
+    "own_recipient_session_remains_available": true,
+    "both_recipients_can_submit_own_session_requests_with_valid_csrf": true,
+    "domain_tables_unchanged_after_denials": true,
+    "expected_denial_audit_events": 4,
+    "model_calls": 0
+  },
+  "checks": {
+    "identity_tests": "22/22 passed",
+    "targeted_ruff_check_and_format": "passed",
+    "diff_check": "passed"
+  },
+  "private_browser_observation": "The existing private HTTPS service loaded in Chrome. An incognito Google identity that is not the configured owner was rejected by the owner OIDC callback. In a separate regular Chrome profile, the configured owner authenticated and the owner workspace loaded; direct navigation to the review-state API returned a sign-in-required response, then the owner-state API still loaded under that owner session. This is one live authenticated owner-to-review read denial, not a complete bidirectional cross-role API acceptance.",
+  "limits": [
+    "The automated role matrix uses fake OIDC transport and a local TestClient, not the installed private Linux service or live Google sessions.",
+    "The browser observation exercised only owner-to-review state read under a valid owner session. No live recipient-to-owner request, cross-recipient request or cross-role write was exercised; live authenticated cross-role acceptance remains open.",
+    "Two same-session access requests are created in the isolated local test before the no-mutation snapshot to establish valid CSRF and session authorization. The selected routes and recipients are regression coverage, not an exhaustive authorization audit.",
+    "No invitation, grant, run or model dispatch was created on the private service in this stage. Private-pilot readiness and owner acceptance remain open."
+  ],
+  "pilot_ready": false,
+  "privacy": "Contains no hostname, account, OAuth code, credential, invitation token, session cookie, transcript or private URL."
+}

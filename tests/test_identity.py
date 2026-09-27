@@ -784,6 +784,169 @@ class IdentityTests(unittest.TestCase):
             )
             self.assertEqual(response.status_code, 403)
 
+    def test_authenticated_roles_cannot_cross_api_or_recipient_sessions(self):
+        app = create_app(self.store, self.source, auth=self.auth)
+
+        def query_from(url):
+            return urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+
+        def sign_in_recipient(owner, owner_headers, client, subject):
+            invited = owner.post(
+                f"/api/owner/versions/{self.verify['id']}/invitations",
+                headers=owner_headers,
+                json={
+                    "recipient_issuer": self.config.issuer,
+                    "recipient_subject": subject,
+                    "mode": "inspect",
+                    "expires_in": 600,
+                },
+            )
+            self.assertEqual(invited.status_code, 200, invited.text)
+            token = urllib.parse.parse_qs(
+                urllib.parse.urlsplit(invited.json()["url"]).fragment
+            )["token"][0]
+            started = client.post(
+                "/api/auth/oidc/invitation",
+                headers={"Origin": self.config.public_origin},
+                json={"token": token},
+            )
+            self.assertEqual(started.status_code, 200, started.text)
+            query = query_from(started.json()["authorization_url"])
+            self.transport.claims = self.claims(subject, query["nonce"][0])
+            callback = client.get(
+                "/auth/oidc/callback",
+                params={"state": query["state"][0], "code": subject},
+                follow_redirects=False,
+            )
+            self.assertEqual(callback.status_code, 303, callback.text)
+            state = client.get("/api/review/state")
+            self.assertEqual(state.status_code, 200, state.text)
+            return state.json()
+
+        def domain_rows():
+            with self.store.connect() as db:
+                tables = [
+                    row[0]
+                    for row in db.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table' "
+                        "AND name NOT IN ('events', 'sqlite_sequence') ORDER BY name"
+                    )
+                ]
+                return {
+                    table: [
+                        tuple(row) for row in db.execute(f'SELECT * FROM "{table}"')
+                    ]
+                    for table in tables
+                }
+
+        with (
+            TestClient(app, base_url="https://prism.example") as owner,
+            TestClient(app, base_url="https://prism.example") as recipient_a,
+            TestClient(app, base_url="https://prism.example") as recipient_b,
+        ):
+            started = owner.get("/auth/oidc/owner", follow_redirects=False)
+            self.assertEqual(started.status_code, 303)
+            query = query_from(started.headers["location"])
+            self.transport.claims = self.claims(
+                self.config.owner_subject, query["nonce"][0]
+            )
+            callback = owner.get(
+                "/auth/oidc/callback",
+                params={"state": query["state"][0], "code": "owner"},
+                follow_redirects=False,
+            )
+            self.assertEqual(callback.status_code, 303, callback.text)
+            owner_state = owner.get("/api/owner/state")
+            self.assertEqual(owner_state.status_code, 200, owner_state.text)
+            owner_headers = {
+                "Origin": self.config.public_origin,
+                "X-Prism-CSRF": owner_state.json()["csrf"],
+            }
+            state_a = sign_in_recipient(
+                owner, owner_headers, recipient_a, "recipient-a"
+            )
+            state_b = sign_in_recipient(
+                owner, owner_headers, recipient_b, "recipient-b"
+            )
+            session_a, session_b = state_a["session"], state_b["session"]
+            self.assertNotEqual(session_a, session_b)
+            self.assertEqual(
+                recipient_a.get(f"/api/review/sessions/{session_a}").status_code,
+                200,
+            )
+            self.assertEqual(
+                recipient_b.get(f"/api/review/sessions/{session_b}").status_code,
+                200,
+            )
+            review_headers_a = {
+                "Origin": self.config.public_origin,
+                "X-Prism-CSRF": state_a["csrf"],
+            }
+            review_headers_b = {
+                "Origin": self.config.public_origin,
+                "X-Prism-CSRF": state_b["csrf"],
+            }
+            for client, headers, own_session in (
+                (recipient_a, review_headers_a, session_a),
+                (recipient_b, review_headers_b, session_b),
+            ):
+                response = client.post(
+                    f"/api/review/sessions/{own_session}/requests",
+                    headers=headers,
+                    json={"description": "Confirm own-session write authorization."},
+                )
+                self.assertEqual(response.status_code, 200, response.text)
+            with self.store.connect() as db:
+                grant_a = db.execute(
+                    "SELECT grant_id FROM sessions WHERE id=?", (session_a,)
+                ).fetchone()["grant_id"]
+                last_event = db.execute("SELECT max(id) FROM events").fetchone()[0]
+            before = domain_rows()
+            self.assertIn("grants", before)
+            self.assertIn("model_dispatches", before)
+            denied = (
+                recipient_a.get("/api/owner/state"),
+                recipient_a.get(f"/api/owner/versions/{self.verify['id']}"),
+                recipient_a.post(
+                    f"/api/owner/grants/{grant_a}/revoke",
+                    headers=review_headers_a,
+                    json={},
+                ),
+                owner.get("/api/review/state"),
+                owner.get(f"/api/review/sessions/{session_a}"),
+                owner.post(
+                    f"/api/review/sessions/{session_a}/requests",
+                    headers=owner_headers,
+                    json={"description": "Cross-role request must be denied."},
+                ),
+            )
+            for response in denied:
+                self.assertEqual(response.status_code, 401, response.text)
+            for client, headers, other_session in (
+                (recipient_a, review_headers_a, session_b),
+                (recipient_b, review_headers_b, session_a),
+            ):
+                self.assertEqual(
+                    client.get(f"/api/review/sessions/{other_session}").status_code,
+                    403,
+                )
+                response = client.post(
+                    f"/api/review/sessions/{other_session}/requests",
+                    headers=headers,
+                    json={"description": "Cross-recipient request must be denied."},
+                )
+                self.assertEqual(response.status_code, 403, response.text)
+            self.assertEqual(domain_rows(), before)
+            with self.store.connect() as db:
+                audit = db.execute(
+                    "SELECT kind FROM events WHERE id>? ORDER BY id", (last_event,)
+                ).fetchall()
+            self.assertEqual([row["kind"] for row in audit], ["access_denied"] * 4)
+            self.assertEqual(
+                recipient_a.get(f"/api/review/sessions/{session_a}").status_code,
+                200,
+            )
+
     def test_oidc_owner_revoke_cancels_running_json_check_without_cross_grant_leak(
         self,
     ):
