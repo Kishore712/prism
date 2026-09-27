@@ -34,9 +34,23 @@ token can authorize a write. All 22 identity tests and targeted Ruff/format
 checks passed. The private HTTPS service loaded in Chrome, and a Google
 identity that was not the configured owner was rejected at owner login. A
 separately authenticated owner received a sign-in-required response from the
-review-state API while owner access remained available. This is one live
-owner-to-review read denial; recipient-to-owner and cross-role writes are
-still untested on the private service. See the [bounded cross-role
+review-state API while owner access remained available.
+
+**Bounded live cross-role follow-up (2026-09-26):** One new one-hour,
+inspect-only invitation for the approved three-file synthetic Paired version
+was redeemed by the previously identified USC test identity in an independent
+Chrome incognito profile. Each identity's own state API returned 200;
+cross-role state reads returned sign-in-required. Same-origin JSON POSTs using
+each role's valid CSRF token returned 401 against the opposite role's API.
+Those POSTs used nonexistent target IDs, so they establish route-level role
+denial without attempting to mutate an existing record. The exact new grant
+was then revoked; a fresh reviewer page load could no longer enter the shared
+workspace. A root-only, read-only Linux database check found both service
+units active, integrity `ok`, the latest inspect grant revoked, zero active
+grants for that version, 17 runs and 77 model dispatches. The one invitation
+and grant remain as records. No model call or run was made. This is bounded
+acceptance, not a cross-recipient live test or exhaustive authorization audit;
+`pilot_ready` remains false. See the [cross-role validation
 record](validation/m2-cross-role-api.json).
 
 ## Reproduce the local checks

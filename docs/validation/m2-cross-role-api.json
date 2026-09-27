@@ -2,7 +2,7 @@
   "schema": 1,
   "kind": "m2-cross-role-api-validation",
   "date": "2026-09-26",
-  "status": "passed-local-authenticated-role-regression",
+  "status": "passed-bounded-live-bidirectional-role-denials",
   "scope": "A local HTTPS TestClient regression signs in a configured owner and two distinct invited recipients through a deterministic fake OIDC transport. Each denial request uses its own authenticated session and valid CSRF token where required.",
   "local_observations": {
     "owner_to_review_state_and_session_get_denied": true,
@@ -21,12 +21,38 @@
     "targeted_ruff_check_and_format": "passed",
     "diff_check": "passed"
   },
-  "private_browser_observation": "The existing private HTTPS service loaded in Chrome. An incognito Google identity that is not the configured owner was rejected by the owner OIDC callback. In a separate regular Chrome profile, the configured owner authenticated and the owner workspace loaded; direct navigation to the review-state API returned a sign-in-required response, then the owner-state API still loaded under that owner session. This is one live authenticated owner-to-review read denial, not a complete bidirectional cross-role API acceptance.",
+  "private_browser_observation": "The existing private HTTPS service loaded in Chrome. An incognito Google identity that is not the configured owner was rejected by the owner OIDC callback. A separate regular Chrome profile authenticated as owner and its owner workspace loaded. Direct owner-to-review state access returned a sign-in-required response while owner access remained available.",
+  "bounded_live_followup": {
+    "scope": "With owner authorization, one new one-hour inspect-only invitation for the existing approved three-file synthetic Paired evaluation version was issued to the previously identified USC Google test identity. The invitation was redeemed in a separate Chrome incognito profile. No model question or task was submitted.",
+    "first_invitation_submission": "The initial submission returned sign-in-required; a reload showed the owner session was no longer active and no invitation appeared. Reauthentication preceded the successful submission.",
+    "recipient_redemption_and_own_review_workspace": "passed",
+    "owner_own_state_get": 200,
+    "owner_review_state_get": "sign-in-required",
+    "recipient_own_state_get": 200,
+    "recipient_owner_state_get": "sign-in-required",
+    "owner_to_review_write_status": 401,
+    "recipient_to_owner_write_status": 401,
+    "write_probe_design": "Each browser request used its own session's CSRF token, same-origin JSON POST, and a nonexistent all-zero target ID to avoid mutating a real request or session even if authorization failed. Both own-state reads returned 200 in the same probe.",
+    "test_grant_revoked": true,
+    "review_workspace_blocked_after_revocation": true,
+    "independent_linux_postcheck": {
+      "identity_service_active": true,
+      "host_watchdog_active": true,
+      "database_integrity": "ok",
+      "invitations": 12,
+      "grants": 12,
+      "runs": 17,
+      "model_dispatches": 77,
+      "latest_grant_mode": "inspect",
+      "latest_grant_revoked": true,
+      "active_grants_for_same_version": 0
+    }
+  },
   "limits": [
     "The automated role matrix uses fake OIDC transport and a local TestClient, not the installed private Linux service or live Google sessions.",
-    "The browser observation exercised only owner-to-review state read under a valid owner session. No live recipient-to-owner request, cross-recipient request or cross-role write was exercised; live authenticated cross-role acceptance remains open.",
+    "The live checks covered two distinct Google identities and both role directions for state reads and one safe write probe per direction. The POST targets were nonexistent IDs, so this is route-level role denial evidence rather than an existing-object mutation attempt. No live cross-recipient session test was performed.",
     "Two same-session access requests are created in the isolated local test before the no-mutation snapshot to establish valid CSRF and session authorization. The selected routes and recipients are regression coverage, not an exhaustive authorization audit.",
-    "No invitation, grant, run or model dispatch was created on the private service in this stage. Private-pilot readiness and owner acceptance remain open."
+    "The live follow-up created and redeemed one synthetic read-only invitation/grant, then revoked that exact grant. It left an invitation/grant record and audit events; revocation controls subsequent access, not information already viewed. No new run or model dispatch occurred. Private-pilot readiness and owner acceptance remain open."
   ],
   "pilot_ready": false,
   "privacy": "Contains no hostname, account, OAuth code, credential, invitation token, session cookie, transcript or private URL."
