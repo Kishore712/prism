@@ -15,6 +15,7 @@ from prism.host_watchdog import (
     CLOSE_RESIDUAL_SECONDS,
     TAILNET_PROBE_SECONDS,
     HostWatchdog,
+    TailnetProbeError,
     WatchdogError,
     _group_processes,
     _kill_service,
@@ -129,15 +130,19 @@ class HostWatchdogTests(unittest.TestCase):
         prefs["ShieldsUp"] = False
         probe()
         status["BackendState"] = "Stopped"
-        with self.assertRaises(WatchdogError):
+        with self.assertRaisesRegex(WatchdogError, "category=backend"):
             probe()
         status["BackendState"] = "Running"
+        status["Self"]["Online"] = False
+        with self.assertRaisesRegex(WatchdogError, "category=offline"):
+            probe()
+        status["Self"]["Online"] = True
         status["Self"]["TailscaleIPs"] = ["100.100.100.101"]
-        with self.assertRaises(WatchdogError):
+        with self.assertRaisesRegex(WatchdogError, "category=identity"):
             probe()
         status["Self"]["TailscaleIPs"] = ["100.100.100.100"]
         prefs["RunSSH"] = True
-        with self.assertRaises(WatchdogError):
+        with self.assertRaisesRegex(WatchdogError, "category=preferences"):
             probe()
 
     def test_tailnet_probe_timeout_is_loss(self):
@@ -146,9 +151,57 @@ class HostWatchdogTests(unittest.TestCase):
                 "prism.host_watchdog.subprocess.run",
                 side_effect=subprocess.TimeoutExpired("tailscale", 1),
             ),
-            self.assertRaises(WatchdogError),
+            self.assertRaisesRegex(WatchdogError, "category=timeout"),
         ):
             _tailnet_ready("pilot.example.ts.net", "100.100.100.100")
+
+    def test_tailnet_probe_distinguishes_command_and_response_failures(self):
+        for failure, category in (
+            (
+                subprocess.CalledProcessError(2, ["secret-command"], b"secret"),
+                "command",
+            ),
+            (OSError("secret path"), "spawn"),
+        ):
+            with (
+                self.subTest(category=category),
+                patch("prism.host_watchdog.subprocess.run", side_effect=failure),
+                self.assertRaises(TailnetProbeError) as caught,
+            ):
+                _tailnet_ready("pilot.example.ts.net", "100.100.100.100")
+            self.assertEqual(caught.exception.category, category)
+            self.assertNotIn("secret", str(caught.exception))
+        with (
+            patch(
+                "prism.host_watchdog.subprocess.run",
+                side_effect=[
+                    SimpleNamespace(stdout=b"secret invalid json"),
+                    SimpleNamespace(stdout=b"{}"),
+                ],
+            ),
+            self.assertRaises(TailnetProbeError) as caught,
+        ):
+            _tailnet_ready("pilot.example.ts.net", "100.100.100.100")
+        self.assertEqual(caught.exception.category, "response")
+        self.assertNotIn("secret", str(caught.exception))
+
+    def test_tailnet_probe_classifies_down_state_before_optional_identity_fields(self):
+        prefs = {"ShieldsUp": True}
+        for status, category in (
+            ({"BackendState": "Stopped"}, "backend"),
+            ({"BackendState": "Running", "Self": {"Online": False}}, "offline"),
+        ):
+            with self.subTest(category=category):
+                outputs = [
+                    SimpleNamespace(stdout=json.dumps(value).encode())
+                    for value in (status, prefs)
+                ]
+                with (
+                    patch("prism.host_watchdog.subprocess.run", side_effect=outputs),
+                    self.assertRaises(TailnetProbeError) as caught,
+                ):
+                    _tailnet_ready("pilot.example.ts.net", "100.100.100.100")
+                self.assertEqual(caught.exception.category, category)
 
     def test_tailnet_probe_uses_remaining_shared_deadline(self):
         status = {
@@ -194,7 +247,7 @@ class HostWatchdogTests(unittest.TestCase):
 
         with (
             patch("prism.host_watchdog.subprocess.run", side_effect=delayed) as run,
-            self.assertRaisesRegex(WatchdogError, "deadline elapsed"),
+            self.assertRaisesRegex(WatchdogError, "category=timeout"),
         ):
             _tailnet_ready(
                 "pilot.example.ts.net", "100.100.100.100", clock=lambda: now[0]
@@ -215,6 +268,20 @@ class HostWatchdogTests(unittest.TestCase):
         self.assertTrue(self.watchdog.blocked)
         with self.assertRaises(WatchdogError):
             self.watchdog.dispatch({"op": "health"}, 123, 0)
+
+    def test_tailnet_loss_reports_only_fixed_probe_category_after_stopping(self):
+        self.db.unlink()
+        self.watchdog.startup()
+        self.watchdog.tailnet_probe = lambda: (_ for _ in ()).throw(
+            TailnetProbeError("offline")
+        )
+        self.now[0] += 1.1
+        with self.assertRaisesRegex(
+            WatchdogError, r"tailnet state was lost \(category=offline\)"
+        ):
+            self.watchdog.tick()
+        self.assertEqual(self.kills, [True])
+        self.assertTrue(self.watchdog.blocked)
 
     def test_tailnet_loss_on_startup_stops_service(self):
         self.db.unlink()

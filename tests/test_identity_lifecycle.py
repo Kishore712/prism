@@ -2,6 +2,7 @@
 
 import hashlib
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -329,11 +330,41 @@ class IdentityLifecycleTests(unittest.TestCase):
             life.old_timer_absent()
 
     def test_restore_failure_uses_independent_daemon_block(self):
+        journal = io.StringIO()
         with (
             patch.object(
-                life, "run", side_effect=subprocess.CalledProcessError(1, "restore")
+                life,
+                "run",
+                side_effect=subprocess.CalledProcessError(
+                    1, "secret-command", stderr=b"secret output"
+                ),
             ),
             patch.object(life, "emergency_block") as blocked,
+            patch.object(life.sys, "stderr", journal),
+        ):
+            life.close("pilot.example.ts.net", "100.100.100.100")
+        blocked.assert_called_once_with()
+        self.assertIn("restore=command, fallback=command", journal.getvalue())
+        self.assertNotIn("secret", journal.getvalue())
+
+    def test_close_failure_categories_are_fixed(self):
+        self.assertEqual(
+            life.close_failure_category(subprocess.TimeoutExpired("secret", 1)),
+            "timeout",
+        )
+        self.assertEqual(life.close_failure_category(ValueError("secret")), "state")
+        self.assertEqual(life.close_failure_category(OSError("secret")), "os")
+
+    def test_emergency_block_runs_even_if_diagnostic_output_fails(self):
+        class FailedJournal:
+            def write(self, _text):
+                raise OSError("journal unavailable")
+
+        with (
+            patch.object(life, "run", side_effect=ValueError("state unavailable")),
+            patch.object(life, "emergency_block") as blocked,
+            patch.object(life.sys, "stderr", FailedJournal()),
+            self.assertRaises(OSError),
         ):
             life.close("pilot.example.ts.net", "100.100.100.100")
         blocked.assert_called_once_with()

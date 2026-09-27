@@ -32,21 +32,17 @@ resolution = module(RESOLVER, "uncertain_resolution_v8")
 
 
 class TailnetDownActiveCheckTests(unittest.TestCase):
-    def test_release_and_resolver_pins_are_local_sources(self):
+    def test_historical_release_pins_match_recorded_fifth_attempt(self):
         import hashlib
 
+        record = json.loads(
+            (ROOT / "docs/validation/m2-host-disconnect.json").read_text()
+        )["fifth_active_attempt"]
         self.assertEqual(
-            hashlib.sha256(
-                (ROOT / "src/prism/host_watchdog.py").read_bytes()
-            ).hexdigest(),
-            check.WATCHDOG_SHA256,
+            check.TRANSFER_SHA256, record["installed_release_transfer_sha256"]
         )
-        self.assertEqual(
-            hashlib.sha256(
-                (ROOT / "scripts/gcp/identity-service-lifecycle.py").read_bytes()
-            ).hexdigest(),
-            check.LIFECYCLE_SHA256,
-        )
+        self.assertEqual(check.WATCHDOG_SHA256, record["installed_watchdog_sha256"])
+        self.assertEqual(check.LIFECYCLE_SHA256, record["installed_lifecycle_sha256"])
         self.assertEqual(
             hashlib.sha256(RESOLVER.read_bytes()).hexdigest(), check.RESOLVER_SHA256
         )

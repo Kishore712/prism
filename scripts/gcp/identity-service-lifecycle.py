@@ -764,7 +764,19 @@ def emergency_block():
     raise ValueError("Tailnet inbound could not be independently blocked.")
 
 
+def close_failure_category(exc):
+    """Return a fixed journal label without exposing command output or identity."""
+    if isinstance(exc, subprocess.TimeoutExpired):
+        return "timeout"
+    if isinstance(exc, subprocess.CalledProcessError):
+        return "command"
+    if isinstance(exc, OSError):
+        return "os"
+    return "state"
+
+
 def close(host, ip):
+    restore_failure = None
     try:
         run(RESTORE, timeout=40)
         tailnet_state(host, ip, True)
@@ -774,8 +786,8 @@ def close(host, ip):
         ValueError,
         subprocess.CalledProcessError,
         subprocess.TimeoutExpired,
-    ):
-        pass
+    ) as exc:
+        restore_failure = close_failure_category(exc)
     try:
         run("tailscale", "set", "--shields-up=true", timeout=20)
         tailnet_state(host, ip, True)
@@ -785,8 +797,16 @@ def close(host, ip):
         ValueError,
         subprocess.CalledProcessError,
         subprocess.TimeoutExpired,
-    ):
-        emergency_block()
+    ) as exc:
+        try:
+            print(
+                "Private inbound close verification failed "
+                f"(restore={restore_failure}, fallback={close_failure_category(exc)}); "
+                "blocking tailnet daemon",
+                file=sys.stderr,
+            )
+        finally:
+            emergency_block()
 
 
 def prepare(host, ip, record, bundle, run_id, project_sha256=None):

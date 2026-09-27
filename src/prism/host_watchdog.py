@@ -38,6 +38,14 @@ class WatchdogError(RuntimeError):
     pass
 
 
+class TailnetProbeError(WatchdogError):
+    """A fixed reason safe to expose in the root-only watchdog journal."""
+
+    def __init__(self, category):
+        self.category = category
+        super().__init__(f"Fixed private tailnet probe failed (category={category})")
+
+
 class _CloseResidualPending(RuntimeError):
     """A fixed close helper may be starting or exiting under systemd."""
 
@@ -91,7 +99,7 @@ def _tailnet_ready(host, ip, *, clock=time.monotonic):
         for arguments in (("status", "--json"), ("debug", "prefs")):
             remaining = deadline - clock()
             if remaining <= 0:
-                raise WatchdogError("Fixed private tailnet probe deadline elapsed")
+                raise TailnetProbeError("timeout")
             outputs.append(
                 subprocess.run(
                     ["/usr/bin/tailscale", *arguments],
@@ -102,35 +110,48 @@ def _tailnet_ready(host, ip, *, clock=time.monotonic):
                 ).stdout
             )
             if clock() >= deadline:
-                raise WatchdogError("Fixed private tailnet probe deadline elapsed")
+                raise TailnetProbeError("timeout")
         status, prefs = (json.loads(output) for output in outputs)
+        if status["BackendState"] != "Running":
+            raise TailnetProbeError("backend")
         own = status["Self"]
+        if own["Online"] is not True:
+            raise TailnetProbeError("offline")
         addresses = own["TailscaleIPs"]
         if (
-            status["BackendState"] != "Running"
-            or own["Online"] is not True
-            or own["DNSName"].lower().rstrip(".") != host
+            own["DNSName"].lower().rstrip(".") != host
             or not isinstance(addresses, list)
             or addresses.count(ip) != 1
             or own["Tags"] != ["tag:prism-host"]
-            or type(prefs["ShieldsUp"]) is not bool
+        ):
+            raise TailnetProbeError("identity")
+        if (
+            type(prefs["ShieldsUp"]) is not bool
             or prefs["RunSSH"] is not False
             or prefs["RouteAll"] is not False
             or prefs["AdvertiseRoutes"]
             or prefs["ExitNodeID"]
             or prefs["ExitNodeIP"]
         ):
-            raise WatchdogError("Fixed private tailnet state is unavailable")
+            raise TailnetProbeError("preferences")
+    except TailnetProbeError:
+        raise
+    except subprocess.TimeoutExpired as exc:
+        raise TailnetProbeError("timeout") from exc
+    except subprocess.CalledProcessError as exc:
+        raise TailnetProbeError("command") from exc
+    except subprocess.SubprocessError as exc:
+        raise TailnetProbeError("command") from exc
+    except OSError as exc:
+        raise TailnetProbeError("spawn") from exc
     except (
-        OSError,
         UnicodeError,
         ValueError,
         KeyError,
         TypeError,
         AttributeError,
-        subprocess.SubprocessError,
     ) as exc:
-        raise WatchdogError("Fixed private tailnet state is unavailable") from exc
+        raise TailnetProbeError("response") from exc
 
 
 def _strict_json(data):
@@ -627,7 +648,10 @@ class HostWatchdog:
                         f"(category={_error_category(cleanup_exc)})"
                     ) from cleanup_exc
             self.blocked = True
-            raise WatchdogError("Fixed private tailnet state was lost") from exc
+            category = exc.category if isinstance(exc, TailnetProbeError) else "probe"
+            raise WatchdogError(
+                f"Fixed private tailnet state was lost (category={category})"
+            ) from exc
 
     def _expire(self, *, service_stopped=False):
         if self.active is None:
