@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "kind": "m2-observed-watchdog-validation",
+  "date": "2026-09-26",
+  "status": "bounded-host-validation-passed",
+  "scope": "An isolated, test-only real-Kata rehearsal of the immutable v7 watchdog algorithm after an exact owned resource was observed RUNNING; the final passing execution used the exact formatted script whose SHA-256 is recorded below.",
+  "approved_transfer_sha256": "eb9e409032696fe4b6159cc2d338e548e6c1100d723a45b4b0607549f80bd501",
+  "final_installed_test_script_sha256": "de10d183193d933a059292bff6480ce0bc46b443b3439ce7e24443d80bb18c35",
+  "harness": "scripts/m2-observed-watchdog-check.py",
+  "host_attempts": [
+    {
+      "result": "stopped-before-kata",
+      "reason": "The first host attempt failed at verify_release with ValueError because a root-owned source directory with mode 0755 was over-rejected.",
+      "impact": "No Kata resource or run was created; both services were restored and private HTTPS returned 200."
+    },
+    {
+      "result": "passed",
+      "description": "Bounded pass using the pre-format script version.",
+      "preflight": "Read-only verified_modules, unit_identity, and pidfd checks passed before the rehearsal."
+    },
+    {
+      "result": "passed",
+      "description": "Final pass using the exact installed formatted test script identified by final_installed_test_script_sha256.",
+      "all_reported_checks": true,
+      "real_kata_observed": true
+    }
+  ],
+  "preconditions": [
+    "Dedicated root Linux/Kata host and approved immutable v7 transfer SHA-256",
+    "Both services stopped, maintenance Shields Up true, and no active or uncertain live run",
+    "Linux pidfd open and signal-zero path verified before creating the test resource",
+    "Fixed prism-m0 namespace empty"
+  ],
+  "isolated_effects": [
+    "Temporary root-private synthetic SQLite database; no live database, grant, or model calls",
+    "Renew the v7 lease during observation and immediately before faulting only the script-owned worker after exact owned RUNNING resource and client observation",
+    "Prove worker-loss grace, expiry, and real v7 resource reconciliation; replace only the service-cgroup kill with pidfd termination of the exact test client",
+    "Require uncertain/null state, exact resource and process absence within the test's 30-second poll, no late recreation, empty namespace, and controlled cleanup"
+  ],
+  "observed_result": {
+    "passed": true,
+    "outcome": "passed",
+    "all_reported_checks": true,
+    "real_kata_observed": true,
+    "exact_owned_resource_and_client_observed_running_before_fault": true,
+    "exact_resource_and_client_still_present_at_expiry": true,
+    "worker_killed": true,
+    "lease_renewed_and_worker_loss_grace_proven": true,
+    "exact_client_and_resource_absent_within_test_30s_poll": true,
+    "late_recreation": false,
+    "isolated_row_uncertain_with_null_result": true,
+    "namespace_empty": true,
+    "cleanup_confirmed": true,
+    "evidence_retained": false
+  },
+  "post_run_host_state": {
+    "live_database_unchanged": true,
+    "database_integrity": "ok",
+    "runs": 12,
+    "active_or_uncertain_runs": 0,
+    "grants": 11,
+    "model_dispatches": 77,
+    "services_active": true,
+    "shields_up_while_serving": false,
+    "private_https_status": 200,
+    "namespace_empty": true,
+    "vm_still_running": true
+  },
+  "local_validation": {
+    "focused_harness_tests": "12/12 passed",
+    "existing_watchdog_tests": "15/15 passed",
+    "targeted_ruff": "passed",
+    "format_check": "passed",
+    "diff_check": "passed",
+    "host_execution": true,
+    "model_calls": 0,
+    "pilot_ready": false
+  },
+  "not_established": [
+    "Installed systemd or service-cgroup end-to-end kill behavior",
+    "Watchdog-triggered Shields Up transition",
+    "Host disconnect behavior or a hard 30-second termination SLA",
+    "Broader order 6 owner acceptance or pilot readiness"
+  ]
+}

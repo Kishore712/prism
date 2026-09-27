@@ -54,6 +54,41 @@ pilot readiness. `local-root-operator` remains a generic audit label, not an
 authenticated human identity. See the [sanitized validation record](validation/m2-uncertain-resolution.json)
 and the [guest service guide](m2-recipient-guest-service.md).
 
+**Observed-resource watchdog host validation (2026-09-26):** The approved
+immutable v7 transfer (SHA-256
+`eb9e409032696fe4b6159cc2d338e548e6c1100d723a45b4b0607549f80bd501`) was
+validated on the existing Linux/Kata host. The first attempt stopped before
+Kata creation: `verify_release` rejected a root-owned source directory with
+mode 0755. No Kata resource or run was created; both services were restored
+and private HTTPS returned 200. The second host execution passed with the
+corrected script. A third execution passed using the final formatted script,
+installed root-only with SHA-256
+`de10d183193d933a059292bff6480ce0bc46b443b3439ce7e24443d80bb18c35`. Its
+read-only module, unit-identity, and pidfd preflight passed. It began with
+both services stopped, maintenance Shields Up enabled, no active or uncertain
+live run, and an empty namespace.
+
+The exact owned Kata resource and client were observed RUNNING before the
+fault and still present at expiry. The test renewed the lease, killed only its
+owned worker, and proved worker-loss grace. The real v7 watchdog expiry and
+resource reconciliation then produced `uncertain`/null in an isolated
+synthetic database; the exact client and resource disappeared within the
+test's 30-second poll, were not recreated, and the namespace was empty at
+confirmed cleanup. Only the service-cgroup kill boundary was replaced, using
+pidfd termination of the exact test client. The test made no live database,
+grant, or model calls; evidence was not retained.
+
+Afterward the live database was unchanged and passed integrity checks; counts
+remained 12 runs, zero active/uncertain runs, 11 grants, and 77 model
+dispatches. Both services were active, Shields Up was false while serving,
+private HTTPS returned 200, the namespace was empty, and the VM remained
+running. Focused tests passed 12/12, existing watchdog tests 15/15, and
+targeted Ruff, format, and diff checks passed. This does not establish installed
+systemd/service-cgroup end-to-end behavior, a watchdog-triggered Shields Up
+transition, host-disconnect behavior, or a hard 30-second SLA. Broader order 6
+owner acceptance remains pending and `pilot_ready=false`; use the [sanitized
+observed-watchdog record](validation/m2-observed-watchdog.json).
+
 ## Behavior delivered
 
 The owner can revoke a named collaborator grant while its job is running. The
