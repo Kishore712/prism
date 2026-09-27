@@ -1,0 +1,91 @@
+{
+  "schema": 1,
+  "kind": "m2-watchdog-socket-active-validation",
+  "date": "2026-09-26",
+  "status": "passed-bounded-installed-active-fault-path",
+  "scope": "A root-only diagnostic driver joined the installed identity-service cgroup, created a synthetic owner project/chat in the live database, and used byte-verified v7 Jobs/worker source plus the installed watchdog socket. Only a private copy of the fixed JSON fixture was changed to add a 20-second guest delay. The immutable production v7 release and its executable JSON fixture were not changed. The driver supplied owner scope directly; OIDC, browser authorization, and the production JSON program were not exercised by this fault test.",
+  "installed_v7_transfer_sha256": "eb9e409032696fe4b6159cc2d338e548e6c1100d723a45b4b0607549f80bd501",
+  "installed_test_script_sha256": "36998449d9b7ddb14b801b2b17c831f8017f10553239819e536b0533d97cdf74",
+  "preflight": {
+    "pinned_v7_source": true,
+    "test_copy_only_fixture_changed": true,
+    "test_imports_and_fixed_action": true,
+    "live_database_touched": false,
+    "service_or_network_changed": false
+  },
+  "diagnostic_attempts": [
+    {
+      "outcome": "failed-before-submission",
+      "cause": "The main diagnostic process used the installed Python environment, which lacks os.pidfd_open. The host system Python provides pidfd_open and pidfd_send_signal.",
+      "live_run_created": false,
+      "service_and_private_network_restored": true
+    },
+    {
+      "outcome": "inconclusive-before-fault",
+      "cause": "The first delayed-fixture Jobs run reached the worker's 10-second execution limit before the original observer captured a RUNNING resource; the observer had no per-state instrumentation.",
+      "live_run_created": true,
+      "test_run_terminal_status": "failed",
+      "test_run_duration_seconds": 11.08,
+      "fault_injected": false,
+      "service_and_private_network_restored": true
+    },
+    {
+      "outcome": "inconclusive-before-fault",
+      "cause": "The observer checked only the driver's main thread for children. Jobs launched its worker from a background thread.",
+      "owned_resource_observed_running": true,
+      "exact_client_and_service_cgroup_observed": true,
+      "worker_match_observed": false,
+      "fault_injected": false,
+      "live_run_created": true,
+      "service_and_private_network_restored": true
+    },
+    {
+      "outcome": "passed",
+      "observer_change": "Enumerate children of every driver and worker thread; require exact worker argv, resource/token, parent-child relationship, and service cgroup before opening pidfds or applying the fault.",
+      "resource_states_observed": ["absent", "other", "created", "running"],
+      "exact_resource_running_before_fault": true,
+      "exact_worker_and_client_in_service_cgroup": true,
+      "watchdog_lease_fault_applied": true,
+      "installed_watchdog_stopped_service": true,
+      "exact_resource_absent_within_30_second_poll": true,
+      "no_recreation_over_five_seconds": true,
+      "live_run_uncertain_with_null_result_before_resolution": true,
+      "root_only_inspect_and_resolution": true,
+      "resolution_status": "failed",
+      "resolution_execution_outcome": "unknown",
+      "service_and_watchdog_restored": true,
+      "all_19_required_checks": true,
+      "model_calls": 0
+    }
+  ],
+  "independent_postcheck": {
+    "service_and_watchdog_active": true,
+    "private_https_status": 200,
+    "shields_up_while_serving": false,
+    "live_runs": 16,
+    "queued_running_or_uncertain_live_runs": 0,
+    "live_grants": 11,
+    "live_model_dispatches": 77,
+    "last_synthetic_run_failed_after_resolution": true,
+    "last_synthetic_run_result_null": true,
+    "reference_namespace_empty": true,
+    "service_cgroup_only_main_process": true,
+    "database_integrity": "ok",
+    "vm_still_running": true
+  },
+  "local_validation": {
+    "focused_diagnostic_tests": "5/5 passed",
+    "targeted_ruff_and_format": "passed",
+    "pilot_ready": false
+  },
+  "limits": [
+    "The test used a trusted root driver and direct synthetic owner scope, bypassing OIDC/browser entry. It does not establish collaborator authorization or broad end-to-end acceptance.",
+    "Only the test copy of the JSON fixture was delayed. The production fixed JSON program was not changed, and this fault result does not claim production-action timing.",
+    "The installed socket message sequence was not independently packet-traced. The observed Jobs/worker/watchdog behavior exercised the pinned code path and installed socket.",
+    "Shields Up was set before fault injection as a maintenance guard. This test does not prove the watchdog itself raised Shields Up from false.",
+    "The 30-second resource-absence poll is one bounded observation, not a hard SLA under all runtime stalls, host disconnects, or arbitrary workloads.",
+    "The root-only resolver handled one real synthetic uncertain row after inspection; it did not recover a trusted execution result. Three test-only chats/runs and audit events remain in the live database. Grants and model dispatches did not change.",
+    "No provider-call cancellation, broad security assurance, owner acceptance, or private-pilot readiness is established."
+  ],
+  "privacy": "Contains no host name, cloud project, account, credential, private path, transcript, run ID, request key, or private URL."
+}

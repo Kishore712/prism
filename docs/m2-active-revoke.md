@@ -141,9 +141,45 @@ its audit events. An independent postcheck found 13 total runs, zero pending,
 namespace, only the service main process in its cgroup, both units active,
 Shields Up false while serving, and private HTTPS 200. The root driver supplied
 owner scope directly, so OIDC and browser authorization were not exercised.
-The combined active-fault path, watchdog-triggered Shields Up, and any hard
-termination limit remain unverified. See the
+At that earlier checkpoint, the combined active-fault path, watchdog-triggered
+Shields Up, and any hard termination limit were unverified. See the
 [sanitized Jobs/socket record](validation/m2-watchdog-socket-jobs.json).
+
+### Later installed active-fault result (2026-09-26)
+
+The earlier five-second normal-path result remains a historical, inconclusive
+fault check. A later root-only diagnostic added a 20-second delay to a
+**private copy** of the exact v7 synthetic JSON fixture. It copied and
+hash-verified the installed v7 Jobs/worker source, but did not change the
+immutable production release or its fixed JSON program. A synthetic project,
+chat and run were created in the live database by a trusted driver joined to
+the installed identity-service cgroup. The driver used the real Jobs path and
+installed watchdog socket; it supplied owner scope directly rather than
+entering through OIDC or the browser.
+
+All 19 bounded checks passed. Before fault injection, the observer saw the
+exact owned Kata resource RUNNING and verified the worker and `nerdctl` client
+through their complete thread-aware parent-child chain, exact resource/token
+arguments and service cgroup. The driver froze those exact processes to stop
+lease renewal. The installed watchdog stopped the service; the exact resource
+was absent within the test's 30-second poll, did not reappear during five more
+seconds, and the live run became `uncertain` with a null result. After checking
+the empty namespace and stopped service, the root-only resolver inspected and
+changed that real synthetic row to `failed` with a null result and explicitly
+unknown execution outcome. The result was not reconstructed.
+
+The independent postcheck found both units active, private HTTPS 200, Shields
+Up false while serving, an empty Kata namespace, only the service main process
+in its cgroup, database integrity `ok`, and 16 runs with zero pending, 11
+grants and 77 model dispatches. Three test-only chats/runs and their audit
+events remain; no grant or model dispatch changed. The VM remains running.
+The installed socket messages were not independently traced. Shields Up was
+set **before** fault injection as a maintenance guard, so this check does not
+prove a watchdog-triggered transition from false. The 30-second observation
+is not a hard SLA under all stalls or host disconnects. It does not establish
+OIDC/browser authorization, provider-call cancellation, broad security, owner
+acceptance or pilot readiness. See the
+[sanitized active-fault record](validation/m2-watchdog-socket-active.json).
 
 ## Behavior delivered
 
@@ -335,8 +371,10 @@ against or point it at the live service database.
 
 The live owner browser revoke path over private HTTPS/OIDC was exercised with
 synthetic data. V6 added colocated parent-loss evidence, and v7 adds an
-independent host watchdog with bounded worker-SIGKILL and watchdog-crash
-probes. These checks do not establish host-disconnect handling, an absolute
+independent host watchdog. The later installed Jobs/socket active-fault test
+adds bounded cleanup evidence for an observed RUNNING resource, using a trusted
+root driver and a test-only delayed fixture. These checks do not establish
+host-disconnect handling, watchdog-triggered Shields Up from false, an absolute
 30-second guarantee, cancellation of a live model-provider request, or broad
 security assurance. Streaming and downloads are not implemented. The
 independent high static review found no code-level blocker; it was not a
