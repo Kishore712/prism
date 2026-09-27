@@ -265,6 +265,7 @@
     "diagnostic_sha256": "ba6e76783fc668b5a158d22f0cbd9b90cfe3813d56a1fdc60550cf8e6eea1ce1",
     "installed_release_transfer_sha256": "e11ea7a88a2b029f73e2374d47f271af178ff0604febbe9a47e1b4c9259d4f27",
     "installed_watchdog_sha256": "f853945bd8c384101effbcfb494e368f4b880156b649456459650a045a6f0cab",
+    "installed_lifecycle_sha256": "79e3db10b3683bc65292f449b88798d4edb8674a6f8ea63c8cd08d8cd64c9c0f",
     "preflight_passed": true,
     "scope": {
       "synthetic_running_kata_jobs": 1,
@@ -332,6 +333,81 @@
       "The fourth attempt's delayed tailnet relapse remains preserved; its root cause is unknown."
     ],
     "passed": true,
+    "pilot_ready": false
+  },
+  "delayed_relapse_diagnosis_follow_up": {
+    "date": "2026-09-27",
+    "read_only_journal_findings": [
+      "At the fourth attempt's delayed failure, the watchdog logged that fixed private tailnet state was lost and stopped the Prism service.",
+      "In the same second, Tailscale logged a PollNetMap unexpected EOF. This ordering does not prove that the control-plane EOF caused the watchdog probe failure.",
+      "The lifecycle close path attempted to shield inbound traffic, could not complete its two normal close paths, and deliberately sent SIGKILL to tailscaled through its emergency-block branch. The tailscaled death was a fail-closed action, not evidence that the daemon spontaneously crashed.",
+      "The old watchdog journal did not distinguish a CLI timeout, command error, malformed response, backend/offline state, pinned identity mismatch or preference mismatch. The exact initiating condition therefore remains unknown."
+    ],
+    "diagnostic_change": "The watchdog now reports a fixed, secret-free probe category after stopping the service. The lifecycle close hook reports fixed categories when both normal shielding paths fail before emergency blocking. Neither change relaxes fail-closed checks or logs raw CLI output, addresses or credentials.",
+    "local_validation": {
+      "focused_tests_passed": 121,
+      "ruff_check_passed": true,
+      "ruff_format_check_passed": true
+    },
+    "initial_diagnostic_release_superseded_after_review": {
+      "transfer_tar_sha256": "7996d141f4d03c468649781c5290421b0b5bdb10062ead0a0d73d4dccf888662",
+      "source_tar_sha256": "dee8c71d6cde9a5c0f20599246a1f72272e46aebecc1d3f47e13b7135e3eff29",
+      "watchdog_sha256": "612f806bc13ab5f32126ada6751bcb1fcac55448f9fa2e7b5dbf3df801bc320f",
+      "lifecycle_sha256": "731a679d4076d8ae8c1a21be1fb6adb493f418d945ef5fcc7a73cad3af15964c",
+      "other_nine_patched_source_hashes_match_previous_release": true,
+      "service_and_watchdog_unit_diff": "Only immutable release and record hashes/paths changed; project pin and 1000-cent model budget were preserved.",
+      "systemd_verify_passed": true,
+      "three_services_active_after_restart": true,
+      "private_https_get_root_status": 307,
+      "watchdog_health_passed": true,
+      "normal_path_stability_samples": 7,
+      "normal_path_stability_duration_seconds": 30,
+      "normal_path_stability_passed": true,
+      "independent_database_integrity": "ok",
+      "independent_database_counts": {
+        "runs": 22,
+        "pending": 0,
+        "grants": 12,
+        "model_dispatches": 77
+      },
+      "reference_namespace_empty": true,
+      "fault_injected_after_deployment": false,
+      "model_calls": 0,
+      "review_findings": [
+        "A journal write failure could have prevented the emergency block in the close hook.",
+        "Stopped/offline Tailscale responses missing optional identity fields could have been misclassified as malformed responses."
+      ]
+    },
+    "reviewed_diagnostic_release": {
+      "transfer_tar_sha256": "a0f0e53237aa586760ce85c475451bc2acc317dbec410954b1a4d17f875c32db",
+      "source_tar_sha256": "d068f26c7da43aac1054b67d2dbc007daee91baf1edeb4160c0b4d037ca9e688",
+      "watchdog_sha256": "1103b8cf469e2a8c00ebbd5ab371cde4c231b5a2825a74cb8c576afddb8edd1d",
+      "lifecycle_sha256": "5190646db23fa36be0a6216e0c67f0d98703e35d5af2a53508a87aa7d4663897",
+      "other_nine_patched_source_hashes_match_previous_release": true,
+      "service_and_watchdog_unit_diff": "Only immutable release and record hashes/paths changed; the project pin and 1000-cent model budget were preserved.",
+      "systemd_verify_passed": true,
+      "three_services_active_after_restart": true,
+      "private_https_get_root_status": 307,
+      "watchdog_health_passed": true,
+      "normal_path_stability_samples": 7,
+      "normal_path_stability_duration_seconds": 30,
+      "normal_path_stability_passed": true,
+      "independent_database_integrity": "ok",
+      "independent_database_counts": {
+        "runs": 22,
+        "pending": 0,
+        "grants": 12,
+        "model_dispatches": 77
+      },
+      "reference_namespace_empty": true,
+      "fault_injected_after_deployment": false,
+      "model_calls": 0
+    },
+    "limits": [
+      "The initiating condition of the delayed fourth-attempt shutdown remains undetermined; a later fixed category can distinguish future occurrences but cannot retroactively identify this one.",
+      "The installed diagnostic release has not been exercised by a new injected tailnet fault or authenticated browser/OIDC fault test.",
+      "This follow-up is observability and a normal-path deployment check, not proof of host-disconnect reliability, a hard SLA or pilot readiness."
+    ],
     "pilot_ready": false
   }
 }
