@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "kind": "m2-watchdog-socket-jobs-validation",
+  "date": "2026-09-26",
+  "status": "inconclusive-for-active-fault-path",
+  "scope": "A root-only test driver joined the installed identity-service cgroup and submitted one fixed json-check through installed v7 Jobs against an existing exact-hash synthetic owner chat in the live database. The driver supplied the existing owner scope directly; this was not an OIDC or browser submission.",
+  "installed_v7_transfer_sha256": "eb9e409032696fe4b6159cc2d338e548e6c1100d723a45b4b0607549f80bd501",
+  "installed_test_script_sha256": "c6acc70cd82f6b6bbaff35f71a6c044c2fc963c8afde6df3cb99ced727c11b7e",
+  "preflight": {
+    "pinned_units_and_source": true,
+    "service_and_watchdog_active": true,
+    "watchdog_socket_healthy": true,
+    "live_runs": 12,
+    "queued_running_or_uncertain_live_runs": 0,
+    "live_grants": 11,
+    "live_model_dispatches": 77,
+    "reference_namespace_empty": true,
+    "service_cgroup_only_main_process": true,
+    "shields_up_while_serving": false
+  },
+  "attempts": [
+    {
+      "outcome": "failed-before-submission",
+      "cause": "The test driver did not add the pinned v7 source root to its module search path.",
+      "live_run_created": false,
+      "service_and_private_network_restored": true
+    },
+    {
+      "outcome": "failed-before-submission",
+      "cause": "The driver used system Python without the installed v7 service dependencies; the missing module was httpx2.",
+      "live_run_created": false,
+      "service_and_private_network_restored": true
+    },
+    {
+      "outcome": "inconclusive-for-active-fault-path",
+      "real_jobs_row_created": true,
+      "driver_joined_installed_service_cgroup": true,
+      "exact_resource_observed_running_before_fault": false,
+      "fault_injected": false,
+      "test_run_terminal_status": "completed",
+      "test_run_duration_seconds": 5.02,
+      "result_present": true,
+      "result_fields_observed": [
+        "runtime_handler",
+        "guest_kernel",
+        "guest_boot_id",
+        "exit_code",
+        "cleaned_up"
+      ],
+      "installed_watchdog_kill_observed": false,
+      "model_calls": 0
+    }
+  ],
+  "independent_postcheck": {
+    "service_and_watchdog_active": true,
+    "shields_up_while_serving": false,
+    "private_https_status": 200,
+    "live_runs": 13,
+    "queued_running_or_uncertain_live_runs": 0,
+    "live_grants": 11,
+    "live_model_dispatches": 77,
+    "reference_namespace_empty": true,
+    "service_cgroup_only_main_process": true,
+    "database_integrity": "ok",
+    "vm_still_running": true
+  },
+  "local_validation": {
+    "focused_admission_tests": "4/4 passed",
+    "full_backend_tests": "279/279 passed",
+    "targeted_ruff_and_format": "passed",
+    "pilot_ready": false
+  },
+  "limits": [
+    "The installed v7 code path completed a normal fixed Jobs action, but the test did not independently trace each watchdog socket message. Successful completion is consistent with register/attach succeeding because that is a required branch of the pinned Jobs code.",
+    "The fixed action finished before an owned RUNNING resource could be observed. No lease fault was applied, so this record does not prove end-to-end active cleanup through the installed socket, watchdog-triggered Shields Up, or a termination bound.",
+    "The trusted root test driver supplied existing owner scope and bypassed the OIDC/browser request path; the synthetic live run is not a collaborator acceptance test.",
+    "The test added one completed synthetic run and audit events to the live database. It did not change grants or model dispatches.",
+    "No hard 30-second SLA, host-disconnect guarantee, broad security assurance, owner acceptance, or private-pilot readiness is established."
+  ],
+  "privacy": "Contains no host name, project identifier, account, credential, private path, transcript, run ID, request key, or private URL."
+}

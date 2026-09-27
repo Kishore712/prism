@@ -119,6 +119,32 @@ transition was not established. The 30-second observation is not a hard SLA;
 host disconnect and broader order 6 acceptance remain pending. See the
 [sanitized service-cgroup record](validation/m2-systemd-cgroup.json).
 
+**Installed Jobs/socket live-DB follow-up (2026-09-26):** A root-only driver
+joined the installed service cgroup and submitted the approved fixed
+`json-check` through the pinned v7 `Jobs` controller against an existing
+exact-hash synthetic owner chat. The installed watchdog socket passed its
+health check. Two test-driver setup attempts failed before creating a run:
+first the pinned source root was missing from its import path, then system
+Python lacked the service's `httpx2` dependency. Both attempts restored the
+service and private network. With the installed v7 Python environment, one
+real Jobs run was created and completed in 5.02 seconds with a result carrying
+Kata handler, guest-kernel, boot, exit, and cleanup fields. The action finished
+before the observer could verify its resource RUNNING, so **no fault was
+injected**. The installed socket message sequence was not independently
+traced; the successful result is consistent with the required register/attach
+branch in the pinned code. This is normal-path evidence, not end-to-end proof
+of active cleanup through the installed socket.
+
+The live database intentionally retains that one completed synthetic run and
+its audit events. An independent postcheck found 13 total runs, zero pending,
+11 grants, 77 model dispatches, database integrity `ok`, an empty Kata
+namespace, only the service main process in its cgroup, both units active,
+Shields Up false while serving, and private HTTPS 200. The root driver supplied
+owner scope directly, so OIDC and browser authorization were not exercised.
+The combined active-fault path, watchdog-triggered Shields Up, and any hard
+termination limit remain unverified. See the
+[sanitized Jobs/socket record](validation/m2-watchdog-socket-jobs.json).
+
 ## Behavior delivered
 
 The owner can revoke a named collaborator grant while its job is running. The
