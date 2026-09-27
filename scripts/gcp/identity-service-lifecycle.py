@@ -830,10 +830,12 @@ def verify_watchdog_unit(host, ip, record, release, bundle, run_id):
         raise ValueError("The fixed host watchdog unit differs from the release.")
 
 
-def watchdog_command(release, action):
+def watchdog_command(release, action, host=None, ip=None):
     argv = [str(Path(release) / "venv/bin/python"), "-m", "prism.host_watchdog", action]
     if action == "serve":
-        argv += ["--db", WATCHDOG_DB]
+        if host is None or ip is None:
+            raise ValueError("The host watchdog requires its pinned tailnet identity.")
+        argv += ["--db", WATCHDOG_DB, "--hostname", host, "--bind-host", ip]
     return argv
 
 
@@ -853,7 +855,7 @@ def watchdog_serve(host, ip, record, bundle, run_id, expected_release, db):
     if expected_release != release or db != WATCHDOG_DB:
         raise ValueError("The host watchdog unit differs from the fixed release or DB.")
     verify_watchdog_unit(host, ip, record, release, bundle, run_id)
-    argv = watchdog_command(release, "serve")
+    argv = watchdog_command(release, "serve", host, ip)
     os.execve(argv[0], argv, watchdog_environment(release))
 
 

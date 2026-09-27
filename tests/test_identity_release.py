@@ -169,8 +169,17 @@ class ImmutableReleaseTests(unittest.TestCase):
             self.assertNotIn(":8443", watchdog)
             self.assertNotIn(life.MODEL_KEY, watchdog)
             self.assertEqual(
-                life.watchdog_command(str(release), "serve")[-2:],
-                ["--db", life.WATCHDOG_DB],
+                life.watchdog_command(
+                    str(release), "serve", "pilot.example.ts.net", "100.100.100.100"
+                )[-6:],
+                [
+                    "--db",
+                    life.WATCHDOG_DB,
+                    "--hostname",
+                    "pilot.example.ts.net",
+                    "--bind-host",
+                    "100.100.100.100",
+                ],
             )
             self.assertEqual(
                 life.watchdog_command(str(release), "health")[-1], "health"

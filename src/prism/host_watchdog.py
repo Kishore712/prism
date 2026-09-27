@@ -5,6 +5,7 @@ lease stops the entire service cgroup before the named Kata resource is touched.
 """
 
 import argparse
+import ipaddress
 import json
 import os
 import re
@@ -24,13 +25,112 @@ SOCKET = Path("/run/prism-host-watchdog/watchdog.sock")
 SERVICE = "prism-identity-service.service"
 LIFECYCLE = "/usr/local/libexec/prism-identity-service-lifecycle.py"
 RUN = re.compile(r"[0-9a-f]{32}\Z")
+HOST = re.compile(r"[a-z0-9-]+\.[a-z0-9-]+\.ts\.net\Z")
 MAX_MESSAGE = 1024
 LEASE_SECONDS = 3.0
+TAILNET_POLL_SECONDS = 1.0
+TAILNET_PROBE_SECONDS = 0.9
+CLOSE_RESIDUAL_SECONDS = 2.0
 ENV = {"PATH": "/usr/bin:/bin", "LC_ALL": "C"}
 
 
 class WatchdogError(RuntimeError):
     pass
+
+
+class _CloseResidualPending(RuntimeError):
+    """A fixed close helper may be starting or exiting under systemd."""
+
+
+_ERROR_CATEGORIES = {
+    "Service state lookup failed": "service-state",
+    "Unexpected service state": "service-state",
+    "Service cgroup lookup failed": "service-cgroup",
+    "Unexpected service cgroup": "service-cgroup",
+    "Watchdog is not isolated from service cgroup": "watchdog-isolation",
+    "Service cgroup drain could not be verified": "service-cgroup-inspection",
+    "Service cgroup is missing while service may still run": "service-cgroup-missing",
+    "Inactive service still has processes": "service-cgroup-occupied",
+    "Service cgroup termination failed": "service-kill",
+    "Preexisting service processes survived SIGKILL": "service-process-survived",
+    "Residual close helper identity remained unavailable": "close-helper-unsettled",
+    "Residual service process is not the fixed close helper": "close-helper-mismatch",
+    "Unexpected process survived service SIGKILL": "unexpected-survivor",
+    "Service cgroup processes could not be inspected": "service-cgroup-inspection",
+    "Service cgroup process identity is unavailable": "service-process-identity",
+    "Could not mark abandoned run uncertain": "durable-row",
+    "Unknown reference namespace resource": "namespace-identity",
+}
+
+
+def _error_category(exc):
+    """Expose only a fixed root-only category, never exception text or paths."""
+    current = exc
+    while current is not None:
+        if isinstance(current, WatchdogError):
+            category = _ERROR_CATEGORIES.get(str(current))
+            if category is not None:
+                return category
+        elif isinstance(current, EngineError):
+            return "runtime"
+        elif isinstance(current, sqlite3.Error):
+            return "database"
+        elif isinstance(current, OSError):
+            return "os"
+        elif isinstance(current, ValueError):
+            return "value"
+        current = current.__cause__ or current.__context__
+    return "other"
+
+
+def _tailnet_ready(host, ip, *, clock=time.monotonic):
+    """Check the pinned private identity and deny unexpected network settings."""
+    try:
+        deadline = clock() + TAILNET_PROBE_SECONDS
+        outputs = []
+        for arguments in (("status", "--json"), ("debug", "prefs")):
+            remaining = deadline - clock()
+            if remaining <= 0:
+                raise WatchdogError("Fixed private tailnet probe deadline elapsed")
+            outputs.append(
+                subprocess.run(
+                    ["/usr/bin/tailscale", *arguments],
+                    env=ENV,
+                    capture_output=True,
+                    timeout=remaining,
+                    check=True,
+                ).stdout
+            )
+            if clock() >= deadline:
+                raise WatchdogError("Fixed private tailnet probe deadline elapsed")
+        status, prefs = (json.loads(output) for output in outputs)
+        own = status["Self"]
+        addresses = own["TailscaleIPs"]
+        if (
+            status["BackendState"] != "Running"
+            or own["Online"] is not True
+            or own["DNSName"].lower().rstrip(".") != host
+            or not isinstance(addresses, list)
+            or addresses.count(ip) != 1
+            or own["Tags"] != ["tag:prism-host"]
+            or type(prefs["ShieldsUp"]) is not bool
+            or prefs["RunSSH"] is not False
+            or prefs["RouteAll"] is not False
+            or prefs["AdvertiseRoutes"]
+            or prefs["ExitNodeID"]
+            or prefs["ExitNodeIP"]
+        ):
+            raise WatchdogError("Fixed private tailnet state is unavailable")
+    except (
+        OSError,
+        UnicodeError,
+        ValueError,
+        KeyError,
+        TypeError,
+        AttributeError,
+        subprocess.SubprocessError,
+    ) as exc:
+        raise WatchdogError("Fixed private tailnet state is unavailable") from exc
 
 
 def _strict_json(data):
@@ -127,12 +227,25 @@ def _group_processes(group):
     for pid in pids:
         try:
             identities[pid] = _start_time(pid)
-        except WatchdogError:
-            pass
+        except WatchdogError as exc:
+            try:
+                state = (
+                    Path(f"/proc/{pid}/stat").read_text().rsplit(") ", 1)[1].split()[0]
+                )
+            except FileNotFoundError:
+                continue
+            except (OSError, UnicodeError, IndexError) as stat_exc:
+                raise WatchdogError(
+                    "Service cgroup process identity is unavailable"
+                ) from stat_exc
+            if state not in ("Z", "X"):
+                raise WatchdogError(
+                    "Service cgroup process identity is unavailable"
+                ) from exc
     return identities
 
 
-def _verified_close_residuals(group):
+def _close_residuals_once(group, *, timeout):
     residual = _group_processes(group)
     if not residual:
         return
@@ -148,24 +261,41 @@ def _verified_close_residuals(group):
                 ],
                 env=ENV,
                 capture_output=True,
-                timeout=3,
+                timeout=timeout,
                 check=True,
             )
             .stdout.decode("ascii")
             .strip()
         )
         control = int(output)
+        if control <= 1 or control not in residual:
+            raise _CloseResidualPending("Close helper ControlPID is unsettled")
+        try:
+            current_start = _start_time(control)
+        except WatchdogError as exc:
+            raise _CloseResidualPending(
+                "Close helper exited during inspection"
+            ) from exc
+        if current_start != residual[control]:
+            raise _CloseResidualPending("Close helper PID changed during inspection")
         command = Path(f"/proc/{control}/cmdline").read_bytes().split(b"\0")
     except (OSError, UnicodeError, ValueError, subprocess.SubprocessError) as exc:
-        raise WatchdogError("Residual service process identity is unavailable") from exc
+        raise _CloseResidualPending("Close helper identity is unsettled") from exc
     expected = [b"/usr/bin/python3", LIFECYCLE.encode(), b"close"]
     if (
-        control not in residual
-        or len(command) < 7
+        len(command) < 7
         or command[:3] != expected
         or command[3] != b"--hostname"
         or command[5] != b"--bind-host"
     ):
+        try:
+            current_start = _start_time(control)
+        except WatchdogError as exc:
+            raise _CloseResidualPending(
+                "Close helper exited during inspection"
+            ) from exc
+        if current_start != residual[control]:
+            raise _CloseResidualPending("Close helper PID changed during inspection")
         raise WatchdogError("Residual service process is not the fixed close helper")
     for pid in residual:
         current = pid
@@ -176,9 +306,30 @@ def _verified_close_residuals(group):
                 )
                 current = int(fields[1])
             except (OSError, ValueError, IndexError) as exc:
-                raise WatchdogError("Residual service ancestry is unverified") from exc
-            if current <= 1 or current not in residual:
+                raise _CloseResidualPending(
+                    "Close helper ancestry is unsettled"
+                ) from exc
+            if current <= 1:
                 raise WatchdogError("Unexpected process survived service SIGKILL")
+            if current not in residual:
+                raise _CloseResidualPending("Close helper ancestry is unsettled")
+
+
+def _verified_close_residuals(group, *, clock=time.monotonic, sleep=time.sleep):
+    deadline = clock() + CLOSE_RESIDUAL_SECONDS
+    pending = None
+    while True:
+        remaining = deadline - clock()
+        if remaining <= 0 and pending is not None:
+            raise WatchdogError(
+                "Residual close helper identity remained unavailable"
+            ) from pending
+        try:
+            _close_residuals_once(group, timeout=max(0.1, min(1.0, remaining)))
+            return
+        except _CloseResidualPending as exc:
+            pending = exc
+            sleep(min(0.1, max(0.0, deadline - clock())))
 
 
 def _kill_service():
@@ -213,7 +364,8 @@ def _kill_service():
     if state == "inactive":
         if _group_drained(group):
             return
-        raise WatchdogError("Inactive service still has processes")
+        _verified_close_residuals(group)
+        return
     occupants = _group_processes(group)
     try:
         subprocess.run(
@@ -378,12 +530,20 @@ class WatchdogClient:
 
 class HostWatchdog:
     def __init__(
-        self, db_path, *, runtime=None, kill_service=_kill_service, clock=time.monotonic
+        self,
+        db_path,
+        *,
+        runtime=None,
+        kill_service=_kill_service,
+        clock=time.monotonic,
+        tailnet_probe=None,
     ):
         self.db_path = Path(db_path)
         self.runtime = runtime or ReferenceLinuxRuntime(readiness=False)
         self.kill_service = kill_service
         self.clock = clock
+        self.tailnet_probe = tailnet_probe
+        self.next_tailnet_poll = 0.0
         self.active = None
         self.blocked = False
 
@@ -432,11 +592,44 @@ class HostWatchdog:
                 self._cleanup(run, resource, token)
             if self.runtime.all_resources():
                 raise WatchdogError("Unknown reference namespace resource")
+            self._check_tailnet(force=True)
         except (OSError, sqlite3.Error, EngineError, ValueError, WatchdogError):
             self.blocked = True
             raise
 
-    def _expire(self):
+    def _check_tailnet(self, *, force=False):
+        # Diagnostic callers can inject a probe; the installed CLI always pins one.
+        if self.tailnet_probe is None:
+            return
+        now = self.clock()
+        if not force and now < self.next_tailnet_poll:
+            return
+        self.next_tailnet_poll = now + TAILNET_POLL_SECONDS
+        try:
+            self.tailnet_probe()
+        except (OSError, ValueError, WatchdogError) as exc:
+            try:
+                # Stop the service even when there is no leased Kata run.
+                self.kill_service()
+            except (EngineError, OSError, ValueError, WatchdogError) as stop_exc:
+                self.blocked = True
+                raise WatchdogError(
+                    "Tailnet loss; service termination unverified "
+                    f"(category={_error_category(stop_exc)})"
+                ) from stop_exc
+            if self.active is not None:
+                try:
+                    self._expire(service_stopped=True)
+                except (EngineError, OSError, ValueError, WatchdogError) as cleanup_exc:
+                    self.blocked = True
+                    raise WatchdogError(
+                        "Tailnet loss; exact resource cleanup unverified "
+                        f"(category={_error_category(cleanup_exc)})"
+                    ) from cleanup_exc
+            self.blocked = True
+            raise WatchdogError("Fixed private tailnet state was lost") from exc
+
+    def _expire(self, *, service_stopped=False):
         if self.active is None:
             return
         run, resource, token = (
@@ -456,17 +649,19 @@ class HostWatchdog:
                     return
             except (WatchdogError, EngineError, ValueError):
                 pass
-            self.kill_service()
+            if not service_stopped:
+                self.kill_service()
             self._cleanup(run, resource, token)
             if self.runtime.all_resources():
                 raise WatchdogError("Unknown reference namespace resource")
-        except (EngineError, OSError, ValueError, WatchdogError):
+        except (EngineError, OSError, ValueError, WatchdogError) as exc:
             self.blocked = True
             raise WatchdogError(
                 "Host watchdog could not confirm service termination and cleanup"
-            )
+            ) from exc
 
     def tick(self):
+        self._check_tailnet()
         if not self.active:
             return
         try:
@@ -652,13 +847,28 @@ def main(argv=None):
     actions = parser.add_subparsers(dest="action", required=True)
     serve = actions.add_parser("serve")
     serve.add_argument("--db", required=True, type=Path)
+    serve.add_argument("--hostname", required=True)
+    serve.add_argument("--bind-host", required=True)
     actions.add_parser("health")
     args = parser.parse_args(argv)
     try:
         if args.action == "health":
             WatchdogClient().health()
         else:
-            HostWatchdog(args.db).serve()
+            if not HOST.fullmatch(args.hostname):
+                raise WatchdogError("Invalid fixed private hostname")
+            try:
+                address = ipaddress.ip_address(args.bind_host)
+            except ValueError as exc:
+                raise WatchdogError("Invalid fixed private IPv4 address") from exc
+            if address.version != 4 or address not in ipaddress.ip_network(
+                "100.64.0.0/10"
+            ):
+                raise WatchdogError("Invalid fixed private IPv4 address")
+            HostWatchdog(
+                args.db,
+                tailnet_probe=lambda: _tailnet_ready(args.hostname, str(address)),
+            ).serve()
     except (WatchdogError, EngineError, OSError, sqlite3.Error) as exc:
         parser.exit(1, str(exc) + "\n")
 
