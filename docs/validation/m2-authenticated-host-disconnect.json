@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "kind": "m2-authenticated-host-disconnect",
+  "date": "2026-09-27",
+  "status": "owner-browser-check-passed-recipient-check-pending",
+  "pilot_ready": false,
+  "scope": "One deliberately idle Tailscale-down fault on the existing private Linux host, observed through an already authenticated owner Chrome session. No recipient grant, active task, model call, or new release was involved.",
+  "preflight": {
+    "owner_oidc_browser_session_loaded_after_reload": true,
+    "identity_service_active": true,
+    "host_watchdog_active": true,
+    "tailscaled_active": true,
+    "tailnet_running_online": true,
+    "shields_up_while_serving": false,
+    "database_integrity": "ok",
+    "runs": 22,
+    "pending_runs": 0,
+    "grants": 12
+  },
+  "fault": {
+    "tailnet_down_command_utc": "2026-09-27T22:42:57Z",
+    "watchdog_log_utc": "2026-09-27T22:43:01Z",
+    "watchdog_failure_category": "backend",
+    "service_main_sigkill_logged": true,
+    "service_stop_logged_utc": "2026-09-27T22:43:03Z",
+    "close_hook_inbound_verification_failed": true,
+    "close_hook_blocked_tailscaled": true,
+    "owner_chrome_reload_reached_network_error": true,
+    "service_cgroup_absent_before_recovery": true
+  },
+  "recovery": {
+    "sequence": [
+      "stop watchdog",
+      "verify service cgroup absent",
+      "reset and start tailscaled",
+      "verify offline Shields Up true",
+      "bring tailnet online while shielded",
+      "start watchdog",
+      "start identity service"
+    ],
+    "identity_service_restart_logged_utc": "2026-09-27T22:44:50Z",
+    "three_services_active": true,
+    "tailnet_running_online": true,
+    "shields_up_while_serving": false,
+    "private_https_root_status": 307,
+    "old_owner_session_required_fresh_oidc_login": true,
+    "fresh_owner_oidc_login_succeeded": true,
+    "database_integrity": "ok",
+    "runs": 22,
+    "pending_runs": 0,
+    "grants": 12,
+    "model_dispatches": 77,
+    "kata_task_namespace_empty": true
+  },
+  "limits": [
+    "This check exercised an idle owner browser session, not a recipient session or an active Kata job submitted through the browser.",
+    "Chrome's network error was observed after the fault, but no browser request timing or hard outage deadline was measured.",
+    "The old owner session did not survive service restart; a fresh Google OIDC sign-in succeeded. This is fail-closed session behavior, not seamless reconnection.",
+    "The close hook could not verify the normal inbound shield after tailnet down and used its daemon-blocking fallback. This observed fallback does not prove a universal deadline or recovery reliability.",
+    "The separate fifth root-only active-Kata fault passed its bounded checks; this browser check must not be presented as the same end-to-end active-job test.",
+    "Historical failed active-fault attempts and the unexplained fourth-attempt relapse remain open. Broad security assurance and pilot readiness remain unproven."
+  ]
+}
