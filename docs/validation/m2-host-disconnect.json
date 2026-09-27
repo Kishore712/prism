@@ -1,0 +1,337 @@
+{
+  "schema": 3,
+  "kind": "m2-host-disconnect-validation",
+  "date": "2026-09-27",
+  "status": "mixed-active-fault-check-results",
+  "pilot_ready": false,
+  "scope": "One bounded Tailscale-down fault was applied to an already running synthetic Kata job on the existing private Linux host. The root-only driver used the installed Jobs path, installed watchdog socket and service cgroup, and a private copy of the approved synthetic JSON fixture with a guest delay. It did not use OIDC, a browser, or a model call.",
+  "installed_release_transfer_sha256": "59fd6654bd1dda9a607e9f18ca99203dcdcd495437fe20ae0a135f8755fce212",
+  "installed_watchdog_sha256": "7e9f939e2e537951d715c7ed62bb75be726dd181e850d939564f2148be6422f6",
+  "initial_idle_probe": {
+    "tailscale_down_left_tailscaled_service_active": true,
+    "watchdog_detected_backend_stopped": true,
+    "prism_service_stopped_within_five_second_observation": true,
+    "service_and_private_https_restored": true,
+    "limits": "This had no active Kata job and did not test delegated execution termination."
+  },
+  "active_probe": {
+    "exact_owned_resource_running_before_fault": true,
+    "worker_and_client_in_installed_service_cgroup": true,
+    "shields_up_false_at_fault": true,
+    "tailscale_backend_stopped_after_down": true,
+    "installed_watchdog_sent_sigkill_to_service_cgroup": true,
+    "watchdog_logged_unverified_termination_or_cleanup": true,
+    "service_main_killed_about_one_second_after_tailnet_stopped": true,
+    "service_unit_stopped_about_three_seconds_after_tailnet_stopped": true,
+    "qemu_exit_from_containerd_journal_about_twenty_seconds_after_service_sigkill": true,
+    "shim_cleanup_from_containerd_journal_about_forty_seven_seconds_after_service_sigkill": true,
+    "exact_resource_absent_within_thirty_second_poll": false,
+    "run_uncertain_null_within_test_window": false,
+    "no_late_recreation_check": false,
+    "eventual_run_resolution": "failed/null with explicitly unknown execution outcome after root-only inspection",
+    "eventual_reference_namespace_empty": true,
+    "grant_count_unchanged": true,
+    "model_dispatch_count_unchanged": true,
+    "model_calls": 0,
+    "passed": false
+  },
+  "postcheck": {
+    "service_watchdog_and_tailscaled_active": true,
+    "private_https_status": 200,
+    "shields_up_false_while_serving": true,
+    "live_runs": 18,
+    "queued_running_or_uncertain_live_runs": 0,
+    "live_grants": 12,
+    "live_model_dispatches": 77,
+    "reference_namespace_empty": true,
+    "database_integrity": "ok",
+    "vm_still_running": true
+  },
+  "diagnostic_findings": [
+    "The watchdog's old generic error combines service termination verification and exact-resource cleanup failures. The retained journal reports SIGKILL and the generic error about 0.12 seconds apart, before the service unit completed its stop. This timing suggests a stop-verification race but does not identify the failing substep.",
+    "The original 30-second test checks disappearance of container metadata through nerdctl. It does not independently pin the Kata QEMU and shim process identities or establish the host execution termination deadline.",
+    "The later failed/null resolution and empty namespace show recovery after the failed observation, not timely cleanup. The execution outcome is unknown."
+  ],
+  "limits": [
+    "Do not count this as a passing host-disconnect or 30-second termination check.",
+    "The active diagnostic supplied synthetic owner scope directly and did not exercise named-recipient browser authorization or a live model call.",
+    "The retained timestamps are observations for this run, not an SLA or proof of absolute safety.",
+    "One additional synthetic project/chat/run and audit events remain in the live database; no private project content was used."
+  ],
+  "privacy": "This record contains no cloud project or instance name, account, credential, private URL, run ID, container ID, or transcript.",
+  "second_active_attempt": {
+    "date": "2026-09-27",
+    "release_transfer_sha256": "e11ea7a88a2b029f73e2374d47f271af178ff0604febbe9a47e1b4c9259d4f27",
+    "watchdog_sha256": "f853945bd8c384101effbcfb494e368f4b880156b649456459650a045a6f0cab",
+    "preflight_passed": true,
+    "first_script_attempt": {
+      "outcome": "aborted_before_fault",
+      "reason": "The script expected 17 baseline runs while the live database had 18.",
+      "task_or_network_modified": false
+    },
+    "corrected_script_attempt": {
+      "exact_owned_resource_running_before_fault": true,
+      "kata_shim_qemu_identity_bound_before_fault": true,
+      "pinned_driver_worker_client_seconds_after_fault": 0.543,
+      "qemu_and_shim_seconds_after_fault_approx": 1.196,
+      "pinned_group_seconds_after_fault": 1.212,
+      "metadata_disappeared_seconds_after_fault": 1.306,
+      "uncertain_null_seconds_after_fault": 5.44,
+      "group_reconstruction_seen": true,
+      "passed": false,
+      "journal_observation": "A containerd journal entry in the same second records a delete cleanup helper for the same container ID. This may explain the group reconstruction observation; exact monitoring evidence is insufficient to establish that explanation.",
+      "whole_group_30_second_acceptance_passed": false,
+      "whole_group_acceptance_observation": "Group reconstruction was observed when the pinned group exited at about 1.212 seconds, and the script immediately returned a failed 30-second whole-group acceptance; no direct whole-group observation was made at t=30 seconds."
+    },
+    "resolution_and_recovery": {
+      "resolver_automatic_cleanup": "Ended with CalledProcessError; final service state was not automatically restored.",
+      "manual_resolution_preconditions": {
+        "shields_up": true,
+        "service_stopped": true,
+        "reference_namespace_empty": true,
+        "service_cgroup_absent": true,
+        "resolver_inspect_ready": true
+      },
+      "manual_resolution": "Resolved the exact synthetic run to failed/null with execution outcome unknown.",
+      "services_watchdog_tailscaled_restored_active": true,
+      "private_https_status": 200,
+      "shields_up_false_after_restore": true
+    },
+    "postcheck": {
+      "database_runs": 19,
+      "pending_runs": 0,
+      "grants": 12,
+      "model_dispatches": 77,
+      "kata_namespace_empty": true,
+      "kata_overhead_cgroup_live_processes": 0,
+      "model_calls": 0,
+      "new_grants": 0,
+      "vm_still_running": true,
+      "pilot_ready": false
+    },
+    "follow_up": [
+      "Add candidate identity logging so cleanup helpers and reconstructed groups can be attributed to the exact pinned job group.",
+      "Require and verify watchdog socket readiness before invoking the resolver."
+    ]
+  },
+  "third_active_attempt": {
+    "date": "2026-09-27",
+    "diagnostic_sha256": "cfcbf0fc73636f04d4e71c600e0f6f57a844afa0ae0c7d2f02f4d49ef3d43b8b",
+    "installed_release_transfer_sha256": "e11ea7a88a2b029f73e2374d47f271af178ff0604febbe9a47e1b4c9259d4f27",
+    "installed_watchdog_sha256": "f853945bd8c384101effbcfb494e368f4b880156b649456459650a045a6f0cab",
+    "preflight_passed": true,
+    "scope": {
+      "synthetic_running_kata_tasks": 1,
+      "oidc_used": false,
+      "browser_used": false,
+      "model_calls": 0
+    },
+    "seconds_after_tailscale_down": {
+      "driver_worker_client_exited": 0.37,
+      "shim_qemu_exited": 0.927,
+      "original_pinned_group_exited": 0.938,
+      "metadata_absent": 1.062,
+      "uncertain_null": 5.297
+    },
+    "candidate_observations": [
+      {
+        "at_seconds": 0.812,
+        "candidate": "unclassified child of original shim, classified as other",
+        "exited_at_seconds": 0.876,
+        "guest_recreation_proven": false,
+        "disposition": "Unknown child is not trusted or accepted; classification is required."
+      },
+      {
+        "at_seconds": 0.937,
+        "candidate": "exact-ID Kata delete helper",
+        "exited_at_seconds": 0.997,
+        "guest_recreation_proven": false
+      }
+    ],
+    "whole_job_group_stopped_within_30s": false,
+    "direct_sample_at_30_seconds": false,
+    "acceptance_observation": "The harness returned soon after original processes and candidate processes exited; it did not directly observe the whole group at t=30 seconds.",
+    "error_kind": null,
+    "resolver_failure": null,
+    "resolver_inspected_and_resolved_automatically": true,
+    "app_watchdog_tailscaled_recovered_active": true,
+    "tailscale_restored": true,
+    "namespace_drained": true,
+    "service_cgroup_drained": true,
+    "private_https_root_status": 307,
+    "private_https_root_behavior": "Redirected to login.",
+    "all_other_checks_passed": true,
+    "database_runs": 20,
+    "pending_runs": 0,
+    "grants": 12,
+    "model_dispatches": 77,
+    "new_grants": 0,
+    "new_model_calls": 0,
+    "raw_evidence": "Retained root-only with mode 0600 on the private host; raw evidence is not in the repository.",
+    "passed": false,
+    "pilot_ready": false,
+    "follow_up": [
+      "Classify the unknown child under a fixed allowlist; keep unknown processes untrusted and fail-closed.",
+      "Add a direct observation through the full 30-second window."
+    ],
+    "documented_containerd_context": {
+      "source": "https://github.com/containerd/containerd/blob/main/docs/runtime-v2.md",
+      "summary": "The Runtime v2 documentation describes the shim delete subcommand as cleanup when containerd can no longer communicate with a shim, including after a shim is SIGKILLed.",
+      "limit": "This general documented behavior does not establish why the exact-ID helper was observed in this run and does not classify the separate unknown child."
+    }
+  },
+  "fourth_active_attempt": {
+    "date": "2026-09-27",
+    "diagnostic_sha256": "946bf464d650580faff197ab14f125fff00657dde0ee402b58142321a25e86f5",
+    "installed_release_transfer_sha256": "e11ea7a88a2b029f73e2374d47f271af178ff0604febbe9a47e1b4c9259d4f27",
+    "installed_watchdog_sha256": "f853945bd8c384101effbcfb494e368f4b880156b649456459650a045a6f0cab",
+    "preflight_passed": true,
+    "scope": {
+      "synthetic_running_kata_tasks": 1,
+      "fault": "tailscale down",
+      "oidc_used": false,
+      "browser_used": false,
+      "model_calls": 0
+    },
+    "observation": {
+      "thirty_second_observation_completed": true,
+      "first_scan_seconds": 0.175,
+      "maximum_scan_gap_seconds": 0.175,
+      "seconds_after_tailscale_down": {
+        "driver_worker_client_exited": 0.689,
+        "shim_qemu_exited": 1.235,
+        "pinned_group_exited": 1.248,
+        "metadata_absent": 1.421,
+        "uncertain_null": 5.421
+      },
+      "whole_job_group_stopped_within_30s": false,
+      "sampling_limit": "The 0.175-second maximum scan gap bounds the observation cadence; it does not prove no transient execution occurred between scans."
+    },
+    "untrusted_candidate": {
+      "process": "other descendant of the shim",
+      "identity_observation": "A private bounded identity check recorded executable/argv basename nerdctl with 7 arguments.",
+      "started_seconds_after_tailscale_down": 1.118,
+      "exited_seconds_after_tailscale_down": 1.183,
+      "trusted_cleanup_proven": false,
+      "guest_reexecution_proven": false,
+      "disposition": "Untrusted; do not accept as cleanup or infer that it re-executed the guest."
+    },
+    "immediate_result": {
+      "all_other_report_checks_passed": true,
+      "resolver_inspected_and_resolved_automatically": true,
+      "model_calls": 0,
+      "new_grants": 0,
+      "passed": false,
+      "pilot_ready": false
+    },
+    "delayed_independent_postcheck_about_two_minutes_later": {
+      "watchdog_observed_fixed_private_tailnet_state_lost": true,
+      "service_failed": true,
+      "tailscaled_failed": true,
+      "watchdog_restarting": true,
+      "recovery_actions": [
+        "Stopped the watchdog restart loop.",
+        "Restarted tailscaled with Shields Up true and confirmed Running/Online.",
+        "Confirmed the Kata namespace empty and database integrity ok.",
+        "Restarted watchdog and service."
+      ],
+      "database_runs": 21,
+      "pending_runs": 0,
+      "private_https_root_status": 307,
+      "private_https_root_behavior": "Redirected to login.",
+      "long_term_stability_confirmed": false,
+      "tailnet_loss_root_cause": "Unproven; do not attribute to PollNetMap EOF.",
+      "manual_controlled_restart_utc": "2026-09-27T09:04:59Z",
+      "bounded_stability_observation": {
+        "observed_at_utc": "2026-09-27T09:10:00Z",
+        "elapsed_after_manual_controlled_restart_seconds": 301,
+        "service_active": true,
+        "watchdog_active": true,
+        "tailscaled_active": true,
+        "private_https_root_status": 307,
+        "private_https_root_behavior": "Redirected to login.",
+        "scope": "Five-minute bounded observation only; longer-term stability and the earlier tailnet-loss root cause remain unresolved."
+      }
+    },
+    "raw_trace": "Retained root-only with mode 0600 on the private host; not copied into the repository.",
+    "follow_up": [
+      "Classify the untrusted nerdctl descendant under a fixed allowlist and do not accept unknown processes.",
+      "Investigate the later fixed-tailnet-state loss without asserting a root cause.",
+      "Continue observing stability; do not claim long-term stability until confirmed by the parent."
+    ]
+  },
+  "fifth_active_attempt": {
+    "date": "2026-09-27",
+    "diagnostic_sha256": "ba6e76783fc668b5a158d22f0cbd9b90cfe3813d56a1fdc60550cf8e6eea1ce1",
+    "installed_release_transfer_sha256": "e11ea7a88a2b029f73e2374d47f271af178ff0604febbe9a47e1b4c9259d4f27",
+    "installed_watchdog_sha256": "f853945bd8c384101effbcfb494e368f4b880156b649456459650a045a6f0cab",
+    "preflight_passed": true,
+    "scope": {
+      "synthetic_running_kata_jobs": 1,
+      "browser_used": false,
+      "oidc_used": false,
+      "model_calls": 0
+    },
+    "fault": "tailscale down",
+    "process_observation": {
+      "thirty_second_observation_completed": true,
+      "first_scan_gap_seconds": 0.183,
+      "maximum_scan_gap_seconds": 0.183,
+      "seconds_after_tailscale_down": {
+        "driver_worker_client_exited": 0.88,
+        "shim_qemu_exited": 1.444,
+        "original_pinned_group_exited": 1.454,
+        "metadata_absent": 1.982,
+        "run_uncertain_null": 5.661
+      },
+      "reconstructed_candidates_observed": 0,
+      "sampling_limit": "Zero reconstructed candidates were observed during bounded polling. A 0.183-second maximum scan gap does not prove that none could exist between scans."
+    },
+    "immediate_harness_result": {
+      "exact_resource_cleanup_passed": true,
+      "namespace_cleanup_passed": true,
+      "service_cgroup_cleanup_passed": true,
+      "root_only_resolver_inspected_and_resolved_automatically": true,
+      "fallback_shields_used": false,
+      "all_harness_checks_passed": true,
+      "passed": true,
+      "pilot_ready": false,
+      "model_calls": 0,
+      "new_grants": 0
+    },
+    "post_restoration_stability_observation": {
+      "duration_seconds": 180.13,
+      "samples": 37,
+      "installed_watchdog_health_stable": true,
+      "tailnet_status_and_preferences_stable": true
+    },
+    "independent_postchecks": {
+      "identity_service_active": true,
+      "watchdog_active": true,
+      "tailscaled_active": true,
+      "tailscale_status": "Running/Online",
+      "tailscale_shields_up": false,
+      "private_https_root_status": 307,
+      "private_https_root_behavior": "Redirected to login.",
+      "database_integrity": "ok",
+      "database_runs": 22,
+      "pending_runs": 0,
+      "grants": 12,
+      "model_dispatches": 77,
+      "reference_namespace_empty": true,
+      "service_cgroup_processes": "Only the service main process.",
+      "kata_overhead_cgroups_live_processes": 0,
+      "new_grants": 0,
+      "model_calls": 0
+    },
+    "limits": [
+      "This bounded pass does not establish a universal hard 30-second SLA.",
+      "Bounded polling does not prove zero transient execution between scans.",
+      "The synthetic root-only path did not exercise browser/OIDC entry or a production user program.",
+      "This does not establish broader owner acceptance or pilot readiness.",
+      "The fourth attempt's delayed tailnet relapse remains preserved; its root cause is unknown."
+    ],
+    "passed": true,
+    "pilot_ready": false
+  }
+}
