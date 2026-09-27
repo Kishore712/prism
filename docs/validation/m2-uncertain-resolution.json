@@ -88,6 +88,20 @@
     "execution_success_claimed": false
   },
   "acceptance": {
+    "delegated_feature_self_acceptance": "passed for the bounded root-only helper after a read-only host recheck on 2026-09-26",
+    "self_acceptance_recheck": {
+      "installed_sha256_and_root_only_file_properties": "matched the recorded installation",
+      "application_and_watchdog_services": "active",
+      "private_https": "returned 200",
+      "fixed_prism_m0_namespace": "empty",
+      "database_integrity": "passed",
+      "runs": 12,
+      "uncertain_runs": 0,
+      "active_runs": 0,
+      "grants": 11,
+      "model_dispatches": 77,
+      "production_inspect_while_application_active": "denied on the occupied shared lock without change"
+    },
     "owner_acceptance": "pending",
     "pilot_ready": false,
     "claim_limit": "The positive resolve path used an isolated synthetic database and test-only database-path override. It is not a successful production resolution of a real uncertain row. No broad safety proof or hard timing guarantee is established."
