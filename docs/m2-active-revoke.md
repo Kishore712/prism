@@ -1,5 +1,21 @@
 # M2 Order 6: Active Revocation of In-Flight Collaborator Work
 
+**Finite demo capacity adjustment deployed (2026-09-27):** The global
+fixed-job limit in `Jobs` is 32 recorded runs, raised from 24 so bounded
+browser-active validation could continue without deleting audit history. The
+six-run limit per session, one-active-job rule, grant checks, approved action,
+and model budget are unchanged. At 32 existing runs, a new submission is
+denied. The immutable installed release transfer SHA-256 is
+`47add41b5778bcd9d2a5f6408df2c8312325474952047a5b12b362005dfce7f2`; its
+source SHA-256 is
+`8213a7cae3bfa6a242e1d5fcd3afece9e3526894c27e633f3f29963b97ccd66f`. The
+previous release was retained, a database backup was made, and the service
+unit change was limited to release and record hashes. The deployed app retains
+its 1000-cent model spend cap and the VM has no automatic stop configured.
+Deployment and normal service recovery do not imply another fault test passed.
+The resulting browser-active checks failed overall; see the [sanitized
+validation record](validation/m2-browser-active-disconnect.json).
+
 **Delayed-relapse diagnosis and instrumentation (2026-09-27):** Read-only systemd journals showed the watchdog stopped Prism after reporting a lost fixed private tailnet state. Tailscale logged `PollNetMap: unexpected EOF` in the same second, but its causal role is unproven. The lifecycle close path attempted to shield inbound traffic and then deliberately killed `tailscaled` through its emergency block after both normal close paths failed. The original watchdog log did not identify whether the initiating probe timed out, failed to run or parse, or observed an actual state/identity mismatch. A new immutable release now reports only fixed probe categories after the service is stopped, and its lifecycle helper reports fixed close-path categories before emergency blocking. It preserves the same fail-closed behavior, project pin and 1000-cent model budget. Local focused tests and normal host restart/HTTPS checks passed; no new fault was injected, and the earlier cause and pilot readiness remain open. See the [sanitized record](validation/m2-host-disconnect.json).
 
 **Host-disconnect follow-up (2026-09-27):** The first four controlled active synthetic attempts remain failed; their evidence, including the fourth attempt's delayed tailnet relapse, remains in the [validation record](validation/m2-host-disconnect.json). The fifth used diagnostic SHA-256 `ba6e76783fc668b5a158d22f0cbd9b90cfe3813d56a1fdc60550cf8e6eea1ce1` with unchanged immutable transfer `e11ea7a88a2b029f73e2374d47f271af178ff0604febbe9a47e1b4c9259d4f27` and watchdog `f853945bd8c384101effbcfb494e368f4b880156b649456459650a045a6f0cab`. Preflight passed with one synthetic RUNNING Kata job; no browser/OIDC or model call was used. Following `tailscale down`, driver/worker/client exited at 0.88 seconds, shim/QEMU at 1.444 seconds and the original pinned group at 1.454 seconds; metadata was absent at 1.982 seconds and the run became uncertain/null at 5.661 seconds. The completed 30-second observation found zero reconstructed candidates, with a maximum 0.183-second scan gap. Exact resource, namespace and service-cgroup cleanup and automatic root-only resolution passed; no fallback Shields Up was used. These checks passed for this bounded test (`passed=true`), while `pilot_ready=false`.

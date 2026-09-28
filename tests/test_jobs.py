@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
 
-from prism.jobs import Jobs
+from prism.jobs import GLOBAL_DEMO_RUN_LIMIT, Jobs
 from prism.sharing import (
     DEMO_FILES,
     Denied,
@@ -70,6 +70,37 @@ class JobPolicyTests(unittest.TestCase):
             self.finish()
         with self.assertRaises(Denied) as error:
             self.submit(42, "over-budget")
+        self.assertEqual(error.exception.status, 429)
+
+    def test_global_demo_run_limit_allows_25th_and_32nd_then_denies(self):
+        self.assertEqual(GLOBAL_DEMO_RUN_LIMIT, 32)
+
+        def add_completed(start, stop):
+            with self.store.connect() as db:
+                for number in range(start, stop):
+                    db.execute(
+                        "INSERT INTO runs(id,session,request_key,seed,status,created) "
+                        "VALUES(?,?,?,?,?,?)",
+                        (
+                            f"{number:032x}",
+                            "historical-synthetic-session",
+                            f"historical-{number}",
+                            0,
+                            "completed",
+                            float(number),
+                        ),
+                    )
+
+        add_completed(1, 25)
+        self.submit(25, "global-run-25")
+        self.finish()
+        add_completed(25, 31)
+        self.submit(32, "global-run-32")
+        self.finish()
+        with self.store.connect() as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM runs").fetchone()[0], 32)
+        with self.assertRaises(Denied) as error:
+            self.submit(33, "global-run-33")
         self.assertEqual(error.exception.status, 429)
 
     def test_concurrent_reservations_allow_only_one_job(self):

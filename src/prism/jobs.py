@@ -19,6 +19,7 @@ from prism.sharing import Denied, bootstrap_action, digest, ident, packed
 # Renew twice a second; the worker's three-second timeout is below the
 # 30-second execution deadline and gives slow scheduling some tolerance.
 LEASE_RENEW_SECONDS = 0.5
+GLOBAL_DEMO_RUN_LIMIT = 32
 SOURCE_ROOT = str(Path(__file__).resolve().parents[1])
 WORKER_BOOTSTRAP = """\
 import importlib.util
@@ -242,7 +243,8 @@ class Jobs:
                     "SELECT count(*) FROM runs WHERE session=?", (session,)
                 ).fetchone()[0]
                 >= 6
-                or db.execute("SELECT count(*) FROM runs").fetchone()[0] >= 24
+                or db.execute("SELECT count(*) FROM runs").fetchone()[0]
+                >= GLOBAL_DEMO_RUN_LIMIT
             ):
                 raise Denied("The local verification budget is exhausted.", 429)
             if self.stop.is_set():

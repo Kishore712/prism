@@ -16,6 +16,8 @@ import platform
 import re
 import signal
 import sqlite3
+import stat
+import subprocess
 import time
 from contextlib import closing
 from importlib.util import module_from_spec, spec_from_file_location
@@ -31,10 +33,10 @@ PINNED_ACTIVE_SHA256 = (
     "ba6e76783fc668b5a158d22f0cbd9b90cfe3813d56a1fdc60550cf8e6eea1ce1"
 )
 RELEASE_TRANSFER_SHA256 = (
-    "a0f0e53237aa586760ce85c475451bc2acc317dbec410954b1a4d17f875c32db"
+    "47add41b5778bcd9d2a5f6408df2c8312325474952047a5b12b362005dfce7f2"
 )
 RELEASE_SOURCE_SHA256 = (
-    "d068f26c7da43aac1054b67d2dbc007daee91baf1edeb4160c0b4d037ca9e688"
+    "8213a7cae3bfa6a242e1d5fcd3afece9e3526894c27e633f3f29963b97ccd66f"
 )
 RELEASE_WATCHDOG_SHA256 = (
     "1103b8cf469e2a8c00ebbd5ab371cde4c231b5a2825a74cb8c576afddb8edd1d"
@@ -42,9 +44,48 @@ RELEASE_WATCHDOG_SHA256 = (
 RELEASE_LIFECYCLE_SHA256 = (
     "5190646db23fa36be0a6216e0c67f0d98703e35d5af2a53508a87aa7d4663897"
 )
+OLD_TRANSFER_SHA256 = "e11ea7a88a2b029f73e2374d47f271af178ff0604febbe9a47e1b4c9259d4f27"
+OLD_SOURCE_SHA256 = "fee499e336567fd4c1f9a564c3fc2983fd520eb18d33e191d5ae29b267e1e16d"
+OLD_LIFECYCLE_SHA256 = (
+    "79e3db10b3683bc65292f449b88798d4edb8674a6f8ea63c8cd08d8cd64c9c0f"
+)
+OLD_WATCHDOG_SHA256 = "f853945bd8c384101effbcfb494e368f4b880156b649456459650a045a6f0cab"
 MAX_ARM_SECONDS = 30
 MAX_OBSERVE_SECONDS = 12
 HEX32 = re.compile(r"[0-9a-f]{32}\Z")
+FAILURE_STAGES = frozenset(
+    {
+        "host",
+        "await_external_browser_submission",
+        "observe_runtime",
+        "fault_edge",
+        "tailnet_down",
+        "observe_fail_closed",
+    }
+)
+FAILURE_ORIGINS = frozenset(
+    {
+        "observe_job_termination",
+        "unexpected_group_member",
+        "update_candidate_exits",
+        "same_container_candidates",
+        "process_identity",
+        "process_argv",
+        "candidate_lineage",
+        "candidate_command_identity",
+        "safe_command_category",
+        "group_gone",
+        "pinned_alive",
+        "inspect_owned",
+        "all_resources",
+        "cgroup_tree_drained",
+        "read_exact_run",
+        "db_read",
+        "command",
+        "show",
+        "wait_for",
+    }
+)
 
 
 def pinned_active():
@@ -72,14 +113,10 @@ def pinned_active():
 def configure_release_pins(active, release: Path) -> None:
     """Adapt the verified older diagnostic helper to the reviewed current release."""
     if (
-        active.TRANSFER_SHA256
-        != "e11ea7a88a2b029f73e2374d47f271af178ff0604febbe9a47e1b4c9259d4f27"
-        or active.SOURCE_SHA256
-        != "fee499e336567fd4c1f9a564c3fc2983fd520eb18d33e191d5ae29b267e1e16d"
-        or active.WATCHDOG_SHA256
-        != "f853945bd8c384101effbcfb494e368f4b880156b649456459650a045a6f0cab"
-        or active.LIFECYCLE_SHA256
-        != "79e3db10b3683bc65292f449b88798d4edb8674a6f8ea63c8cd08d8cd64c9c0f"
+        active.TRANSFER_SHA256 != OLD_TRANSFER_SHA256
+        or active.SOURCE_SHA256 != OLD_SOURCE_SHA256
+        or active.WATCHDOG_SHA256 != OLD_WATCHDOG_SHA256
+        or active.LIFECYCLE_SHA256 != OLD_LIFECYCLE_SHA256
     ):
         raise RuntimeError("Verified helper release pin baseline differs")
     if release.name != "service-" + RELEASE_TRANSFER_SHA256:
@@ -88,6 +125,194 @@ def configure_release_pins(active, release: Path) -> None:
     active.SOURCE_SHA256 = RELEASE_SOURCE_SHA256
     active.WATCHDOG_SHA256 = RELEASE_WATCHDOG_SHA256
     active.LIFECYCLE_SHA256 = RELEASE_LIFECYCLE_SHA256
+
+
+def configure_resolver_pins(resolver, release: Path) -> None:
+    if (
+        resolver.TRANSFER != OLD_TRANSFER_SHA256
+        or resolver.SOURCE != OLD_SOURCE_SHA256
+        or resolver.LIFECYCLE_SHA256 != OLD_LIFECYCLE_SHA256
+        or resolver.UPDATE
+        != "/var/lib/prism/identity-pilot/service-updates/"
+        + OLD_TRANSFER_SHA256
+        + "/installed.json"
+        or resolver.RELEASE
+        != "/var/lib/prism/identity-pilot/app-releases/service-" + OLD_TRANSFER_SHA256
+        or release.name != "service-" + RELEASE_TRANSFER_SHA256
+    ):
+        raise RuntimeError("Verified resolver release pin baseline differs")
+    resolver.TRANSFER = RELEASE_TRANSFER_SHA256
+    resolver.SOURCE = RELEASE_SOURCE_SHA256
+    resolver.LIFECYCLE_SHA256 = RELEASE_LIFECYCLE_SHA256
+    resolver.UPDATE = (
+        "/var/lib/prism/identity-pilot/service-updates/"
+        + RELEASE_TRANSFER_SHA256
+        + "/installed.json"
+    )
+    resolver.RELEASE = str(release)
+
+
+def current_resolver(active, release: Path):
+    """Load only the root-owned v8 resolver and retarget its reviewed pins in memory."""
+    import hashlib
+
+    path = active.RESOLVER
+    info = path.lstat()
+    if (
+        not stat.S_ISREG(info.st_mode)
+        or info.st_uid != 0
+        or info.st_nlink != 1
+        or stat.S_IMODE(info.st_mode) != 0o700
+        or hashlib.sha256(path.read_bytes()).hexdigest() != active.RESOLVER_SHA256
+    ):
+        raise RuntimeError("Pinned root-only v8 resolver differs")
+    spec = spec_from_file_location("prism_current_root_resolver", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("Pinned root-only v8 resolver cannot be loaded")
+    resolver = module_from_spec(spec)
+    spec.loader.exec_module(resolver)
+    configure_resolver_pins(resolver, release)
+    return resolver
+
+
+def inspect_and_resolve_current(resolver, run_id: str) -> bool:
+    inspected = resolver.execute("inspect", run_id)
+    if inspected != {
+        "run": run_id,
+        "ready": True,
+        "action": "inspect",
+        "changed": False,
+    }:
+        return False
+    resolved = resolver.execute("resolve", run_id)
+    return resolved == {
+        "run": run_id,
+        "ready": True,
+        "action": "resolve",
+        "changed": True,
+        "status": "failed",
+        "execution_outcome": "unknown",
+    }
+
+
+def ready_to_restart_service(base, observed, runtime, active, resource, token, group):
+    """Recheck exact runtime and process absence immediately before serving."""
+    return (
+        runtime.all_resources() == []
+        and runtime.inspect_owned(resource, token) is None
+        and observed.cgroup_tree_drained(base.SERVICE)
+        and not active.same_container_candidates(group["container_id"])
+    )
+
+
+def inspect_during_creation(runtime, reference_runtime, resource, token):
+    """Treat only the known creation-window inspect race as not yet visible."""
+    try:
+        return runtime.inspect_owned(resource, token)
+    except reference_runtime.EngineError as exc:
+        if str(exc) != "The named reference resource could not be inspected.":
+            raise
+        return None
+
+
+def tailnet_daemon_absent(
+    base, observed, *, net_root: Path = Path("/sys/class/net")
+) -> bool:
+    """Recognize a closed daemon without trusting its stale CLI status."""
+    if not net_root.is_dir() or net_root.is_symlink():
+        return False
+    return (
+        base.show("tailscaled.service", "ActiveState") in ("inactive", "failed")
+        and base.show("tailscaled.service", "MainPID") == "0"
+        and base.show("tailscaled.service", "ControlPID") == "0"
+        and observed.cgroup_tree_drained("tailscaled.service")
+        and not os.path.lexists(net_root / "tailscale0")
+    )
+
+
+def ensure_tailnet_closed(base, observed, active) -> str:
+    try:
+        if tailnet_daemon_absent(base, observed):
+            return "daemon_absent_verified"
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
+        # A failed observation grants no exception to the strict close helper.
+        pass
+    active.force_tailnet_closed(base)
+    return "pinned_helper_confirmed"
+
+
+def close_after_recovery_error(base, observed, active, report) -> None:
+    """Keep closure attempts independent when the normal fallback itself fails."""
+    try:
+        active.fail_closed_after_unstable_recovery(
+            base,
+            service_drained=lambda: observed.cgroup_tree_drained(base.SERVICE),
+        )
+    except Exception as close_exc:  # noqa: BLE001 - report category only.
+        report["closure_error_kind"] = type(close_exc).__name__
+        try:
+            report["emergency_tailnet_close"] = ensure_tailnet_closed(
+                base, observed, active
+            )
+        except Exception as force_exc:  # noqa: BLE001 - report category only.
+            report["emergency_tailnet_close_error_kind"] = type(force_exc).__name__
+    report["outcome"] = "failed"
+
+
+def watchdog_stopped_and_drained(base, observed) -> bool:
+    return (
+        base.show(base.WATCHDOG, "ActiveState") in ("inactive", "failed")
+        and base.show(base.WATCHDOG, "MainPID") == "0"
+        and base.show(base.WATCHDOG, "ControlPID") == "0"
+        and observed.cgroup_tree_drained(base.WATCHDOG)
+    )
+
+
+def recover_tailnet_after_close_failure(base, observed, active, host_watchdog):
+    """Recover behind Shields Up after an ExecStopPost failure, or refuse."""
+    try:
+        base.command("/usr/bin/systemctl", "stop", base.WATCHDOG, timeout=300)
+    except subprocess.CalledProcessError:
+        # A failed close hook can make systemctl return nonzero after the unit
+        # actually stopped. Trust only the independent unit/cgroup observation.
+        pass
+    if not base.wait_for(lambda: watchdog_stopped_and_drained(base, observed), 10):
+        raise RuntimeError("Watchdog unit or cgroup did not stop")
+    if not observed.cgroup_tree_drained(base.SERVICE):
+        raise RuntimeError("Service cgroup is not drained")
+    base.command("/usr/bin/systemctl", "reset-failed", "tailscaled.service")
+    base.command("/usr/bin/systemctl", "start", "tailscaled.service", timeout=60)
+    if not base.service_active("tailscaled.service"):
+        raise RuntimeError("Tailscaled did not start")
+    if not observed.cgroup_tree_drained(base.SERVICE):
+        raise RuntimeError("Service cgroup changed before tailnet up")
+    shielded, unshielded = active.offline_tailnet_prefs(base)
+    if unshielded:
+        base.command("/usr/bin/tailscale", "set", "--shields-up=true")
+        shielded, _ = active.offline_tailnet_prefs(base)
+    if not shielded:
+        raise RuntimeError("Offline Shields Up is not verified")
+    if not watchdog_stopped_and_drained(base, observed):
+        raise RuntimeError("Watchdog restarted before tailnet up")
+    try:
+        base.command("/usr/bin/timeout", "25", "/usr/bin/tailscale", "up", timeout=30)
+        if not base.wait_for(lambda: active.tailnet_online(base), 15):
+            raise RuntimeError("Tailnet did not return online")
+        if base.shield_state() is not True:
+            raise RuntimeError("Online Shields Up was lost")
+    except Exception:
+        ensure_tailnet_closed(base, observed, active)
+        raise
+    if (
+        not observed.cgroup_tree_drained(base.SERVICE)
+        or base.shield_state() is not True
+    ):
+        raise RuntimeError("Service drain or Shields Up changed before watchdog start")
+    base.command("/usr/bin/systemctl", "start", base.WATCHDOG, timeout=60)
+    if not base.service_active(base.WATCHDOG) or not active.wait_watchdog_socket(
+        base, host_watchdog
+    ):
+        raise RuntimeError("Watchdog did not become healthy")
 
 
 def read_scope(
@@ -244,7 +469,12 @@ def terminal_race_proven(
 def finalize_report(report: dict) -> None:
     if any(
         report.get(name) is not None
-        for name in ("error_kind", "recovery_error_kind", "closure_error_kind")
+        for name in (
+            "error_kind",
+            "recovery_error_kind",
+            "closure_error_kind",
+            "emergency_tailnet_close_error_kind",
+        )
     ):
         report["outcome"] = "failed"
         report["passed"] = False
@@ -253,6 +483,27 @@ def finalize_report(report: dict) -> None:
         report["outcome"] == "passed"
         and report["checks"].get("service_restored") is True
     )
+
+
+def fixed_failure_origin(exc: Exception) -> str:
+    """Expose only a reviewed function category, never traceback paths or text."""
+    frame = exc.__traceback__
+    if frame is None:
+        return "unknown"
+    while frame.tb_next is not None:
+        frame = frame.tb_next
+    name = frame.tb_frame.f_code.co_name
+    if name == "<lambda>":
+        return "observation_callback"
+    return name if name in FAILURE_ORIGINS else "other"
+
+
+def record_primary_failure(report: dict, exc: Exception) -> None:
+    report["error_kind"] = type(exc).__name__
+    report["failure_stage"] = (
+        report["phase"] if report["phase"] in FAILURE_STAGES else "other"
+    )
+    report["failure_origin"] = fixed_failure_origin(exc)
 
 
 def run(
@@ -280,7 +531,7 @@ def run(
     ):
         report["error_kind"] = "UnsupportedHost"
         return report
-    active = base = observed = host_watchdog = runtime = None
+    active = base = observed = host_watchdog = runtime = resolver = None
     main_fd = worker_fd = None
     client = group = None
     faulted = False
@@ -304,6 +555,7 @@ def run(
         )
         observed = base.load_observed()
         host_watchdog, reference_runtime = active.pinned_modules(release, observed)
+        resolver = current_resolver(active, release)
         main_pid = base.active_unit_identity(observed, release)
         main_identity = active.process_identity(main_pid)
         if main_identity is None or main_identity[1] in ("Z", "X"):
@@ -361,7 +613,7 @@ def run(
             ):
                 report["outcome"] = "inconclusive"
                 return report
-            info = runtime.inspect_owned(resource, token)
+            info = inspect_during_creation(runtime, reference_runtime, resource, token)
             state = info.get("State", {}) if info else {}
             running = isinstance(state, dict) and (
                 state.get("Status") == "running" or state.get("Running") is True
@@ -495,7 +747,7 @@ def run(
         report["elapsed_seconds"] = {k: v for k, v in elapsed.items() if v is not None}
         report["outcome"] = "passed" if all(report["checks"].values()) else "failed"
     except Exception as exc:  # noqa: BLE001 - never disclose exception text.
-        report["error_kind"] = type(exc).__name__
+        record_primary_failure(report, exc)
     finally:
         recovering = True
         if observed is not None and client is not None:
@@ -516,9 +768,11 @@ def run(
                     report["error_kind"] = report["error_kind"] or "FdCloseError"
         if faulted and active is not None and base is not None and observed is not None:
             report["phase"] = "recovery"
+            recovery_stage = "close_tailnet"
             try:
                 # Never reopen inbound traffic while service work is unresolved.
-                active.force_tailnet_closed(base)
+                report["tailnet_close"] = ensure_tailnet_closed(base, observed, active)
+                recovery_stage = "stop_service"
                 if base.service_active(base.SERVICE):
                     base.command(
                         "/usr/bin/systemctl",
@@ -533,23 +787,21 @@ def run(
                     lambda: observed.cgroup_tree_drained(base.SERVICE), 30
                 ):
                     raise RuntimeError("Service cgroup did not drain")
+                recovery_stage = "namespace_drain"
                 if runtime.all_resources() != []:
                     raise RuntimeError("Reference namespace is not empty")
-                steps = []
-                active.recover_tailnet(
-                    base,
-                    service_drained=lambda: observed.cgroup_tree_drained(base.SERVICE),
-                    on_step=steps.append,
+                recovery_stage = "restore_tailnet_watchdog"
+                recover_tailnet_after_close_failure(
+                    base, observed, active, host_watchdog
                 )
-                if not active.wait_watchdog_socket(base, host_watchdog):
-                    raise RuntimeError("Watchdog socket did not recover")
+                recovery_stage = "resolve_run"
                 row = read_exact_run(parent.DB, session, run_id)
                 if (
                     row is not None
                     and row["status"] == "uncertain"
                     and row["result"] is None
                 ):
-                    if not active.inspect_and_resolve(row["id"], report):
+                    if not inspect_and_resolve_current(resolver, row["id"]):
                         raise RuntimeError("Exact run resolver refused")
                     row = read_exact_run(parent.DB, session, run_id)
                     if (
@@ -574,7 +826,15 @@ def run(
                     report["checks"]["terminal_race_proven"] = True
                 else:
                     raise RuntimeError("Exact run is not safely reconciled")
+                recovery_stage = "pre_start_absence"
+                if not ready_to_restart_service(
+                    base, observed, runtime, active, resource, token, group
+                ):
+                    raise RuntimeError("Runtime or service process reappeared")
+                report["checks"]["final_resource_and_process_absence"] = True
+                recovery_stage = "start_service"
                 base.command("/usr/bin/systemctl", "start", base.SERVICE, timeout=380)
+                recovery_stage = "stability_observation"
                 stable, stability = active.observe_recovery_stability(
                     base, host_watchdog, runtime
                 )
@@ -584,16 +844,8 @@ def run(
                 report["checks"]["service_restored"] = True
             except Exception as exc:  # noqa: BLE001 - fail closed, no secret details.
                 report["recovery_error_kind"] = type(exc).__name__
-                try:
-                    active.fail_closed_after_unstable_recovery(
-                        base,
-                        service_drained=lambda: observed.cgroup_tree_drained(
-                            base.SERVICE
-                        ),
-                    )
-                except Exception as close_exc:  # noqa: BLE001
-                    report["closure_error_kind"] = type(close_exc).__name__
-                report["outcome"] = "failed"
+                report["recovery_error_stage"] = recovery_stage
+                close_after_recovery_error(base, observed, active, report)
         for signum, handler in old_handlers.items():
             signal.signal(signum, handler)
         finalize_report(report)

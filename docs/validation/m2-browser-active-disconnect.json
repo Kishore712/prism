@@ -1,0 +1,178 @@
+{
+  "schema": 1,
+  "kind": "m2-browser-active-disconnect-validation",
+  "date": "2026-09-28",
+  "status": "failed-browser-active-validation",
+  "passed": false,
+  "pilot_ready": false,
+  "model_calls": 0,
+  "scope": "Bounded attempt to submit the approved synthetic json-check from a separately authenticated recipient Chrome session and observe tailnet-loss handling while a Kata task was active. The browser submission used a same-origin diagnostic POST through DevTools with the session CSRF token; it did not use the normal conversation UI. No task network access or model call occurred.",
+  "identity_and_fixture": {
+    "owner_and_recipient_are_independent": true,
+    "recipient_identity": "Previously verified USC Google OIDC identity in a separate Chrome incognito profile; identifiers omitted",
+    "grant_duration": "one hour",
+    "grant_permission": "read three approved files and run only the fixed json-check action",
+    "approved_file_count": 3,
+    "synthetic_document_version": "43e95...",
+    "files": [
+      "README.md",
+      "config/release.json",
+      "docs/release.md"
+    ],
+    "approved_action": "fixed json-check",
+    "task_network_access": false
+  },
+  "baseline": {
+    "runs_before_live_work": 22,
+    "model_dispatches_before_live_work": 77,
+    "database_integrity_before_live_work": "ok"
+  },
+  "capacity_release": {
+    "change": "Raised the global recorded-run cap from 24 to 32 so bounded browser-active validation could continue without deleting audit history.",
+    "per_session_run_cap": 6,
+    "one_active_job_global_rule_unchanged": true,
+    "grant_checks_unchanged": true,
+    "approved_action_unchanged": true,
+    "model_budget_unchanged": true,
+    "installed_release_transfer_sha256": "47add41b5778bcd9d2a5f6408df2c8312325474952047a5b12b362005dfce7f2",
+    "installed_release_source_sha256": "8213a7cae3bfa6a242e1d5fcd3afece9e3526894c27e633f3f29963b97ccd66f",
+    "previous_release_retained": true,
+    "database_backup_created": true,
+    "service_unit_change": "Only release and record hashes changed.",
+    "model_spend_cap_cents": 1000,
+    "vm_auto_stop_enabled": false,
+    "three_units_active_after_install": true,
+    "database_integrity_after_install": "ok"
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "run_count": 23,
+      "exact_kata_worker_client_service_group_observed_running": true,
+      "tailscale_down": true,
+      "driver_worker_client_absent_seconds": 0.653,
+      "qemu_shim_absent_seconds": 1.114,
+      "metadata_absent_seconds": 1.469,
+      "run_uncertain_null_seconds": 5.266,
+      "exact_resource_absence_and_no_reconstruction_confirmed": true,
+      "automatic_recovery": "Failed with RuntimeError.",
+      "manual_root_recovery_and_resolution": "Performed; exact synthetic run was inspected and resolved to failed/null with execution outcome unknown.",
+      "attempt_passed": false
+    },
+    {
+      "attempt": 2,
+      "run_count": 24,
+      "recipient_diagnostic_post_http_status": 200,
+      "post_state": "running/queued",
+      "task_completed_before_exact_running_observation": true,
+      "observer_failure": "The observer raised EngineError during inspect-during-creation before the injected fault.",
+      "fault_injected": false,
+      "service_healthy": true,
+      "attempt_passed": false
+    },
+    {
+      "attempt": 3,
+      "run_count": 24,
+      "recipient_diagnostic_post_http_status": 429,
+      "reason": "Global recorded-run cap reached before cap32 deployment.",
+      "new_run_created": false,
+      "fault_injected": false,
+      "attempt_passed": false
+    },
+    {
+      "attempt": 4,
+      "run_count": 25,
+      "recipient_diagnostic_post_http_status": 200,
+      "post_state": "running",
+      "exact_kata_worker_client_service_group_observed_running": true,
+      "tailscale_down": true,
+      "driver_worker_client_absent_seconds": 0.332,
+      "qemu_shim_absent_seconds": 0.791,
+      "metadata_absent_seconds": 0.905,
+      "run_uncertain_null_seconds": 4.984,
+      "exact_running_fault_edge_observed": true,
+      "resource_absent_during_fail_close_observation": true,
+      "automatic_recovery": "Failed with recovery_error_kind RuntimeError because already-dead tailscaled was mishandled.",
+      "manual_recovery_and_root_resolution": "Performed; the exact synthetic run was root-inspected and resolved to failed/null with execution outcome unknown.",
+      "attempt_passed": false
+    },
+    {
+      "attempt": 5,
+      "run_count": 26,
+      "recipient_diagnostic_post_http_status": 200,
+      "post_state": "running",
+      "exact_kata_worker_client_service_group_observed_running": true,
+      "tailscale_down": true,
+      "exact_running_fault_edge_observed": true,
+      "tailnet_stopped": true,
+      "automatic_uncertain_resolution": true,
+      "final_resource_and_process_absence": true,
+      "service_restored": true,
+      "stability_seconds": 180.114,
+      "stability_samples": 37,
+      "original_observer": "observe_job_termination raised RuntimeError before its 30-second summary checks. No resource-disappearance timings or complete fail-close checks were recorded for this attempt.",
+      "attempt_passed": false
+    }
+  ],
+  "delayed_relapse": {
+    "observed_after_attempt": 5,
+    "utc": "2026-09-28T02:15:06Z",
+    "observation": "tailscaled logged PollNetMap unexpected EOF; the watchdog classified the host as offline and the service and tailscaled failed closed after the stability window.",
+    "causality_of_eof_established": false
+  },
+  "final_recovery": {
+    "restart_loop_stopped_manually": true,
+    "first_manual_tailnet_recovery": "Failed because WantRunning=true and ShieldUp=true after tailscaled started.",
+    "tailnet_online_and_shields_up_independently_verified": true,
+    "service_drained": true,
+    "watchdog_stopped_before_recovery": true,
+    "kata_namespace_empty_before_restart": true,
+    "watchdog_and_service_started_after_recovery": true
+  },
+  "browser_state": {
+    "submission_surface": "Same-origin diagnostic POST issued in Chrome DevTools with the recipient session CSRF token; not the normal conversation UI.",
+    "run_count_after_attempts": 26,
+    "pending_runs_at_last_check": 0,
+    "model_dispatches_at_last_check": 77,
+    "model_calls": 0,
+    "grant_changed_or_revoked": false,
+    "attempt_4_recipient_ui": "Showed three persisted results.",
+    "attempt_5_recipient_ui_after_grant_expiry": "Chrome incognito /review reload showed the landing text 'Open your current invitation link to enter its review workspace'; it did not show the workspace. The grant had expired naturally. No attempt-5 result visibility was checked after expiry, and this is not evidence of revocation."
+  },
+  "final_host_state_at_last_recorded_check": {
+    "identity_service_active": true,
+    "watchdog_active": true,
+    "tailscaled_active": true,
+    "tailnet_status": "Running/Online",
+    "shields_up": false,
+    "kata_namespace_empty": true,
+    "database_integrity": "ok",
+    "runs": 26,
+    "pending_runs": 0,
+    "model_dispatches": 77,
+    "private_https_review_path": "/review",
+    "private_https_review_status": 200,
+    "recipient_grant_expired_naturally": true,
+    "vm_auto_stop_enabled": false
+  },
+  "local_validation": {
+    "observer_tests_passed": 17,
+    "jobs_tests_passed": 9,
+    "ruff_passed": true,
+    "diff_check_passed": true,
+    "high_static_reviews_blockers": 0,
+    "diagnostic_only_observer_patch_preflight": "Refused after the delayed relapse; no new fault was injected."
+  },
+  "limits": [
+    "The feature result failed overall. Do not describe this as browser-active acceptance or pilot readiness.",
+    "The recipient submitted through a DevTools diagnostic POST, not the normal conversation UI.",
+    "The run used only the approved fixed synthetic json-check; no model call or task network access occurred.",
+    "A bounded disappearance observation does not prove a universal hard shutdown deadline.",
+    "The delayed tailnet relapse remains unexplained, and the same-second PollNetMap EOF is not established as its cause.",
+    "Attempt 4's bounded process/resource times were observed, but automatic recovery failed; attempt 5 lacked the observer's complete 30-second summary and has no recorded disappearance timings.",
+    "After the one-hour grant expired, /review returned the expected invitation landing page; no attempt-5 result visibility was checked after expiry.",
+    "No new grant was created; the one-hour grant expired naturally and was not renewed or revoked.",
+    "No hard SLA, broad safety claim, or pilot readiness is established."
+  ],
+  "privacy": "No account identifiers, authentication links, credentials, private URL, run ID, container ID or transcript are included."
+}
