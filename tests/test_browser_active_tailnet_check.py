@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import sqlite3
@@ -130,6 +131,8 @@ class BrowserActiveSelectionTests(unittest.TestCase):
             SOURCE_SHA256="fee499e336567fd4c1f9a564c3fc2983fd520eb18d33e191d5ae29b267e1e16d",
             WATCHDOG_SHA256="f853945bd8c384101effbcfb494e368f4b880156b649456459650a045a6f0cab",
             LIFECYCLE_SHA256="79e3db10b3683bc65292f449b88798d4edb8674a6f8ea63c8cd08d8cd64c9c0f",
+            RESOLVER=check.OLD_RESOLVER,
+            RESOLVER_SHA256=check.OLD_RESOLVER_SHA256,
         )
         current = Path("/var/lib/prism/identity-pilot/app-releases") / (
             "service-" + check.RELEASE_TRANSFER_SHA256
@@ -139,8 +142,39 @@ class BrowserActiveSelectionTests(unittest.TestCase):
         self.assertEqual(helper.SOURCE_SHA256, check.RELEASE_SOURCE_SHA256)
         self.assertEqual(helper.WATCHDOG_SHA256, check.RELEASE_WATCHDOG_SHA256)
         self.assertEqual(helper.LIFECYCLE_SHA256, check.RELEASE_LIFECYCLE_SHA256)
+        self.assertEqual(helper.RESOLVER, check.RELEASE_RESOLVER)
+        self.assertEqual(helper.RESOLVER_SHA256, check.RELEASE_RESOLVER_SHA256)
         with self.assertRaises(RuntimeError):
             check.configure_release_pins(helper, current)
+
+    def test_v9_pins_match_files_and_old_resolver_identity_is_required(self):
+        root = SCRIPT.parents[1]
+        self.assertEqual(
+            hashlib.sha256(
+                (root / "scripts/gcp/identity-service-lifecycle.py").read_bytes()
+            ).hexdigest(),
+            check.RELEASE_LIFECYCLE_SHA256,
+        )
+        self.assertEqual(
+            hashlib.sha256(
+                (root / "scripts/gcp/identity-uncertain-resolution-v9.py").read_bytes()
+            ).hexdigest(),
+            check.RELEASE_RESOLVER_SHA256,
+        )
+        helper = types.SimpleNamespace(
+            TRANSFER_SHA256=check.OLD_TRANSFER_SHA256,
+            SOURCE_SHA256=check.OLD_SOURCE_SHA256,
+            WATCHDOG_SHA256=check.OLD_WATCHDOG_SHA256,
+            LIFECYCLE_SHA256=check.OLD_LIFECYCLE_SHA256,
+            RESOLVER=check.OLD_RESOLVER,
+            RESOLVER_SHA256="0" * 64,
+        )
+        release = Path("/var/lib/prism/identity-pilot/app-releases") / (
+            "service-" + check.RELEASE_TRANSFER_SHA256
+        )
+        with self.assertRaisesRegex(RuntimeError, "baseline differs"):
+            check.configure_release_pins(helper, release)
+        self.assertEqual(helper.RESOLVER, check.OLD_RESOLVER)
 
     def test_preflight_cli_returns_success(self):
         argv = [
@@ -212,14 +246,14 @@ class BrowserActiveSelectionTests(unittest.TestCase):
         self.assertFalse(report["passed"])
         self.assertEqual(report["outcome"], "failed")
 
-    def test_resolver_retargets_only_verified_v8_baseline(self):
-        old = check.OLD_TRANSFER_SHA256
+    def test_resolver_requires_exact_current_v9_pins(self):
+        transfer = check.RELEASE_TRANSFER_SHA256
         resolver = types.SimpleNamespace(
-            TRANSFER=old,
-            SOURCE=check.OLD_SOURCE_SHA256,
-            LIFECYCLE_SHA256=check.OLD_LIFECYCLE_SHA256,
-            UPDATE=f"/var/lib/prism/identity-pilot/service-updates/{old}/installed.json",
-            RELEASE=f"/var/lib/prism/identity-pilot/app-releases/service-{old}",
+            TRANSFER=transfer,
+            SOURCE=check.RELEASE_SOURCE_SHA256,
+            LIFECYCLE_SHA256=check.RELEASE_LIFECYCLE_SHA256,
+            UPDATE=f"/var/lib/prism/identity-pilot/service-updates/{transfer}/installed.json",
+            RELEASE=f"/var/lib/prism/identity-pilot/app-releases/service-{transfer}",
         )
         release = Path("/var/lib/prism/identity-pilot/app-releases") / (
             "service-" + check.RELEASE_TRANSFER_SHA256
@@ -229,8 +263,170 @@ class BrowserActiveSelectionTests(unittest.TestCase):
         self.assertEqual(resolver.SOURCE, check.RELEASE_SOURCE_SHA256)
         self.assertEqual(resolver.LIFECYCLE_SHA256, check.RELEASE_LIFECYCLE_SHA256)
         self.assertEqual(resolver.RELEASE, str(release))
-        with self.assertRaises(RuntimeError):
+        resolver.TRANSFER = check.OLD_TRANSFER_SHA256
+        with self.assertRaisesRegex(RuntimeError, "v9 resolver release pins differ"):
             check.configure_resolver_pins(resolver, release)
+
+    def test_actual_v9_resolver_pins_are_accepted_without_mutation(self):
+        path = SCRIPT.parents[1] / "scripts/gcp/identity-uncertain-resolution-v9.py"
+        spec = importlib.util.spec_from_file_location("browser_current_v9", path)
+        resolver = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(resolver)
+        release = Path(resolver.RELEASE)
+        before = (
+            resolver.TRANSFER,
+            resolver.SOURCE,
+            resolver.LIFECYCLE_SHA256,
+            resolver.UPDATE,
+            resolver.RELEASE,
+        )
+        check.configure_resolver_pins(resolver, release)
+        self.assertEqual(
+            before,
+            (
+                resolver.TRANSFER,
+                resolver.SOURCE,
+                resolver.LIFECYCLE_SHA256,
+                resolver.UPDATE,
+                resolver.RELEASE,
+            ),
+        )
+
+    def test_partial_observation_keeps_only_bounded_categories_on_error(self):
+        elapsed = {"driver": None, "worker": None, "secret": "private"}
+        reconstruction = {"first_trigger": None, "candidates": [], "truncated": False}
+        report = {"phase": "observe_fail_closed", "outcome": "failed", "passed": False}
+
+        class Active:
+            def observe_job_termination(self, *, elapsed, reconstruction_evidence):
+                elapsed["worker"] = 1.23456
+                reconstruction_evidence["first_trigger"] = {
+                    "branch": "same_container_identity",
+                    "elapsed_seconds": 1.5,
+                    "private_path": "/secret/path",
+                }
+                reconstruction_evidence["candidates"] = [
+                    {
+                        "command_category": "qemu",
+                        "exit_observed_seconds": 2.1,
+                        "pid": 123,
+                        "argv": "private command",
+                    }
+                ]
+                raise RuntimeError("private identifier")
+
+        try:
+            check.observe_with_partial_report(
+                Active(), report, elapsed=elapsed, reconstruction=reconstruction
+            )
+        except RuntimeError as exc:
+            check.record_primary_failure(report, exc)
+        else:
+            self.fail("Observation exception was swallowed")
+        check.finalize_report(report)
+        self.assertEqual(report["failure_origin"], "observe_job_termination")
+        self.assertEqual(report["error_kind"], "RuntimeError")
+        self.assertEqual(report["elapsed_seconds"], {"worker": 1.235})
+        self.assertEqual(report["reconstruction_summary"]["candidate_count"], 1)
+        self.assertEqual(
+            report["reconstruction_summary"]["candidate_categories"]["qemu"], 1
+        )
+        self.assertEqual(report["outcome"], "failed")
+        self.assertFalse(report["passed"])
+        self.assertNotIn("private", json.dumps(report))
+        self.assertNotIn("123", json.dumps(report))
+
+    def test_completed_reconstruction_summary_retains_only_aggregates(self):
+        report = {}
+        evidence = {
+            "first_trigger": {
+                "branch": "same_container_identity",
+                "elapsed_seconds": 1.4,
+            },
+            "candidates": [
+                {
+                    "pid": 123,
+                    "command_category": "exact_delete_helper",
+                    "trusted_cleanup": True,
+                    "exit_observed_seconds": 2.0,
+                },
+                {
+                    "pid": 456,
+                    "command_category": "exact_delete_helper",
+                    "trusted_cleanup": False,
+                    "exit_observed_seconds": None,
+                },
+            ],
+            "truncated": False,
+            "ambiguous": True,
+            "first_scan_elapsed_seconds": 0.1,
+        }
+        check.partial_observation(
+            report,
+            {"driver": 1.23, "unknown": "/private/path"},
+            evidence,
+            completed=True,
+        )
+        summary = report["reconstruction_summary"]
+        self.assertEqual(report["elapsed_seconds"], {"driver": 1.23})
+        self.assertEqual(summary["candidate_count"], 2)
+        self.assertEqual(summary["trusted_cleanup_count"], 1)
+        self.assertEqual(summary["untrusted_cleanup_count"], 1)
+        self.assertTrue(summary["ambiguous"])
+        self.assertFalse(summary["scan_continuity_verified"])
+        self.assertNotIn("123", json.dumps(report))
+        self.assertNotIn("/private/path", json.dumps(report))
+
+    def test_huge_elapsed_integer_is_omitted_without_masking_observation_error(self):
+        self.assertIsNone(check.bounded_seconds(10**1000))
+        report = {"phase": "observe_fail_closed", "outcome": "failed", "passed": False}
+        check.partial_observation(
+            report,
+            {"driver": 10**1000, "worker": 1.25},
+            {
+                "first_trigger": {"elapsed_seconds": 10**1000},
+                "candidates": [],
+                "truncated": False,
+            },
+        )
+        self.assertEqual(report["elapsed_seconds"], {"worker": 1.25})
+        self.assertIsNone(
+            report["reconstruction_summary"]["first_trigger_elapsed_seconds"]
+        )
+
+    def test_failed_reconstruction_retains_private_evidence_without_path_in_report(
+        self,
+    ):
+        evidence = {
+            "first_trigger": None,
+            "candidates": [{"pid": 123}],
+            "truncated": False,
+        }
+        report = {}
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "private"
+            directory.mkdir(mode=0o700)
+
+            class Active:
+                def write_reconstruction_evidence(self, root, value):
+                    self.root = root
+                    self.value = value
+
+            active = Active()
+            with (
+                patch.object(check.os, "geteuid", return_value=0),
+                patch.object(check.tempfile, "mkdtemp", return_value=str(directory)),
+            ):
+                check.retain_failed_reconstruction(active, report, evidence)
+            self.assertEqual(active.root, directory)
+            self.assertIs(active.value, evidence)
+        self.assertTrue(report["evidence_retained"])
+        self.assertNotIn(str(directory), json.dumps(report))
+        with (
+            patch.object(check.os, "geteuid", return_value=0),
+            self.assertRaisesRegex(RuntimeError, "not bounded"),
+        ):
+            check.retain_failed_reconstruction(active, {}, {"candidates": [{}] * 17})
 
     def test_resolver_requires_exact_inspect_and_resolve_responses(self):
         answers = [

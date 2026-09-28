@@ -145,7 +145,8 @@ class ImmutableReleaseTests(unittest.TestCase):
             self.assertIn("StartLimitBurst=3", watchdog)
             self.assertNotIn("tailscaled.service", watchdog)
             self.assertNotIn("prism-identify-boot-restore.service", watchdog)
-            self.assertIn("Restart=on-failure", watchdog)
+            self.assertIn("Restart=no", watchdog)
+            self.assertNotIn("Restart=on-failure", watchdog)
             self.assertIn("TimeoutStopSec=240", watchdog)
             self.assertIn(
                 "ExecStart=/usr/bin/python3 " + life.LIFECYCLE + " watchdog-serve",

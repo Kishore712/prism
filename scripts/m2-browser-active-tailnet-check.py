@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import platform
 import re
@@ -18,6 +19,7 @@ import signal
 import sqlite3
 import stat
 import subprocess
+import tempfile
 import time
 from contextlib import closing
 from importlib.util import module_from_spec, spec_from_file_location
@@ -42,7 +44,11 @@ RELEASE_WATCHDOG_SHA256 = (
     "1103b8cf469e2a8c00ebbd5ab371cde4c231b5a2825a74cb8c576afddb8edd1d"
 )
 RELEASE_LIFECYCLE_SHA256 = (
-    "5190646db23fa36be0a6216e0c67f0d98703e35d5af2a53508a87aa7d4663897"
+    "542465aedc1316f67edbae398407f0bb80de91bb4d800db547d3791d59b2d143"
+)
+RELEASE_RESOLVER = Path("/usr/local/libexec/prism-identity-uncertain-resolution-v9.py")
+RELEASE_RESOLVER_SHA256 = (
+    "cd6bcba09e394184bfe2121e24c7a6974ebc39678d33df026199f5140a51be88"
 )
 OLD_TRANSFER_SHA256 = "e11ea7a88a2b029f73e2374d47f271af178ff0604febbe9a47e1b4c9259d4f27"
 OLD_SOURCE_SHA256 = "fee499e336567fd4c1f9a564c3fc2983fd520eb18d33e191d5ae29b267e1e16d"
@@ -50,6 +56,8 @@ OLD_LIFECYCLE_SHA256 = (
     "79e3db10b3683bc65292f449b88798d4edb8674a6f8ea63c8cd08d8cd64c9c0f"
 )
 OLD_WATCHDOG_SHA256 = "f853945bd8c384101effbcfb494e368f4b880156b649456459650a045a6f0cab"
+OLD_RESOLVER = Path("/usr/local/libexec/prism-identity-uncertain-resolution-v8.py")
+OLD_RESOLVER_SHA256 = "e73d8daf0e627a2aece31ed8db71b8221fd63d97434b0f3325c0b5435e19793c"
 MAX_ARM_SECONDS = 30
 MAX_OBSERVE_SECONDS = 12
 HEX32 = re.compile(r"[0-9a-f]{32}\Z")
@@ -117,6 +125,8 @@ def configure_release_pins(active, release: Path) -> None:
         or active.SOURCE_SHA256 != OLD_SOURCE_SHA256
         or active.WATCHDOG_SHA256 != OLD_WATCHDOG_SHA256
         or active.LIFECYCLE_SHA256 != OLD_LIFECYCLE_SHA256
+        or active.RESOLVER != OLD_RESOLVER
+        or active.RESOLVER_SHA256 != OLD_RESOLVER_SHA256
     ):
         raise RuntimeError("Verified helper release pin baseline differs")
     if release.name != "service-" + RELEASE_TRANSFER_SHA256:
@@ -125,50 +135,46 @@ def configure_release_pins(active, release: Path) -> None:
     active.SOURCE_SHA256 = RELEASE_SOURCE_SHA256
     active.WATCHDOG_SHA256 = RELEASE_WATCHDOG_SHA256
     active.LIFECYCLE_SHA256 = RELEASE_LIFECYCLE_SHA256
+    active.RESOLVER = RELEASE_RESOLVER
+    active.RESOLVER_SHA256 = RELEASE_RESOLVER_SHA256
 
 
 def configure_resolver_pins(resolver, release: Path) -> None:
     if (
-        resolver.TRANSFER != OLD_TRANSFER_SHA256
-        or resolver.SOURCE != OLD_SOURCE_SHA256
-        or resolver.LIFECYCLE_SHA256 != OLD_LIFECYCLE_SHA256
+        resolver.TRANSFER != RELEASE_TRANSFER_SHA256
+        or resolver.SOURCE != RELEASE_SOURCE_SHA256
+        or resolver.LIFECYCLE_SHA256 != RELEASE_LIFECYCLE_SHA256
         or resolver.UPDATE
         != "/var/lib/prism/identity-pilot/service-updates/"
-        + OLD_TRANSFER_SHA256
-        + "/installed.json"
-        or resolver.RELEASE
-        != "/var/lib/prism/identity-pilot/app-releases/service-" + OLD_TRANSFER_SHA256
-        or release.name != "service-" + RELEASE_TRANSFER_SHA256
-    ):
-        raise RuntimeError("Verified resolver release pin baseline differs")
-    resolver.TRANSFER = RELEASE_TRANSFER_SHA256
-    resolver.SOURCE = RELEASE_SOURCE_SHA256
-    resolver.LIFECYCLE_SHA256 = RELEASE_LIFECYCLE_SHA256
-    resolver.UPDATE = (
-        "/var/lib/prism/identity-pilot/service-updates/"
         + RELEASE_TRANSFER_SHA256
         + "/installed.json"
-    )
-    resolver.RELEASE = str(release)
+        or resolver.RELEASE
+        != "/var/lib/prism/identity-pilot/app-releases/service-"
+        + RELEASE_TRANSFER_SHA256
+        or resolver.RELEASE != str(release)
+    ):
+        raise RuntimeError("Verified v9 resolver release pins differ")
 
 
 def current_resolver(active, release: Path):
-    """Load only the root-owned v8 resolver and retarget its reviewed pins in memory."""
+    """Load only the root-owned v9 resolver with its reviewed release pins."""
     import hashlib
 
     path = active.RESOLVER
     info = path.lstat()
     if (
-        not stat.S_ISREG(info.st_mode)
+        path != RELEASE_RESOLVER
+        or active.RESOLVER_SHA256 != RELEASE_RESOLVER_SHA256
+        or not stat.S_ISREG(info.st_mode)
         or info.st_uid != 0
         or info.st_nlink != 1
         or stat.S_IMODE(info.st_mode) != 0o700
         or hashlib.sha256(path.read_bytes()).hexdigest() != active.RESOLVER_SHA256
     ):
-        raise RuntimeError("Pinned root-only v8 resolver differs")
+        raise RuntimeError("Pinned root-only v9 resolver differs")
     spec = spec_from_file_location("prism_current_root_resolver", path)
     if spec is None or spec.loader is None:
-        raise RuntimeError("Pinned root-only v8 resolver cannot be loaded")
+        raise RuntimeError("Pinned root-only v9 resolver cannot be loaded")
     resolver = module_from_spec(spec)
     spec.loader.exec_module(resolver)
     configure_resolver_pins(resolver, release)
@@ -498,6 +504,129 @@ def fixed_failure_origin(exc: Exception) -> str:
     return name if name in FAILURE_ORIGINS else "other"
 
 
+OBSERVED_ELAPSED = (
+    "driver",
+    "worker",
+    "client",
+    "guest_qemu",
+    "kata_shim",
+    "pre_fault_pinned_group",
+    "container_metadata",
+    "uncertain_null",
+)
+RECONSTRUCTION_CATEGORIES = (
+    "normal_shim",
+    "exact_delete_helper",
+    "qemu",
+    "other",
+)
+RECONSTRUCTION_BRANCHES = frozenset(
+    (
+        "new_shim_descendant",
+        "same_container_identity",
+        "shim_subtree_ambiguous",
+        "simultaneous_branches",
+    )
+)
+
+
+def bounded_seconds(value):
+    if type(value) not in (int, float):
+        return None
+    try:
+        if not math.isfinite(value):
+            return None
+    except (OverflowError, ValueError):
+        return None
+    return round(value, 3) if 0 <= value <= 60 else None
+
+
+def partial_observation(
+    report: dict, elapsed: dict, reconstruction: dict, *, completed: bool = False
+) -> None:
+    """Project fixed categories and bounded timings into the public report."""
+    report["elapsed_seconds"] = {
+        name: seconds
+        for name in OBSERVED_ELAPSED
+        if (seconds := bounded_seconds(elapsed.get(name))) is not None
+    }
+    candidates = reconstruction.get("candidates")
+    candidates = candidates[:16] if isinstance(candidates, list) else []
+    categories = {name: 0 for name in RECONSTRUCTION_CATEGORIES}
+    exits = []
+    trusted_cleanup = 0
+    untrusted_cleanup = 0
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        category = candidate.get("command_category")
+        categories[
+            category
+            if isinstance(category, str) and category in categories
+            else "other"
+        ] += 1
+        if category == "exact_delete_helper":
+            if candidate.get("trusted_cleanup") is True:
+                trusted_cleanup += 1
+            else:
+                untrusted_cleanup += 1
+        seconds = bounded_seconds(candidate.get("exit_observed_seconds"))
+        if seconds is not None:
+            exits.append(seconds)
+    first = reconstruction.get("first_trigger")
+    first = first if isinstance(first, dict) else {}
+    branch = first.get("branch")
+    report["reconstruction_summary"] = {
+        "first_trigger_branch": branch
+        if isinstance(branch, str) and branch in RECONSTRUCTION_BRANCHES
+        else None,
+        "first_trigger_elapsed_seconds": bounded_seconds(first.get("elapsed_seconds")),
+        "candidate_count": len(candidates),
+        "candidate_categories": categories,
+        "trusted_cleanup_count": trusted_cleanup,
+        "untrusted_cleanup_count": untrusted_cleanup,
+        "truncated": reconstruction.get("truncated") is True,
+        "ambiguous": reconstruction.get("ambiguous") is True,
+        "scan_continuity_verified": completed
+        and reconstruction.get("ambiguous") is not True,
+        "candidate_exit_count": len(exits),
+        "last_candidate_exit_seconds": max(exits, default=None),
+        "first_scan_elapsed_seconds": bounded_seconds(
+            reconstruction.get("first_scan_elapsed_seconds")
+        ),
+        "max_scan_gap_seconds": bounded_seconds(
+            reconstruction.get("max_scan_gap_seconds")
+        ),
+    }
+
+
+def retain_failed_reconstruction(active, report: dict, reconstruction: dict) -> None:
+    """Keep bounded PID evidence in a root-private directory, never in stdout."""
+    candidates = reconstruction.get("candidates")
+    if os.geteuid() != 0 or not isinstance(candidates, list) or len(candidates) > 16:
+        raise RuntimeError("Private reconstruction evidence is not bounded")
+    if len(json.dumps(reconstruction, allow_nan=False).encode("utf-8")) > 131072:
+        raise RuntimeError("Private reconstruction evidence exceeds its size bound")
+    root = Path(tempfile.mkdtemp(prefix="prism-browser-reconstruction-"))
+    active.write_reconstruction_evidence(root, reconstruction)
+    report["evidence_retained"] = True
+
+
+def observe_with_partial_report(active, report, *, elapsed, reconstruction, **kwargs):
+    try:
+        return active.observe_job_termination(
+            elapsed=elapsed, reconstruction_evidence=reconstruction, **kwargs
+        )
+    except Exception:
+        partial_observation(report, elapsed, reconstruction)
+        if reconstruction.get("candidates") or reconstruction.get("ambiguous"):
+            try:
+                retain_failed_reconstruction(active, report, reconstruction)
+            except Exception as exc:  # noqa: BLE001 - retain the observation error.
+                report["evidence_retention_error_kind"] = type(exc).__name__
+        raise
+
+
 def record_primary_failure(report: dict, exc: Exception) -> None:
     report["error_kind"] = type(exc).__name__
     report["failure_stage"] = (
@@ -715,7 +844,9 @@ def run(
             ),
         }
         reconstruction = {"first_trigger": None, "candidates": [], "truncated": False}
-        stopped, whole_group, reconstructed = active.observe_job_termination(
+        stopped, whole_group, reconstructed = observe_with_partial_report(
+            active,
+            report,
             fault_at=fault_at,
             group_snapshot=group,
             named=named,
@@ -726,7 +857,7 @@ def run(
                 and r["status"] == "uncertain"
                 and r["result"] is None
             ),
-            reconstruction_evidence=reconstruction,
+            reconstruction=reconstruction,
             metadata_absent=lambda: runtime.inspect_owned(resource, token) is None,
             final_absent=lambda: (
                 runtime.inspect_owned(resource, token) is None
@@ -744,7 +875,9 @@ def run(
                 "no_group_reconstruction": not reconstructed,
             }
         )
-        report["elapsed_seconds"] = {k: v for k, v in elapsed.items() if v is not None}
+        partial_observation(report, elapsed, reconstruction, completed=True)
+        if reconstructed or not whole_group:
+            retain_failed_reconstruction(active, report, reconstruction)
         report["outcome"] = "passed" if all(report["checks"].values()) else "failed"
     except Exception as exc:  # noqa: BLE001 - never disclose exception text.
         record_primary_failure(report, exc)

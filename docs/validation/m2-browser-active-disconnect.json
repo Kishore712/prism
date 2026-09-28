@@ -2,15 +2,17 @@
   "schema": 1,
   "kind": "m2-browser-active-disconnect-validation",
   "date": "2026-09-28",
-  "status": "failed-browser-active-validation",
+  "status": "latest-two-bounded-attempts-passed-with-attempt6-failure",
   "passed": false,
+  "campaign_passed": false,
+  "latest_bounded_attempt_passed": true,
   "pilot_ready": false,
   "model_calls": 0,
   "scope": "Bounded attempt to submit the approved synthetic json-check from a separately authenticated recipient Chrome session and observe tailnet-loss handling while a Kata task was active. The browser submission used a same-origin diagnostic POST through DevTools with the session CSRF token; it did not use the normal conversation UI. No task network access or model call occurred.",
   "identity_and_fixture": {
     "owner_and_recipient_are_independent": true,
     "recipient_identity": "Previously verified USC Google OIDC identity in a separate Chrome incognito profile; identifiers omitted",
-    "grant_duration": "one hour",
+    "grant_duration": "one hour; user approved the separate OIDC invitation for the latest browser attempts",
     "grant_permission": "read three approved files and run only the fixed json-check action",
     "approved_file_count": 3,
     "synthetic_document_version": "43e95...",
@@ -20,7 +22,9 @@
       "docs/release.md"
     ],
     "approved_action": "fixed json-check",
-    "task_network_access": false
+    "task_network_access": false,
+    "grant_active_at_final_postcheck": true,
+    "grant_revoked": false
   },
   "baseline": {
     "runs_before_live_work": 22,
@@ -43,6 +47,18 @@
     "vm_auto_stop_enabled": false,
     "three_units_active_after_install": true,
     "database_integrity_after_install": "ok"
+  },
+  "later_host_hardening_and_observer_release": {
+    "watchdog_restart_policy": "no",
+    "lifecycle_sha256": "542465aedc1316f67edbae398407f0bb80de91bb4d800db547d3791d59b2d143",
+    "root_only_uncertain_resolver_version": "v9",
+    "root_only_uncertain_resolver_sha256": "cd6bcba09e394184bfe2121e24c7a6974ebc39678d33df026199f5140a51be88",
+    "browser_active_observer_sha256": "67c04b7ba05d25138909251b0d5a630b93942b983762c60b542fb509476f89b9",
+    "idle_tailnet_down_fail_close_passed": true,
+    "all_service_cgroups_drained": true,
+    "tailscale0_absent_during_fault": true,
+    "watchdog_nrestarts": 0,
+    "manual_recovery_performed": true
   },
   "attempts": [
     {
@@ -112,6 +128,63 @@
       "stability_samples": 37,
       "original_observer": "observe_job_termination raised RuntimeError before its 30-second summary checks. No resource-disappearance timings or complete fail-close checks were recorded for this attempt.",
       "attempt_passed": false
+    },
+    {
+      "attempt": 6,
+      "run_count": 27,
+      "recipient_diagnostic_post_http_status": 200,
+      "exact_kata_job_observed_running": true,
+      "fault_injected": true,
+      "root_only_v9_resolution_performed": true,
+      "stability_seconds": 180.12,
+      "stability_samples": 37,
+      "strict_no_group_reconstruction_check_passed": false,
+      "whole_group_stopped_check_passed": false,
+      "observer_failure": "An unclassified extra candidate caused strict no-group-reconstruction and whole-group-stopped checks to fail.",
+      "raw_evidence_available": false,
+      "cause_of_extra_candidate_known": false,
+      "attempt_passed": false
+    },
+    {
+      "attempt": 7,
+      "run_count": 28,
+      "recipient_diagnostic_post_http_status": 200,
+      "exact_kata_job_observed_running": true,
+      "fault_injected": true,
+      "observer_all_checks_passed": true,
+      "worker_client_driver_absent_seconds": 0.351,
+      "qemu_shim_absent_seconds": 0.999,
+      "whole_pinned_group_absent_seconds": 1.004,
+      "metadata_absent_seconds": 1.458,
+      "run_uncertain_null_seconds": 5.347,
+      "group_reconstruction_candidates": 0,
+      "maximum_scan_gap_seconds": 0.174,
+      "stability_seconds": 180.12,
+      "stability_samples": 37,
+      "observer_exit_code": 0,
+      "attempt_passed": true
+    },
+    {
+      "attempt": 8,
+      "run_count": 29,
+      "recipient_diagnostic_post_http_status": 200,
+      "exact_kata_job_observed_running": true,
+      "fault_injected": true,
+      "observer_exit_code": 0,
+      "observer_passed_checks": 13,
+      "observer_total_checks": 13,
+      "worker_client_driver_absent_seconds": 0.652,
+      "qemu_shim_absent_seconds": 1.063,
+      "whole_pinned_group_absent_seconds": 1.089,
+      "metadata_absent_seconds": 1.510,
+      "run_uncertain_null_seconds": 5.101,
+      "group_reconstruction_candidate_count": 0,
+      "ambiguous_reconstruction": false,
+      "maximum_continuous_scan_gap_seconds": 0.168,
+      "stability_seconds": 180.12,
+      "stability_samples": 37,
+      "pilot_ready": false,
+      "attempt_passed": true
     }
   ],
   "delayed_relapse": {
@@ -131,7 +204,7 @@
   },
   "browser_state": {
     "submission_surface": "Same-origin diagnostic POST issued in Chrome DevTools with the recipient session CSRF token; not the normal conversation UI.",
-    "run_count_after_attempts": 26,
+    "run_count_after_attempts": 29,
     "pending_runs_at_last_check": 0,
     "model_dispatches_at_last_check": 77,
     "model_calls": 0,
@@ -139,7 +212,7 @@
     "attempt_4_recipient_ui": "Showed three persisted results.",
     "attempt_5_recipient_ui_after_grant_expiry": "Chrome incognito /review reload showed the landing text 'Open your current invitation link to enter its review workspace'; it did not show the workspace. The grant had expired naturally. No attempt-5 result visibility was checked after expiry, and this is not evidence of revocation."
   },
-  "final_host_state_at_last_recorded_check": {
+  "host_state_after_attempt5_before_later_attempts": {
     "identity_service_active": true,
     "watchdog_active": true,
     "tailscaled_active": true,
@@ -163,15 +236,49 @@
     "high_static_reviews_blockers": 0,
     "diagnostic_only_observer_patch_preflight": "Refused after the delayed relapse; no new fault was injected."
   },
+  "latest_browser_result_view": {
+    "surface": "Chrome recipient Activity & results after Refresh",
+    "records_for_attempts_6_7_8": 3,
+    "displayed_task_states": "All three records showed failed/unknown.",
+    "completed_result_shown": false,
+    "interpretation": "The bounded host checks do not produce a completed browser result; execution outcome remains unknown."
+  },
+  "final_host_postcheck": {
+    "units_active": [
+      "prism-identity-service",
+      "prism-identity-host-watchdog",
+      "tailscaled"
+    ],
+    "watchdog_restart_policy": "no",
+    "watchdog_nrestarts": 0,
+    "tailnet_status": "Running/Online",
+    "shields_up": false,
+    "private_https_review_path": "/review",
+    "private_https_review_status": 200,
+    "kata_task_list_empty": true,
+    "database_integrity": "ok",
+    "runs": 29,
+    "pending_runs": 0,
+    "model_dispatches": 77,
+    "vm_auto_stop_enabled": false,
+    "grant_active": true,
+    "grant_revoked": false
+  },
+  "subsequent_grant_check": {
+    "latest_one_hour_grant_expired_naturally": true,
+    "unexpired_matching_test_grants": 0,
+    "grant_revoked": false
+  },
   "limits": [
-    "The feature result failed overall. Do not describe this as browser-active acceptance or pilot readiness.",
+    "Attempts 7 and 8 passed their bounded observers, but attempt 6 failed strict whole-group checks after an unclassified extra candidate; raw evidence is unavailable and the cause is unknown.",
     "The recipient submitted through a DevTools diagnostic POST, not the normal conversation UI.",
     "The run used only the approved fixed synthetic json-check; no model call or task network access occurred.",
     "A bounded disappearance observation does not prove a universal hard shutdown deadline.",
     "The delayed tailnet relapse remains unexplained, and the same-second PollNetMap EOF is not established as its cause.",
-    "Attempt 4's bounded process/resource times were observed, but automatic recovery failed; attempt 5 lacked the observer's complete 30-second summary and has no recorded disappearance timings.",
-    "After the one-hour grant expired, /review returned the expected invitation landing page; no attempt-5 result visibility was checked after expiry.",
-    "No new grant was created; the one-hour grant expired naturally and was not renewed or revoked.",
+    "Earlier attempts 1 through 5 retain their individual failed or inconclusive outcomes.",
+    "The final browser Activity & results view showed failed/unknown for attempts 6 through 8; no completed result was shown.",
+    "The latest one-hour grant was active at final host postcheck, then expired naturally without revocation.",
+    "The host postcheck does not independently prove browser-origin authorization or a completed result.",
     "No hard SLA, broad safety claim, or pilot readiness is established."
   ],
   "privacy": "No account identifiers, authentication links, credentials, private URL, run ID, container ID or transcript are included."
