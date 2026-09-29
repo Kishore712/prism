@@ -537,5 +537,31 @@
     },
     "attempt9_reference": "#/attempts/8",
     "acceptance_limit": "Attempt 9 observer checks passed, but the browser showed failed/unknown with no completed result. The natural offline event has no proven root cause, and the PID log does not establish continuous tailscaled operation. Attempt 6 remains unresolved; all three delayed relapses remain unexplained. pilot_ready=false; no hard SLA or broad safety claim is established."
+  },
+  "later_read_only_relapse_diagnosis": {
+    "date": "2026-09-29",
+    "scope": "Later read-only diagnosis of the three delayed offline events; no configuration, service, grant, model, or host changes.",
+    "events": [
+      {
+        "observed_utc": "2026-09-28T02:15:06.868Z",
+        "precursor": "tailscaled PollNetMap EOF/reset",
+        "watchdog_offline_approx_seconds_later": 0.287
+      },
+      {
+        "observed_utc": "2026-09-28T06:28:52.761Z",
+        "precursor": "tailscaled PollNetMap EOF/reset",
+        "watchdog_offline_approx_seconds_later": 0.347
+      },
+      {
+        "observed_utc": "2026-09-29T19:07:18.936Z",
+        "precursor": "none logged in prior 10 minutes",
+        "watchdog_category": "offline"
+      }
+    ],
+    "interpretation": "category=offline means Self.Online=false from one fail-closed sample; source of the offline status is unknown. No logged Online=true sample exists before the manual restart. Third-event service exit 19:07:18.945Z to first active 20:33:12.278Z is an observed 1h25m53.33s interval from service main-process exit to the next recorded active state, not an established period of service downtime or HTTPS availability duration. Tailscaled netmap return does not prove Online recovery.",
+    "point_in_time_utc": "2026-09-29T21:42:00Z",
+    "point_in_time_state": "VM and three units running; Tailnet Running/Online; Shields Up false while serving; no changes reported.",
+    "root_cause_proven": false,
+    "pilot_ready": false
   }
 }

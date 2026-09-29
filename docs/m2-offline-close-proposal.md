@@ -1,6 +1,6 @@
 # Proposal: Preserve the Local Inbound Shield During an Offline Close
 
-**Status: Proposed for owner review; awaiting approval. This behavior is not implemented or deployed.**
+**Status: Historical proposal. The narrow offline-close rule was approved, implemented, and installed on 2026-09-29; see the [current validation record](validation/m2-browser-active-disconnect.json). This document preserves the original design text and does not authorize automatic Prism recovery.**
 
 ## Context
 
