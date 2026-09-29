@@ -1,6 +1,7 @@
 """Start the loopback demo or an explicitly configured direct-TLS identity service."""
 
 import fcntl
+import importlib.util
 import os
 import urllib.parse
 from pathlib import Path
@@ -123,6 +124,25 @@ def serve(
             raise ValueError(
                 "This demo directory already has a running service."
             ) from exc
+        # This is the final recovery handoff.  It runs after the exact lock
+        # acquired by the owner resolver and stays inside that lock until the
+        # HTTPS server exits.  No listener exists before this check passes.
+        if os.environ.get("PRISM_RECOVERY_GUARD") == "1":
+            if (
+                not identity_mode
+                or runtime_profile != "reference-linux"
+                or root != Path("/var/lib/prism-identity/service-state")
+            ):
+                raise ValueError("Recovery guard is outside the fixed service.")
+            path = "/usr/local/libexec/prism-identity-service-lifecycle.py"
+            spec = importlib.util.spec_from_file_location(
+                "prism_recovery_lifecycle", path
+            )
+            if spec is None or spec.loader is None:
+                raise ValueError("Pinned recovery lifecycle is unavailable.")
+            lifecycle = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(lifecycle)
+            lifecycle.recovery_final(*lifecycle._recovery_unit_arguments())
         store = Store(root / "demo.sqlite", measurements=measurements)
         registry = RuntimeRegistry(profile=runtime_profile)
         auth = (

@@ -33,6 +33,64 @@ life = load(
 
 
 class ImmutableReleaseTests(unittest.TestCase):
+    def test_v8_transfer_requires_both_new_sources_and_exact_hashes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            names = {
+                "webapp": release_tool.PATCH_NAME,
+                "app_js": release_tool.APP_JS_NAME,
+                "identity": release_tool.IDENTITY_NAME,
+                **release_tool.V4_NAMES,
+                "jobs": release_tool.V5_NAME,
+                "worker": release_tool.V6_NAME,
+                "host_watchdog": release_tool.V7_NAME,
+                **release_tool.V8_NAMES,
+            }
+            sources = {}
+            for key, name in names.items():
+                path = root / key
+                path.write_bytes(("v8 " + name).encode())
+                sources[key] = path
+            transfer = root / "patch.tar"
+            kwargs = {key: str(path) for key, path in sources.items()}
+            with self.assertRaisesRegex(ValueError, "twelve-file"):
+                release_tool.package(
+                    SimpleNamespace(**{key: value for key, value in kwargs.items()
+                                       if key != "recovery"}, output=str(transfer))
+                )
+            output = io.StringIO()
+            with redirect_stdout(output):
+                release_tool.package(SimpleNamespace(**kwargs, output=str(transfer)))
+            report = json.loads(output.getvalue())
+            self.assertEqual(report["kind"], "prism_service_update_v8")
+            self.assertEqual(set(report), {
+                "kind", "transfer_tar_sha256", *(
+                    key + "_sha256" for key in names
+                )
+            })
+            hashes = {
+                name: release_tool.digest(sources[key]) for key, name in names.items()
+            }
+            self.assertEqual(
+                release_tool.read_patches(
+                    transfer, report["transfer_tar_sha256"], hashes
+                ),
+                {name: sources[key].read_bytes() for key, name in names.items()},
+            )
+            with self.assertRaisesRegex(ValueError, "patch hash mismatch"):
+                release_tool.read_patches(
+                    transfer,
+                    report["transfer_tar_sha256"],
+                    {**hashes, release_tool.V8_NAMES["recovery"]: "a" * 64},
+                )
+            with self.assertRaisesRegex(ValueError, "fixed patch sources"):
+                release_tool.read_patches(
+                    transfer,
+                    report["transfer_tar_sha256"],
+                    {name: sha for name, sha in hashes.items()
+                     if name not in release_tool.V8_NAMES.values()},
+                )
+
     def test_v7_transfer_requires_exact_watchdog_patch_and_pins_hash(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

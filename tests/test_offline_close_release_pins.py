@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 LIFECYCLE = ROOT / "scripts/gcp/identity-service-lifecycle.py"
 V9 = ROOT / "scripts/gcp/identity-uncertain-resolution-v9.py"
 V10 = ROOT / "scripts/gcp/identity-uncertain-resolution-v10.py"
+V10_DEPLOYED_LIFECYCLE_SHA256 = "35c9ff71ffdec528d8e1718b52ac6e67ebf9f1458802aa1c3d8472c5f9bda965"
 OBSERVER_V2 = ROOT / "scripts/m2-browser-active-tailnet-check.py"
 OBSERVER_V3 = ROOT / "scripts/m2-browser-active-tailnet-check-v3.py"
 
@@ -33,7 +34,7 @@ class OfflineCloseReleasePinsTests(unittest.TestCase):
         old = V9.read_text()
         expected = old.replace(
             'LIFECYCLE_SHA256 = "542465aedc1316f67edbae398407f0bb80de91bb4d800db547d3791d59b2d143"',
-            f'LIFECYCLE_SHA256 = "{hashlib.sha256(LIFECYCLE.read_bytes()).hexdigest()}"',
+            f'LIFECYCLE_SHA256 = "{V10_DEPLOYED_LIFECYCLE_SHA256}"',
         )
         self.assertNotEqual(old, expected)
         self.assertEqual(V10.read_text(), expected)
@@ -54,7 +55,7 @@ class OfflineCloseReleasePinsTests(unittest.TestCase):
     def test_v3_pins_actual_files_and_rejects_old_resolver(self):
         self.assertEqual(
             observer.RELEASE_LIFECYCLE_SHA256,
-            hashlib.sha256(LIFECYCLE.read_bytes()).hexdigest(),
+            V10_DEPLOYED_LIFECYCLE_SHA256,
         )
         self.assertEqual(
             observer.RELEASE_RESOLVER_SHA256,
@@ -107,6 +108,11 @@ class OfflineCloseReleasePinsTests(unittest.TestCase):
         units = {resolver.SERVICE: service, resolver.WATCHDOG: watchdog}
         with (
             patch.object(resolver, "LIFECYCLE", str(LIFECYCLE)),
+            patch.object(
+                resolver,
+                "LIFECYCLE_SHA256",
+                hashlib.sha256(LIFECYCLE.read_bytes()).hexdigest(),
+            ),
             patch.object(resolver, "OWNER_UID", os.getuid()),
             patch.object(resolver, "unit_pin", side_effect=units.__getitem__),
             patch.object(

@@ -3,10 +3,12 @@
 
 import argparse
 import hashlib
+import importlib.util
 import ipaddress
 import json
 import os
 import re
+import shlex
 import stat
 import subprocess
 import sys
@@ -20,6 +22,7 @@ INSTALLED = BASE / "oneboot/installed.json"
 UPDATE_ROOT = BASE / "service-updates"
 UNIT = Path("/etc/systemd/system/prism-identity-service.service")
 WATCHDOG_UNIT = Path("/etc/systemd/system/prism-identity-host-watchdog.service")
+RECOVERY_UNIT = Path("/etc/systemd/system/prism-identity-tailnet-recovery.service")
 WATCHDOG_SOCKET = "/run/prism-host-watchdog/watchdog.sock"
 WATCHDOG_DB = "/var/lib/prism-identity/service-state/demo.sqlite"
 OWNER_UID = 0
@@ -31,6 +34,7 @@ CERT = "/var/lib/prism-identity/tls/cert.pem"
 KEY = "/var/lib/prism-identity/tls/key.pem"
 MODEL_KEY = "/var/lib/prism-identity/openai-model-key"
 DATA = "/var/lib/prism-identity/service-state"
+RECOVERY_DIRECTORY = Path("/var/lib/prism-identity/offline-recovery")
 PROJECT_MANIFEST = "/var/lib/prism-identity/project/.prism-project.json"
 PROJECT_INVENTORY_SHA256 = (
     "737348aaef852355c5a16381fafc96f0c6df0931edafddc93a77906d064db525"
@@ -77,6 +81,7 @@ SOURCE_FILES = frozenset(
     )
 )
 SOURCE_FILES_V7 = SOURCE_FILES | {"src/prism/host_watchdog.py"}
+SOURCE_FILES_V8 = SOURCE_FILES_V7 | {"src/prism/demo.py", "src/prism/recovery.py"}
 
 
 def checked_directory(path):
@@ -206,7 +211,11 @@ def installation(record, expected_bundle=None, expected_run=None):
     hashes = manifest.get("file_sha256")
     kind = manifest.get("kind")
     source_files = (
-        SOURCE_FILES_V7 if kind == "prism_service_update_v7" else SOURCE_FILES
+        SOURCE_FILES_V8
+        if kind == "prism_service_update_v8"
+        else SOURCE_FILES_V7
+        if kind == "prism_service_update_v7"
+        else SOURCE_FILES
     )
     if not isinstance(hashes, dict) or set(hashes) != source_files:
         raise ValueError("Installation manifest differs from the marker.")
@@ -265,6 +274,20 @@ def installation(record, expected_bundle=None, expected_run=None):
                 "src/prism/worker.py",
                 "src/prism/host_watchdog.py",
             },
+            "prism_service_update_v8": {
+                "src/prism/identity.py",
+                "src/prism/webapp.py",
+                "src/prism/static/app.js",
+                "src/prism/conversation.py",
+                "src/prism/sharing.py",
+                "src/prism/owner.py",
+                "src/prism/handoff.py",
+                "src/prism/jobs.py",
+                "src/prism/worker.py",
+                "src/prism/host_watchdog.py",
+                "src/prism/demo.py",
+                "src/prism/recovery.py",
+            },
         }.get(kind)
         expected_manifest_keys = {
             "kind",
@@ -290,6 +313,7 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "prism_service_update_v5",
                     "prism_service_update_v6",
                     "prism_service_update_v7",
+                    "prism_service_update_v8",
                 )
                 else set()
             )
@@ -302,6 +326,7 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "prism_service_update_v5",
                     "prism_service_update_v6",
                     "prism_service_update_v7",
+                    "prism_service_update_v8",
                 )
                 else set()
             )
@@ -318,6 +343,7 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "prism_service_update_v5",
                     "prism_service_update_v6",
                     "prism_service_update_v7",
+                    "prism_service_update_v8",
                 )
                 else set()
             )
@@ -328,15 +354,30 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "prism_service_update_v5",
                     "prism_service_update_v6",
                     "prism_service_update_v7",
+                    "prism_service_update_v8",
                 )
                 else set()
             )
             | (
                 {"worker_sha256"}
-                if kind in ("prism_service_update_v6", "prism_service_update_v7")
+                if kind
+                in (
+                    "prism_service_update_v6",
+                    "prism_service_update_v7",
+                    "prism_service_update_v8",
+                )
                 else set()
             )
-            | ({"host_watchdog_sha256"} if kind == "prism_service_update_v7" else set())
+            | (
+                {"host_watchdog_sha256"}
+                if kind in ("prism_service_update_v7", "prism_service_update_v8")
+                else set()
+            )
+            | (
+                {"demo_sha256", "recovery_sha256"}
+                if kind == "prism_service_update_v8"
+                else set()
+            )
             or not isinstance(transfer, str)
             or not BUNDLE_RE.fullmatch(transfer)
             or marker.parent.name != transfer
@@ -355,6 +396,7 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "prism_service_update_v5",
                     "prism_service_update_v6",
                     "prism_service_update_v7",
+                    "prism_service_update_v8",
                 )
                 and manifest.get("app_js_sha256") != hashes["src/prism/static/app.js"]
             )
@@ -366,6 +408,7 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "prism_service_update_v5",
                     "prism_service_update_v6",
                     "prism_service_update_v7",
+                    "prism_service_update_v8",
                 )
                 and manifest.get("identity_sha256") != hashes["src/prism/identity.py"]
             )
@@ -376,6 +419,7 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "prism_service_update_v5",
                     "prism_service_update_v6",
                     "prism_service_update_v7",
+                    "prism_service_update_v8",
                 )
                 and any(
                     manifest.get(key + "_sha256") != hashes["src/prism/" + key + ".py"]
@@ -388,17 +432,31 @@ def installation(record, expected_bundle=None, expected_run=None):
                     "prism_service_update_v5",
                     "prism_service_update_v6",
                     "prism_service_update_v7",
+                    "prism_service_update_v8",
                 )
                 and manifest.get("jobs_sha256") != hashes["src/prism/jobs.py"]
             )
             or (
-                kind in ("prism_service_update_v6", "prism_service_update_v7")
+                kind
+                in (
+                    "prism_service_update_v6",
+                    "prism_service_update_v7",
+                    "prism_service_update_v8",
+                )
                 and manifest.get("worker_sha256") != hashes["src/prism/worker.py"]
             )
             or (
-                kind == "prism_service_update_v7"
+                kind in ("prism_service_update_v7", "prism_service_update_v8")
                 and manifest.get("host_watchdog_sha256")
                 != hashes["src/prism/host_watchdog.py"]
+            )
+            or (
+                kind == "prism_service_update_v8"
+                and (
+                    manifest.get("demo_sha256") != hashes["src/prism/demo.py"]
+                    or manifest.get("recovery_sha256")
+                    != hashes["src/prism/recovery.py"]
+                )
             )
         ):
             raise ValueError("Service update manifest differs from the marker.")
@@ -527,6 +585,7 @@ def unit_text(
     budget=0,
     project_sha256=None,
     watchdog=False,
+    recovery=False,
 ):
     if project_sha256 is not None and not BUNDLE_RE.fullmatch(project_sha256):
         raise ValueError("Invalid fixed project inventory hash.")
@@ -548,6 +607,11 @@ def unit_text(
         if watchdog
         else ""
     )
+    recovery_preflight = (
+        f"ExecStartPre=/usr/bin/python3 {LIFECYCLE} recovery-claim {pinned}\n"
+        if recovery
+        else ""
+    )
     return f"""[Unit]
 Description=Prism private named identity service
 Requires=tailscaled.service prism-identify-boot-restore.service{dependency}
@@ -563,7 +627,7 @@ TimeoutStartSec=360
 TimeoutStopSec=240
 StandardOutput=null
 StandardError=journal
-ExecStartPre=/usr/bin/python3 {LIFECYCLE} prepare {pinned}
+{recovery_preflight}ExecStartPre=/usr/bin/python3 {LIFECYCLE} prepare {pinned}
 {watchdog_preflight}ExecStartPre=/usr/bin/python3 {HELPER} preflight {prism}{model}{project}
 ExecStart=/usr/bin/python3 {LIFECYCLE} serve {pinned}{model}
 ExecStartPost=/usr/bin/python3 {LIFECYCLE} open {pinned}
@@ -571,15 +635,18 @@ ExecStopPost=/usr/bin/python3 {LIFECYCLE} close {common}
 """
 
 
-def watchdog_unit_text(host, ip, record, release, bundle, run_id):
+def watchdog_unit_text(host, ip, record, release, bundle, run_id, recovery=False):
     pinned = (
         f"--hostname {host} --bind-host {ip} --installed-record {record} "
         f"--bundle-sha256 {bundle} --run-id {run_id} "
         f"--release {release} --db {WATCHDOG_DB}"
     )
+    on_failure = (
+        "OnFailure=prism-identity-tailnet-recovery.service\n" if recovery else ""
+    )
     return f"""[Unit]
 Description=Prism private host watchdog
-StartLimitIntervalSec=60
+{on_failure}StartLimitIntervalSec=60
 StartLimitBurst=3
 
 [Service]
@@ -600,6 +667,29 @@ ExecStopPost=/usr/bin/python3 {LIFECYCLE} close --hostname {host} --bind-host {i
 """
 
 
+def recovery_unit_text(host, ip, record, bundle, run_id, project_sha256=None):
+    project = f" --project-sha256 {project_sha256}" if project_sha256 else ""
+    pinned = (
+        f"--hostname {host} --bind-host {ip} --installed-record {record} "
+        f"--bundle-sha256 {bundle} --run-id {run_id}{project}"
+    )
+    return f"""[Unit]
+Description=Prism one-attempt offline recovery
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+Restart=no
+TimeoutStartSec=300
+TimeoutStopSec=360
+StandardOutput=null
+StandardError=journal
+ExecStart=/usr/bin/python3 {LIFECYCLE} recovery-run {pinned}
+ExecStopPost=/usr/bin/python3 {LIFECYCLE} recovery-stop-post {pinned}
+"""
+
+
 def render(args):
     if os.geteuid() != 0:
         raise ValueError("Guest service rendering requires root.")
@@ -608,6 +698,7 @@ def render(args):
     selected = Path(args.installed_record) if args.installed_record else INSTALLED
     release, bundle, run_id = installation(selected)
     watchdog = uses_watchdog(selected)
+    recovery = uses_recovery(selected)
     budget = model_budget(args.model_budget_cents)
     project_sha256 = None
     if args.enable_project:
@@ -619,10 +710,14 @@ def render(args):
         raise ValueError("Expected the fixed new service unit path.")
     if watchdog and (WATCHDOG_UNIT.exists() or WATCHDOG_UNIT.is_symlink()):
         raise ValueError("Expected the fixed new watchdog unit path.")
+    if recovery and (RECOVERY_UNIT.exists() or RECOVERY_UNIT.is_symlink()):
+        raise ValueError("Expected the fixed new recovery unit path.")
+    if recovery:
+        _prepare_recovery_directory()
     descriptor = os.open(
         target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600
     )
-    watchdog_created = False
+    watchdog_created = recovery_created = False
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
             stream.write(
@@ -636,6 +731,7 @@ def render(args):
                     budget,
                     project_sha256,
                     watchdog,
+                    recovery,
                 )
             )
             stream.flush()
@@ -649,7 +745,24 @@ def render(args):
             watchdog_created = True
             with os.fdopen(watchdog_descriptor, "w", encoding="utf-8") as stream:
                 stream.write(
-                    watchdog_unit_text(host, ip, selected, release, bundle, run_id)
+                    watchdog_unit_text(
+                        host, ip, selected, release, bundle, run_id, recovery
+                    )
+                )
+                stream.flush()
+                os.fsync(stream.fileno())
+        if recovery:
+            recovery_descriptor = os.open(
+                RECOVERY_UNIT,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                0o600,
+            )
+            recovery_created = True
+            with os.fdopen(recovery_descriptor, "w", encoding="utf-8") as stream:
+                stream.write(
+                    recovery_unit_text(
+                        host, ip, selected, bundle, run_id, project_sha256
+                    )
                 )
                 stream.flush()
                 os.fsync(stream.fileno())
@@ -657,10 +770,33 @@ def render(args):
         target.unlink(missing_ok=True)
         if watchdog_created:
             WATCHDOG_UNIT.unlink(missing_ok=True)
+        if recovery_created:
+            RECOVERY_UNIT.unlink(missing_ok=True)
         raise
     print(
         "Private service unit rendered; it has no Install section and is not enabled."
     )
+
+
+def _prepare_recovery_directory():
+    parent = RECOVERY_DIRECTORY.parent
+    info = parent.lstat()
+    if not stat.S_ISDIR(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o077:
+        raise ValueError("Recovery parent is not root private.")
+    if not RECOVERY_DIRECTORY.exists() and not RECOVERY_DIRECTORY.is_symlink():
+        RECOVERY_DIRECTORY.mkdir(mode=0o700)
+        descriptor = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+    info = RECOVERY_DIRECTORY.lstat()
+    if (
+        not stat.S_ISDIR(info.st_mode)
+        or info.st_uid != 0
+        or stat.S_IMODE(info.st_mode) != 0o700
+    ):
+        raise ValueError("Recovery directory is not root private.")
 
 
 def guard_ready():
@@ -698,7 +834,7 @@ def old_timer_absent():
             raise ValueError("A prior identify restore timer is still active.")
 
 
-def tailnet_state(host, ip, shield, *, close_only_offline=False):
+def tailnet_state(host, ip, shield, *, close_only_offline=False, strict_fresh=False):
     sampled_at = time.monotonic()
     status = json.loads(run("tailscale", "status", "--json").stdout)
     prefs = json.loads(run("tailscale", "debug", "prefs").stdout)
@@ -715,6 +851,7 @@ def tailnet_state(host, ip, shield, *, close_only_offline=False):
     dns_name = own.get("DNSName")
     if (
         status.get("BackendState") != "Running"
+        or (strict_fresh and not fresh)
         or not (online is True or (close_only_offline and online is False and fresh))
         or not isinstance(dns_name, str)
         or dns_name.lower().rstrip(".") != host
@@ -869,13 +1006,21 @@ def prepare(host, ip, record, bundle, run_id, project_sha256=None):
 
 
 def uses_watchdog(record):
-    return (
-        Path(record) != INSTALLED
-        and json.loads(
+    return Path(record) != INSTALLED and json.loads(
+        (Path(record).parent / "manifest.json").read_text(encoding="utf-8")
+    ).get("kind") in ("prism_service_update_v7", "prism_service_update_v8")
+
+
+def uses_recovery(record):
+    if Path(record) == INSTALLED:
+        return False
+    try:
+        value = json.loads(
             (Path(record).parent / "manifest.json").read_text(encoding="utf-8")
-        ).get("kind")
-        == "prism_service_update_v7"
-    )
+        )
+    except FileNotFoundError:
+        return False
+    return isinstance(value, dict) and value.get("kind") == "prism_service_update_v8"
 
 
 def watchdog_release(record, bundle, run_id):
@@ -894,7 +1039,9 @@ def verify_watchdog_unit(host, ip, record, release, bundle, run_id):
         or info.st_mode & 0o022
         or info.st_size > 8192
         or WATCHDOG_UNIT.read_text(encoding="utf-8")
-        != watchdog_unit_text(host, ip, record, release, bundle, run_id)
+        != watchdog_unit_text(
+            host, ip, record, release, bundle, run_id, uses_recovery(record)
+        )
     ):
         raise ValueError("The fixed host watchdog unit differs from the release.")
 
@@ -950,16 +1097,451 @@ def watchdog_ready(host, ip, record, bundle, run_id):
             time.sleep(1)
 
 
+def recovery_module(release):
+    path = Path(release) / "src/prism/recovery.py"
+    spec = importlib.util.spec_from_file_location("prism_recovery_release", path)
+    if spec is None or spec.loader is None:
+        raise ValueError("The pinned recovery source is unavailable.")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _unit_loaded(path):
+    for field, expected in (
+        ("FragmentPath", str(path)),
+        ("NeedDaemonReload", "no"),
+        ("DropInPaths", ""),
+    ):
+        actual = run(
+            "systemctl", "show", "--property=" + field, "--value", path.name
+        ).stdout.strip()
+        if actual != expected:
+            raise ValueError("A loaded recovery unit differs from its pinned file.")
+
+
+def _unit_file(path, expected):
+    info = path.lstat()
+    if (
+        not stat.S_ISREG(info.st_mode)
+        or info.st_uid != 0
+        or info.st_nlink != 1
+        or info.st_mode & 0o022
+        or info.st_size > 8192
+        or path.read_text(encoding="utf-8") != expected
+    ):
+        raise ValueError("A recovery unit differs from its pinned release.")
+    _unit_loaded(path)
+
+
+def _recovery_pins(host, ip, record, bundle, run_id, project_sha256=None):
+    release, _, _ = installation(record, bundle, run_id)
+    if not uses_recovery(record):
+        raise ValueError("The pinned release has no recovery controller.")
+    data = UNIT.read_text(encoding="utf-8")
+    match = re.search(r"--model-budget-cents ([0-9]+)(?:\n|$)", data)
+    if not match:
+        raise ValueError("The fixed service budget is unavailable.")
+    budget = model_budget(int(match.group(1)))
+    _unit_file(
+        UNIT,
+        unit_text(
+            host,
+            ip,
+            record,
+            release,
+            bundle,
+            run_id,
+            budget,
+            project_sha256,
+            True,
+            True,
+        ),
+    )
+    _unit_file(
+        WATCHDOG_UNIT,
+        watchdog_unit_text(host, ip, record, release, bundle, run_id, True),
+    )
+    _unit_file(
+        RECOVERY_UNIT,
+        recovery_unit_text(host, ip, record, bundle, run_id, project_sha256),
+    )
+    return release
+
+
+def _recovery_unit_arguments():
+    lines = UNIT.read_text(encoding="utf-8").splitlines()
+    commands = [
+        line.partition("=")[2]
+        for line in lines
+        if line.startswith("ExecStartPre=") and f" {LIFECYCLE} recovery-claim " in line
+    ]
+    if len(commands) != 1:
+        raise ValueError("Recovery claim command is unavailable.")
+    argv = shlex.split(commands[0])
+    if argv[:3] != ["/usr/bin/python3", LIFECYCLE, "recovery-claim"]:
+        raise ValueError("Recovery claim command differs.")
+    options = {}
+    rest = argv[3:]
+    if len(rest) % 2:
+        raise ValueError("Recovery claim arguments are invalid.")
+    for name, value in zip(rest[::2], rest[1::2]):
+        if name in options or not name.startswith("--") or value.startswith("--"):
+            raise ValueError("Recovery claim arguments are ambiguous.")
+        options[name] = value
+    expected = {
+        "--hostname",
+        "--bind-host",
+        "--installed-record",
+        "--bundle-sha256",
+        "--run-id",
+    }
+    if set(options) not in (expected, expected | {"--project-sha256"}):
+        raise ValueError("Recovery claim arguments differ.")
+    return tuple(
+        options[name]
+        for name in (
+            "--hostname",
+            "--bind-host",
+            "--installed-record",
+            "--bundle-sha256",
+            "--run-id",
+            "--project-sha256",
+        )
+        if name in options
+    )
+
+
+def _service_state(*, starting_pid=None):
+    fields = ("ActiveState", "SubState", "MainPID", "ControlPID", "ControlGroup")
+    values = {}
+    for field in fields:
+        values[field] = run(
+            "systemctl", "show", "--property=" + field, "--value", UNIT.name
+        ).stdout.strip()
+    if starting_pid is None:
+        if (
+            values["ActiveState"] not in ("inactive", "failed")
+            or values["MainPID"] != "0"
+            or values["ControlPID"] != "0"
+        ):
+            raise ValueError("Service is not stopped.")
+    elif values["ActiveState"] != "activating" or values["MainPID"] != str(
+        starting_pid
+    ):
+        raise ValueError("The starting service process changed.")
+    group = "/system.slice/" + UNIT.name
+    if values["ControlGroup"] not in ("", group):
+        raise ValueError("Unexpected service cgroup.")
+    root = CGROUP_ROOT / group.lstrip("/")
+    if root.exists():
+        pids = set()
+        for path in root.rglob("cgroup.procs"):
+            pids.update(int(value) for value in path.read_text().split())
+        expected = set() if starting_pid is None else {starting_pid}
+        if starting_pid is not None and values["ControlPID"] != "0":
+            control_pid = int(values["ControlPID"])
+            command = (Path("/proc") / str(control_pid) / "cmdline").read_bytes()
+            if not (
+                command.startswith(b"/usr/bin/python3\0")
+                and LIFECYCLE.encode() + b"\0open\0" in command
+            ):
+                raise ValueError("Unexpected service control process.")
+            expected.add(control_pid)
+            # systemd can run ExecStartPost while the main process performs
+            # the final gate.  Its bounded status/TLS checks may have a child.
+            pending = {control_pid}
+            while pending:
+                parent = pending.pop()
+                for pid in pids - expected:
+                    raw = (Path("/proc") / str(pid) / "stat").read_text()
+                    parent_id = int(raw.rsplit(")", 1)[1].split()[1])
+                    if parent_id != parent:
+                        continue
+                    argv = (Path("/proc") / str(pid) / "cmdline").read_bytes()
+                    allowed = (
+                        b"/usr/bin/systemctl\0",
+                        b"systemctl\0",
+                        b"/usr/bin/tailscale\0",
+                        b"tailscale\0",
+                        b"/usr/bin/python3\0" + HELPER.encode() + b"\0selfcheck\0",
+                    )
+                    if not argv.startswith(allowed):
+                        raise ValueError("Unexpected service control child.")
+                    expected.add(pid)
+                    pending.add(pid)
+        if pids != expected:
+            raise ValueError("Service cgroup is not in the required state.")
+    elif starting_pid is not None:
+        raise ValueError("Starting service cgroup is unavailable.")
+
+
+def _watchdog_failure_offline():
+    fields = {
+        name: run(
+            "systemctl",
+            "show",
+            "--property=" + name,
+            "--value",
+            WATCHDOG_UNIT.name,
+        ).stdout.strip()
+        for name in ("ActiveState", "Result", "ExecMainCode", "ExecMainStatus")
+    }
+    if (
+        fields["ActiveState"] != "failed"
+        or fields["Result"] != "exit-code"
+        or fields["ExecMainCode"] != "1"
+        or fields["ExecMainStatus"] != "42"
+    ):
+        raise ValueError("Watchdog failure is not a durable offline close.")
+
+
+def recovery_claim(host, ip, record, bundle, run_id, project_sha256=None):
+    release = _recovery_pins(host, ip, record, bundle, run_id, project_sha256)
+    recovery = recovery_module(release)
+    recovery.directory()
+    if not recovery.EPISODE.exists() and not recovery.EPISODE.is_symlink():
+        return
+    invocation = os.environ.get("INVOCATION_ID")
+    event = recovery.episode()
+    if event.get("state") != "ready":
+        raise ValueError("Recovery event has no available service attempt.")
+    controller = {
+        field: run(
+            "systemctl",
+            "show",
+            "--property=" + field,
+            "--value",
+            RECOVERY_UNIT.name,
+        ).stdout.strip()
+        for field in ("ActiveState", "ControlPID", "InvocationID")
+    }
+    if (
+        controller["ActiveState"] != "activating"
+        or controller["ControlPID"] != str(event["controller_pid"])
+        or controller["InvocationID"] != event["controller_invocation"]
+    ):
+        raise ValueError("Recovery controller is no longer the live unit job.")
+    recovery.claim_ready(invocation, controller["InvocationID"])
+    recovery.audit("attempted", event["event_id"])
+
+
+def recovery_final(host, ip, record, bundle, run_id, project_sha256=None):
+    release = _recovery_pins(host, ip, record, bundle, run_id, project_sha256)
+    recovery = recovery_module(release)
+    recovery.directory()
+    if not recovery.EPISODE.exists() and not recovery.EPISODE.is_symlink():
+        return
+    invocation = os.environ.get("INVOCATION_ID")
+    event = recovery.episode()
+    if event.get("state") != "attempted" or event.get("invocation_id") != invocation:
+        raise ValueError("Recovery service attempt was not claimed.")
+    _service_state(starting_pid=os.getpid())
+    watchdog_ready(host, ip, record, bundle, run_id)
+    tailnet_state(host, ip, True, strict_fresh=True)
+    recovery.workload_clear()
+    tailnet_state(host, ip, True, strict_fresh=True)
+    recovery.transition("attempted", "entered", invocation)
+    recovery.audit("entered", event["event_id"])
+
+
+def _recovery_readiness(host, ip, record, bundle, run_id):
+    run("systemctl", "is-active", "--quiet", UNIT.name)
+    watchdog_ready(host, ip, record, bundle, run_id)
+    tailnet_state(host, ip, False, strict_fresh=True)
+    run(
+        "/usr/bin/python3",
+        HELPER,
+        "selfcheck",
+        "--hostname",
+        host,
+        "--bind-host",
+        ip,
+        timeout=8,
+    )
+
+
+def _recovery_failed(host, ip, recovery, event_id):
+    try:
+        event = recovery.episode()
+        if event["event_id"] != event_id:
+            raise ValueError("Recovery event changed during failure handling.")
+        if event.get("state") in ("consumed", "ready", "attempted", "entered"):
+            recovery.transition(event["state"], "failed", event.get("invocation_id"))
+        run("systemctl", "stop", UNIT.name, timeout=45)
+        close(host, ip)
+        _service_state()
+        tailnet_state(host, ip, True, close_only_offline=True)
+        recovery.audit("failed", event_id)
+    except BaseException:
+        try:
+            run("systemctl", "stop", UNIT.name, timeout=45)
+            close(host, ip)
+            _service_state()
+            tailnet_state(host, ip, True, close_only_offline=True)
+        finally:
+            # The original failure may be a missing/corrupt event or a failed
+            # archive rollback.  Stopping Prism alone cannot preserve the
+            # one-attempt latch in that case.
+            emergency_block()
+        raise
+
+
+def recovery_run(host, ip, record, bundle, run_id, project_sha256=None):
+    release = _recovery_pins(host, ip, record, bundle, run_id, project_sha256)
+    recovery = recovery_module(release)
+    _watchdog_failure_offline()
+    event = recovery.episode()
+    if event.get("state") is not None:
+        raise ValueError("Recovery event was already attempted.")
+    event_id = event["event_id"]
+    recovery.audit("seen", event_id)
+    _service_state()
+    guard_ready()
+    start = time.monotonic()
+    sample = 0
+    while time.monotonic() - start < 60:
+        before = time.monotonic()
+        tailnet_state(host, ip, True, strict_fresh=True)
+        if time.monotonic() - before > 5:
+            raise ValueError("Tailnet sample was stale.")
+        sample += 1
+        time.sleep(max(0, min(1, start + sample - time.monotonic())))
+    tailnet_state(host, ip, True, strict_fresh=True)
+    recovery.audit("sample", event_id)
+    with recovery.service_lock():
+        _service_state()
+        tailnet_state(host, ip, True, strict_fresh=True)
+        recovery.workload_clear()
+        recovery.audit("checked", event_id)
+        recovery.transition(None, "consumed")
+        recovery.audit("consumed", event_id)
+    try:
+        run("systemctl", "start", WATCHDOG_UNIT.name, timeout=45)
+        watchdog_ready(host, ip, record, bundle, run_id)
+        recovery.audit("watchdog", event_id)
+        with recovery.service_lock():
+            _service_state()
+            tailnet_state(host, ip, True, strict_fresh=True)
+            recovery.workload_clear()
+            recovery.audit("rechecked", event_id)
+            recovery.arm_ready(os.environ.get("INVOCATION_ID"))
+        run("systemctl", "start", UNIT.name, timeout=90)
+        _recovery_readiness(host, ip, record, bundle, run_id)
+        recovery.audit("verified", event_id)
+        recovery.audit("archive-intent", event_id)
+        recovery.archive(event_id)
+    except BaseException:
+        _recovery_failed(host, ip, recovery, event_id)
+        raise
+
+
+def recovery_stop_post(host, ip, record, bundle, run_id, project_sha256=None):
+    """Independent systemd cleanup when the controller is killed or fails."""
+    try:
+        release = _recovery_pins(host, ip, record, bundle, run_id, project_sha256)
+        recovery = recovery_module(release)
+        if os.environ.get("SERVICE_RESULT") == "success":
+            recovery.directory()
+            if recovery.EPISODE.exists() or recovery.EPISODE.is_symlink():
+                raise ValueError("Successful recovery retained an active event.")
+            recovery._private_file(recovery.AUDIT, 1024 * 1024)
+            lines = recovery.AUDIT.read_bytes().splitlines()
+            if not lines:
+                raise ValueError("Recovery outcome audit is unavailable.")
+            outcome = json.loads(lines[-1])
+            if (
+                not isinstance(outcome, dict)
+                or set(outcome) != {"event", "event_id"}
+                or outcome.get("event") != "archive-intent"
+                or not re.fullmatch(r"[0-9a-f]{32}", outcome.get("event_id", ""))
+            ):
+                raise ValueError("Recovery outcome audit is incomplete.")
+            archive = recovery.ROOT / ("archived-" + outcome["event_id"])
+            recovery._private_file(archive, 512)
+            archived = json.loads(archive.read_text(encoding="ascii"))
+            if (
+                archived.get("event_id") != outcome["event_id"]
+                or archived.get("state") != "entered"
+            ):
+                raise ValueError("Recovery archive differs from the outcome.")
+            _recovery_readiness(host, ip, record, bundle, run_id)
+            return
+        run("systemctl", "stop", UNIT.name, timeout=45)
+        close(host, ip)
+        _service_state()
+        tailnet_state(host, ip, True, close_only_offline=True)
+        if recovery.EPISODE.exists() or recovery.EPISODE.is_symlink():
+            event = recovery.episode()
+            if event.get("state") in (
+                None,
+                "consumed",
+                "ready",
+                "attempted",
+                "entered",
+            ):
+                recovery.transition(
+                    event.get("state"), "failed", event.get("invocation_id")
+                )
+            recovery.audit("failed", event["event_id"])
+        else:
+            raise ValueError("Failed recovery lost its durable event latch.")
+    except BaseException:
+        try:
+            run("systemctl", "stop", UNIT.name, timeout=45)
+            close(host, ip)
+            _service_state()
+            tailnet_state(host, ip, True, close_only_offline=True)
+        finally:
+            emergency_block()
+        raise
+
+
+def recovery_abandon(host, ip, record, bundle, run_id, event_id, project_sha256=None):
+    """Explicit operator reset after a failed event, without starting Prism."""
+    if not isinstance(event_id, str) or not re.fullmatch(r"[0-9a-f]{32}", event_id):
+        raise ValueError("Specify the exact failed recovery event ID.")
+    release = _recovery_pins(host, ip, record, bundle, run_id, project_sha256)
+    recovery = recovery_module(release)
+    for field, allowed in (
+        ("ActiveState", {"inactive", "failed"}),
+        ("ControlPID", {"0"}),
+        ("MainPID", {"0"}),
+    ):
+        value = run(
+            "systemctl",
+            "show",
+            "--property=" + field,
+            "--value",
+            RECOVERY_UNIT.name,
+        ).stdout.strip()
+        if value not in allowed:
+            raise ValueError("Recovery controller is still active.")
+    _service_state()
+    guard_ready()
+    tailnet_state(host, ip, True, strict_fresh=True)
+    with recovery.service_lock():
+        _service_state()
+        tailnet_state(host, ip, True, strict_fresh=True)
+        recovery.workload_clear()
+        event = recovery.episode()
+        if event["event_id"] != event_id or event.get("state") != "failed":
+            raise ValueError("Only the exact failed event may be abandoned.")
+        recovery.audit("abandon-intent", event_id)
+        recovery.abandon(event_id)
+
+
 def open_service(host, ip, record, bundle, run_id, project_sha256=None):
     try:
-        installation(record, bundle, run_id)
+        installed = installation(record, bundle, run_id)
+        recovery = recovery_module(installed[0]) if uses_recovery(record) else None
         if uses_watchdog(record):
             watchdog_ready(host, ip, record, bundle, run_id)
         if project_sha256 is not None:
             project_inventory(project_sha256)
         guard_ready()
         old_timer_absent()
-        tailnet_state(host, ip, True)
+        tailnet_state(host, ip, True, strict_fresh=recovery is not None)
         for attempt in range(10):
             try:
                 run(
@@ -978,9 +1560,18 @@ def open_service(host, ip, record, bundle, run_id, project_sha256=None):
                     raise
                 time.sleep(1)
         old_timer_absent()
-        tailnet_state(host, ip, True)
+        tailnet_state(host, ip, True, strict_fresh=recovery is not None)
+        if recovery is not None:
+            recovery.directory()
+            if recovery.EPISODE.exists() or recovery.EPISODE.is_symlink():
+                event = recovery.episode()
+                if event.get("state") != "entered" or event.get(
+                    "invocation_id"
+                ) != os.environ.get("INVOCATION_ID"):
+                    raise ValueError("Recovery service attempt is not entered.")
+                recovery.audit("opened", event["event_id"])
         run("tailscale", "set", "--shields-up=false", timeout=20)
-        tailnet_state(host, ip, False)
+        tailnet_state(host, ip, False, strict_fresh=recovery is not None)
         run(
             "/usr/bin/python3",
             HELPER,
@@ -991,6 +1582,10 @@ def open_service(host, ip, record, bundle, run_id, project_sha256=None):
             ip,
             timeout=8,
         )
+        if recovery is not None and (
+            recovery.EPISODE.exists() or recovery.EPISODE.is_symlink()
+        ):
+            recovery.audit("verified", recovery.episode()["event_id"])
     except BaseException:
         close(host, ip)
         raise
@@ -1032,7 +1627,14 @@ def serve(host, ip, record, bundle, run_id, budget=0, project_sha256=None):
     ]
     if project_sha256 is not None:
         argv += ["--project-sha256", project_sha256]
-    os.execve("/usr/bin/python3", argv, ENV)
+    environment = dict(ENV)
+    if uses_recovery(record):
+        invocation = os.environ.get("INVOCATION_ID", "")
+        if not re.fullmatch(r"[0-9a-f]{32}", invocation):
+            raise ValueError("Service invocation identity is unavailable.")
+        environment["INVOCATION_ID"] = invocation
+        environment["PRISM_RECOVERY_GUARD"] = "1"
+    os.execve("/usr/bin/python3", argv, environment)
 
 
 def parser():
@@ -1047,6 +1649,10 @@ def parser():
         "watchdog-prepare",
         "watchdog-serve",
         "watchdog-ready",
+        "recovery-claim",
+        "recovery-run",
+        "recovery-stop-post",
+        "recovery-abandon",
     ):
         item = actions.add_parser(name)
         item.add_argument("--bind-host", required=True)
@@ -1063,6 +1669,8 @@ def parser():
             item.add_argument("--project-sha256")
             if name == "serve":
                 item.add_argument("--model-budget-cents", type=int, default=0)
+            if name == "recovery-abandon":
+                item.add_argument("--event-id", required=True)
             if name in ("watchdog-prepare", "watchdog-serve"):
                 item.add_argument("--release", required=True)
                 item.add_argument("--db", required=True)
@@ -1097,6 +1705,43 @@ def main(argv=None):
                         args.installed_record,
                         args.bundle_sha256,
                         args.run_id,
+                        args.project_sha256,
+                    )
+                elif args.action == "recovery-claim":
+                    recovery_claim(
+                        host,
+                        ip,
+                        args.installed_record,
+                        args.bundle_sha256,
+                        args.run_id,
+                        args.project_sha256,
+                    )
+                elif args.action == "recovery-run":
+                    recovery_run(
+                        host,
+                        ip,
+                        args.installed_record,
+                        args.bundle_sha256,
+                        args.run_id,
+                        args.project_sha256,
+                    )
+                elif args.action == "recovery-stop-post":
+                    recovery_stop_post(
+                        host,
+                        ip,
+                        args.installed_record,
+                        args.bundle_sha256,
+                        args.run_id,
+                        args.project_sha256,
+                    )
+                elif args.action == "recovery-abandon":
+                    recovery_abandon(
+                        host,
+                        ip,
+                        args.installed_record,
+                        args.bundle_sha256,
+                        args.run_id,
+                        args.event_id,
                         args.project_sha256,
                     )
                 elif args.action == "watchdog-prepare":
@@ -1150,6 +1795,7 @@ def main(argv=None):
         tarfile.TarError,
         subprocess.CalledProcessError,
         subprocess.TimeoutExpired,
+        RuntimeError,
     ) as exc:
         print(f"Prism service lifecycle failed: {type(exc).__name__}.", file=sys.stderr)
         return 1

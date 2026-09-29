@@ -350,6 +350,13 @@ def command(args, mode):
         "PYTHONPATH": str(release / "src"),
         "PYTHONUNBUFFERED": "1",
     }
+    if mode == "serve" and "INVOCATION_ID" in os.environ:
+        invocation = os.environ["INVOCATION_ID"]
+        if not re.fullmatch(r"[0-9a-f]{32}", invocation):
+            raise ValueError("Service invocation identity is invalid.")
+        clean_env["INVOCATION_ID"] = invocation
+    if mode == "serve" and os.environ.get("PRISM_RECOVERY_GUARD") == "1":
+        clean_env["PRISM_RECOVERY_GUARD"] = "1"
     if mode == "preflight":
         completed = subprocess.run(
             argv,
