@@ -15,6 +15,7 @@ import math
 import os
 import platform
 import re
+import secrets
 import signal
 import sqlite3
 import stat
@@ -528,6 +529,8 @@ RECONSTRUCTION_BRANCHES = frozenset(
         "simultaneous_branches",
     )
 )
+EVIDENCE_PARENT = Path("/var/lib/prism/identity-pilot")
+MAX_RECONSTRUCTION_BYTES = 131072
 
 
 def bounded_seconds(value):
@@ -542,7 +545,13 @@ def bounded_seconds(value):
 
 
 def partial_observation(
-    report: dict, elapsed: dict, reconstruction: dict, *, completed: bool = False
+    report: dict,
+    elapsed: dict,
+    reconstruction: dict,
+    *,
+    completed: bool = False,
+    whole_group: bool | None = None,
+    reconstructed: bool = False,
 ) -> None:
     """Project fixed categories and bounded timings into the public report."""
     report["elapsed_seconds"] = {
@@ -576,6 +585,36 @@ def partial_observation(
     first = reconstruction.get("first_trigger")
     first = first if isinstance(first, dict) else {}
     branch = first.get("branch")
+    reasons = []
+    if reconstruction.get("ambiguous") is True:
+        reasons.append("scan_ambiguous")
+    if reconstruction.get("truncated") is True:
+        reasons.append("candidate_limit")
+    if first and not candidates:
+        reasons.append("candidate_identity_unrecorded")
+    if any(
+        candidate.get("trusted_cleanup") is not True
+        for candidate in candidates
+        if isinstance(candidate, dict)
+    ):
+        reasons.append("candidate_not_trusted")
+    if any(
+        candidate.get("exit_observed_seconds") is None
+        for candidate in candidates
+        if isinstance(candidate, dict)
+    ):
+        reasons.append("candidate_exit_unobserved")
+    if any(
+        type(candidate.get("exit_observed_seconds")) in (int, float)
+        and candidate["exit_observed_seconds"] > 30
+        for candidate in candidates
+        if isinstance(candidate, dict)
+    ):
+        reasons.append("candidate_exit_after_deadline")
+    if whole_group is False:
+        reasons.append("whole_group_unverified")
+    if reconstructed:
+        reasons.append("reconstruction_detected")
     report["reconstruction_summary"] = {
         "first_trigger_branch": branch
         if isinstance(branch, str) and branch in RECONSTRUCTION_BRANCHES
@@ -597,19 +636,53 @@ def partial_observation(
         "max_scan_gap_seconds": bounded_seconds(
             reconstruction.get("max_scan_gap_seconds")
         ),
+        "rejection_reasons": reasons,
     }
 
 
 def retain_failed_reconstruction(active, report: dict, reconstruction: dict) -> None:
-    """Keep bounded PID evidence in a root-private directory, never in stdout."""
+    """Retain bounded private evidence and publish only an opaque directory name."""
     candidates = reconstruction.get("candidates")
     if os.geteuid() != 0 or not isinstance(candidates, list) or len(candidates) > 16:
         raise RuntimeError("Private reconstruction evidence is not bounded")
-    if len(json.dumps(reconstruction, allow_nan=False).encode("utf-8")) > 131072:
+    if (
+        len(json.dumps(reconstruction, allow_nan=False).encode("utf-8"))
+        > MAX_RECONSTRUCTION_BYTES
+    ):
         raise RuntimeError("Private reconstruction evidence exceeds its size bound")
-    root = Path(tempfile.mkdtemp(prefix="prism-browser-reconstruction-"))
+    parent = EVIDENCE_PARENT.lstat()
+    if (
+        not stat.S_ISDIR(parent.st_mode)
+        or parent.st_uid != 0
+        or stat.S_IMODE(parent.st_mode) != 0o700
+    ):
+        raise RuntimeError("Private reconstruction parent differs")
+    root = Path(
+        tempfile.mkdtemp(
+            prefix="prism-browser-reconstruction-" + secrets.token_hex(16) + "-",
+            dir=EVIDENCE_PARENT,
+        )
+    )
+    directory = root.lstat()
+    if (
+        root.parent != EVIDENCE_PARENT
+        or not stat.S_ISDIR(directory.st_mode)
+        or directory.st_uid != 0
+        or stat.S_IMODE(directory.st_mode) != 0o700
+    ):
+        raise RuntimeError("Private reconstruction directory differs")
     active.write_reconstruction_evidence(root, reconstruction)
+    info = (root / "reconstruction-evidence.json").lstat()
+    if (
+        not stat.S_ISREG(info.st_mode)
+        or info.st_uid != 0
+        or info.st_nlink != 1
+        or stat.S_IMODE(info.st_mode) != 0o600
+        or info.st_size > MAX_RECONSTRUCTION_BYTES
+    ):
+        raise RuntimeError("Private reconstruction file differs")
     report["evidence_retained"] = True
+    report["evidence_ref"] = root.name
 
 
 def observe_with_partial_report(active, report, *, elapsed, reconstruction, **kwargs):
@@ -618,8 +691,18 @@ def observe_with_partial_report(active, report, *, elapsed, reconstruction, **kw
             elapsed=elapsed, reconstruction_evidence=reconstruction, **kwargs
         )
     except Exception:
-        partial_observation(report, elapsed, reconstruction)
-        if reconstruction.get("candidates") or reconstruction.get("ambiguous"):
+        try:
+            partial_observation(report, elapsed, reconstruction)
+            report["reconstruction_summary"]["rejection_reasons"].append(
+                "observation_exception"
+            )
+        except Exception as exc:  # noqa: BLE001 - preserve the observation error.
+            report["observation_summary_error_kind"] = type(exc).__name__
+        if (
+            reconstruction.get("first_trigger") is not None
+            or reconstruction.get("candidates")
+            or reconstruction.get("ambiguous")
+        ):
             try:
                 retain_failed_reconstruction(active, report, reconstruction)
             except Exception as exc:  # noqa: BLE001 - retain the observation error.
@@ -875,7 +958,14 @@ def run(
                 "no_group_reconstruction": not reconstructed,
             }
         )
-        partial_observation(report, elapsed, reconstruction, completed=True)
+        partial_observation(
+            report,
+            elapsed,
+            reconstruction,
+            completed=True,
+            whole_group=whole_group,
+            reconstructed=reconstructed,
+        )
         if reconstructed or not whole_group:
             retain_failed_reconstruction(active, report, reconstruction)
         report["outcome"] = "passed" if all(report["checks"].values()) else "failed"

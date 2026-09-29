@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "kind": "m2-browser-active-disconnect-validation",
-  "date": "2026-09-28",
-  "status": "latest-two-bounded-attempts-passed-with-attempt6-failure",
+  "date": "2026-09-29",
+  "status": "bounded-attempts-passed-with-two-delayed-host-relapses",
   "passed": false,
   "campaign_passed": false,
   "latest_bounded_attempt_passed": true,
@@ -279,7 +279,77 @@
     "The final browser Activity & results view showed failed/unknown for attempts 6 through 8; no completed result was shown.",
     "The latest one-hour grant was active at final host postcheck, then expired naturally without revocation.",
     "The host postcheck does not independently prove browser-origin authorization or a completed result.",
-    "No hard SLA, broad safety claim, or pilot readiness is established."
+    "No hard SLA, broad safety claim, or pilot readiness is established.",
+    "A second delayed host relapse was observed after the 180-second stability windows for attempts 7 and 8; those windows did not establish sustained availability. Journal timing is correlation only and does not establish the PollNetMap reset as the cause.",
+    "Manual recovery records a point-in-time recovered state; it does not resolve the relapse cause or establish sustained availability."
   ],
-  "privacy": "No account identifiers, authentication links, credentials, private URL, run ID, container ID or transcript are included."
+  "privacy": "No account identifiers, authentication links, credentials, private URL, run ID, container ID or transcript are included.",
+  "second_delayed_relapse": {
+    "observed_after_attempts": [
+      7,
+      8
+    ],
+    "journal_event_utc": "2026-09-28T06:28:52Z",
+    "host_observation_utc": "2026-09-29T01:50:00Z",
+    "observation": "At the later read-only host check, prism-identity-service, prism-identity-host-watchdog, and tailscaled were all failed; MainPID and ControlPID were 0; the watchdog remained Restart=no with NRestarts=0; tailscale0 was absent; the Kata task list was empty; SQLite integrity was ok; pending and uncertain run counts were both 0.",
+    "journal_context": "At 2026-09-28T06:28:52Z, tailscaled logged PollNetMap ... connection reset by peer. At 06:28:53Z, the watchdog logged category=offline and the service was killed; the close restore path reported state/fallback=state, and the emergency block killed tailscaled.",
+    "causality_established": false
+  },
+  "post_relapse_manual_recovery": {
+    "recovered_utc_approx": "2026-09-29T01:51:00Z",
+    "sequence": [
+      "With Prism service and watchdog stopped, tailscaled was started and Shields Up was set true.",
+      "Tailnet status was confirmed Running/Online with the recorded safe preferences.",
+      "The watchdog was started, then the identity service.",
+      "All three units were active; Shields Up was false while the service was serving; private HTTPS /review returned 200."
+    ],
+    "units_active_after_recovery": [
+      "prism-identity-service",
+      "prism-identity-host-watchdog",
+      "tailscaled"
+    ],
+    "tailnet_status": "Running/Online",
+    "shields_up_while_serving": false,
+    "private_https_review_status": 200,
+    "kata_tasks_before_service_start": 0,
+    "database_integrity": "ok",
+    "pending_runs": 0,
+    "uncertain_runs": 0,
+    "model_calls": 0,
+    "grant_changes": 0,
+    "state_is_point_in_time": true
+  },
+  "diagnostic_only_deployment_checkpoint": {
+    "date_local": "2026-09-28 America/Los_Angeles",
+    "date_utc": "2026-09-29",
+    "new_observer_version": "v2",
+    "new_observer_sha256": "2455ea651136a2c53c794f153cd457d3dbefef6aa7928a9df0f61162b2a4e9ac",
+    "deployment_scope": "Installed as a separate root-owned mode-0700 file under the existing root-private checks. The prior observer SHA-256 67c04b7ba05d25138909251b0d5a630b93942b983762c60b542fb509476f89b9 was retained unchanged.",
+    "parent_evidence_directory": "/var/lib/prism/identity-pilot",
+    "parent_evidence_directory_mode": "0700",
+    "root_smoke_test": {
+      "invoked_actual_pinned_helper_writer": true,
+      "synthetic_pid_free_evidence": true,
+      "private_directory_mode": "0700",
+      "evidence_file_mode": "0600",
+      "evidence_file_single_link": true,
+      "evidence_file_root_owned": true,
+      "opaque_reference_used": true,
+      "content_match_confirmed": true,
+      "smoke_evidence_deleted": true
+    },
+    "active_fault_injected": false,
+    "recipient_task_active": false,
+    "grant_changes": 0,
+    "model_calls": 0,
+    "attempt6_cause_known": false,
+    "pilot_ready": false,
+    "local_validation_reported": {
+      "relevant_tests_passed": 79,
+      "targeted_ruff_passed": true,
+      "targeted_format_passed": true,
+      "diff_check_passed": true
+    },
+    "acceptance_limit": "Diagnostic-only deployment and synthetic root-writer smoke test; no new real fault acceptance or availability claim."
+  }
 }

@@ -16,7 +16,7 @@ Deployment and normal service recovery do not imply a fault-test pass. Later
 bounded outcomes are recorded in the [sanitized validation
 record](validation/m2-browser-active-disconnect.json).
 
-**Latest browser-active follow-up (2026-09-28):** The no-restart watchdog
+**Latest browser-active follow-up (2026-09-29):** The no-restart watchdog
 setting (`Restart=no`; lifecycle SHA-256
 `542465aedc1316f67edbae398407f0bb80de91bb4d800db547d3791d59b2d143`),
 root-only uncertain-run resolver v9 (SHA-256
@@ -34,12 +34,30 @@ results page nevertheless showed all three new task records as failed/unknown,
 with no completed result. Final host checks found all three units active, the
 watchdog at `Restart=no`/`NRestarts=0`, Tailscale Running/Online with Shields
 Up false, HTTPS `/review` 200, an empty Kata task list, database integrity
-`ok`, and 29 runs/zero pending/77 model dispatches. `pilot_ready=false` remains:
-attempt 6 is unresolved, the older delayed relapse remains unexplained, and the
-bounded passes establish neither a universal hard deadline nor broad safety.
+`ok`, and 29 runs/zero pending/77 model dispatches at that earlier postcheck. A
+second delayed host relapse was later observed: at 2026-09-29 01:50 UTC, all
+three units were failed, `MainPID`/`ControlPID` were 0, the watchdog remained
+`Restart=no`/`NRestarts=0`, `tailscale0` was absent, the Kata task list was
+empty, SQLite integrity was `ok`, and pending/uncertain counts were zero. The
+journal recorded `PollNetMap ... connection reset by peer` at 06:28:52Z on
+2026-09-28, followed one second later by watchdog `category=offline`, service
+kill, close-path `state/fallback=state`, and emergency `tailscaled` kill. This
+temporal correlation does not establish causation. The operator manually
+recovered around 01:51 UTC: started `tailscaled` with Prism service/watchdog
+off, set Shields Up true, verified Running/Online and safe preferences, then
+started watchdog and service. All three units were active, Shields Up was false
+while serving, and private HTTPS `/review` returned 200. Kata was empty before
+service restart; SQLite integrity was `ok`, pending/uncertain counts were zero,
+and recovery made no model calls or grant changes. This is a point-in-time
+recovered state. The 180-second windows did not establish sustained
+availability. `pilot_ready=false` remains; attempt 6 is unresolved, both delayed
+relapses remain unexplained, and bounded passes establish neither a universal
+hard deadline nor broad safety.
 No model call or task network access occurred; the approved grant was active
 and not revoked at the final host check. A later read-only check found the
 one-hour grant naturally expired with no unexpired matching test grant.
+
+**Diagnostic-only observer checkpoint (2026-09-28 America/Los_Angeles / 2026-09-29 UTC):** Observer v2 (SHA-256 `2455ea651136a2c53c794f153cd457d3dbefef6aa7928a9df0f61162b2a4e9ac`) was installed as a separate root-owned mode-0700 file under the existing root-private checks; the prior observer (`67c04b7ba05d25138909251b0d5a630b93942b983762c60b542fb509476f89b9`) remains unchanged. The root evidence directory `/var/lib/prism/identity-pilot` is mode 0700. A smoke check invoked the actual pinned helper writer with synthetic PID-free evidence and confirmed a private mode-0700 directory, root-owned mode-0600 single-link JSON evidence, opaque reference and content match, then deleted the smoke evidence. No active fault or recipient task was present; no grant changed and no model call occurred. This is deployment and writer-path evidence only: no new real fault was accepted, attempt 6's cause remains unknown, and `pilot_ready=false`. Parent verification passed 79 relevant local tests and targeted Ruff, format, and diff checks. See the [sanitized validation record](validation/m2-browser-active-disconnect.json).
 
 **Delayed-relapse diagnosis and instrumentation (2026-09-27):** Read-only systemd journals showed the watchdog stopped Prism after reporting a lost fixed private tailnet state. Tailscale logged `PollNetMap: unexpected EOF` in the same second, but its causal role is unproven. The lifecycle close path attempted to shield inbound traffic and then deliberately killed `tailscaled` through its emergency block after both normal close paths failed. The original watchdog log did not identify whether the initiating probe timed out, failed to run or parse, or observed an actual state/identity mismatch. A new immutable release now reports only fixed probe categories after the service is stopped, and its lifecycle helper reports fixed close-path categories before emergency blocking. It preserves the same fail-closed behavior, project pin and 1000-cent model budget. Local focused tests and normal host restart/HTTPS checks passed; no new fault was injected, and the earlier cause and pilot readiness remain open. See the [sanitized record](validation/m2-host-disconnect.json).
 

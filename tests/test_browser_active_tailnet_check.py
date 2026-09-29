@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import json
 import sqlite3
+import stat
 import subprocess
 import sys
 import tempfile
@@ -328,6 +329,10 @@ class BrowserActiveSelectionTests(unittest.TestCase):
         self.assertEqual(report["error_kind"], "RuntimeError")
         self.assertEqual(report["elapsed_seconds"], {"worker": 1.235})
         self.assertEqual(report["reconstruction_summary"]["candidate_count"], 1)
+        self.assertIn(
+            "observation_exception",
+            report["reconstruction_summary"]["rejection_reasons"],
+        )
         self.assertEqual(
             report["reconstruction_summary"]["candidate_categories"]["qemu"], 1
         )
@@ -374,6 +379,10 @@ class BrowserActiveSelectionTests(unittest.TestCase):
         self.assertEqual(summary["untrusted_cleanup_count"], 1)
         self.assertTrue(summary["ambiguous"])
         self.assertFalse(summary["scan_continuity_verified"])
+        self.assertEqual(
+            summary["rejection_reasons"],
+            ["scan_ambiguous", "candidate_not_trusted", "candidate_exit_unobserved"],
+        )
         self.assertNotIn("123", json.dumps(report))
         self.assertNotIn("/private/path", json.dumps(report))
 
@@ -403,23 +412,50 @@ class BrowserActiveSelectionTests(unittest.TestCase):
             "truncated": False,
         }
         report = {}
+        helper_path = SCRIPT.parents[1] / "scripts/m2-tailnet-down-active-check.py"
+        helper_spec = importlib.util.spec_from_file_location(
+            "browser_active_retention_helper", helper_path
+        )
+        assert helper_spec is not None and helper_spec.loader is not None
+        helper = importlib.util.module_from_spec(helper_spec)
+        helper_spec.loader.exec_module(helper)
         with tempfile.TemporaryDirectory() as temporary:
-            directory = Path(temporary) / "private"
-            directory.mkdir(mode=0o700)
+            directory = Path(temporary)
+            real_lstat = Path.lstat
+
+            def root_lstat(path):
+                info = real_lstat(path)
+                return types.SimpleNamespace(
+                    st_mode=info.st_mode,
+                    st_uid=0,
+                    st_nlink=info.st_nlink,
+                    st_size=info.st_size,
+                )
 
             class Active:
                 def write_reconstruction_evidence(self, root, value):
                     self.root = root
                     self.value = value
+                    helper.write_reconstruction_evidence(root, value)
 
             active = Active()
             with (
                 patch.object(check.os, "geteuid", return_value=0),
-                patch.object(check.tempfile, "mkdtemp", return_value=str(directory)),
+                patch.object(check, "EVIDENCE_PARENT", directory),
+                patch.object(check.Path, "lstat", root_lstat),
             ):
                 check.retain_failed_reconstruction(active, report, evidence)
-            self.assertEqual(active.root, directory)
+            self.assertEqual(active.root.parent, directory)
             self.assertIs(active.value, evidence)
+            self.assertEqual(report["evidence_ref"], active.root.name)
+            self.assertRegex(
+                report["evidence_ref"], r"^prism-browser-reconstruction-[0-9a-f]{32}-"
+            )
+            self.assertEqual(stat.S_IMODE(active.root.stat().st_mode), 0o700)
+            self.assertEqual(
+                json.loads((active.root / "reconstruction-evidence.json").read_text()),
+                evidence,
+            )
         self.assertTrue(report["evidence_retained"])
         self.assertNotIn(str(directory), json.dumps(report))
         with (
@@ -427,6 +463,177 @@ class BrowserActiveSelectionTests(unittest.TestCase):
             self.assertRaisesRegex(RuntimeError, "not bounded"),
         ):
             check.retain_failed_reconstruction(active, {}, {"candidates": [{}] * 17})
+
+    def test_retention_refuses_symlink_and_does_not_publish_reference(self):
+        evidence = {
+            "first_trigger": None,
+            "candidates": [{"pid": 123}],
+            "truncated": False,
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            real_lstat = Path.lstat
+
+            def root_lstat(path):
+                info = real_lstat(path)
+                return types.SimpleNamespace(
+                    st_mode=info.st_mode,
+                    st_uid=0,
+                    st_nlink=info.st_nlink,
+                    st_size=info.st_size,
+                )
+
+            class Active:
+                def write_reconstruction_evidence(self, root, _value):
+                    (root / "reconstruction-evidence.json").symlink_to(
+                        parent / "target"
+                    )
+
+            report = {}
+            with (
+                patch.object(check.os, "geteuid", return_value=0),
+                patch.object(check, "EVIDENCE_PARENT", parent),
+                patch.object(check.Path, "lstat", root_lstat),
+                self.assertRaisesRegex(RuntimeError, "file differs"),
+            ):
+                check.retain_failed_reconstruction(Active(), report, evidence)
+            self.assertNotIn("evidence_ref", report)
+            self.assertNotIn("evidence_retained", report)
+
+    def test_retention_refuses_symlink_parent_and_oversized_evidence(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            alias = parent / "alias"
+            alias.symlink_to(parent, target_is_directory=True)
+            with (
+                patch.object(check.os, "geteuid", return_value=0),
+                patch.object(check, "EVIDENCE_PARENT", alias),
+                self.assertRaisesRegex(RuntimeError, "parent differs"),
+            ):
+                check.retain_failed_reconstruction(
+                    types.SimpleNamespace(), {}, {"candidates": [{"pid": 123}]}
+                )
+        evidence = {"candidates": [{"private": "x" * check.MAX_RECONSTRUCTION_BYTES}]}
+        with (
+            patch.object(check.os, "geteuid", return_value=0),
+            self.assertRaisesRegex(RuntimeError, "size bound"),
+        ):
+            check.retain_failed_reconstruction(types.SimpleNamespace(), {}, evidence)
+
+    def test_observation_error_survives_retention_failure(self):
+        elapsed = {"worker": None}
+        evidence = {"first_trigger": None, "candidates": [], "truncated": False}
+        report = {"phase": "observe_fail_closed", "outcome": "failed", "passed": False}
+
+        class Active:
+            def observe_job_termination(self, *, reconstruction_evidence, **_kwargs):
+                reconstruction_evidence["ambiguous"] = True
+                raise ValueError("private observation detail")
+
+        with (
+            patch.object(
+                check,
+                "retain_failed_reconstruction",
+                side_effect=OSError("private retention detail"),
+            ),
+            self.assertRaisesRegex(ValueError, "private observation detail") as raised,
+        ):
+            check.observe_with_partial_report(
+                Active(), report, elapsed=elapsed, reconstruction=evidence
+            )
+        check.record_primary_failure(report, raised.exception)
+        check.finalize_report(report)
+        self.assertEqual(report["error_kind"], "ValueError")
+        self.assertEqual(report["evidence_retention_error_kind"], "OSError")
+        self.assertEqual(
+            report["reconstruction_summary"]["rejection_reasons"],
+            ["scan_ambiguous", "observation_exception"],
+        )
+        self.assertNotIn("private", json.dumps(report))
+        self.assertFalse(report["passed"])
+
+    def test_first_trigger_before_candidate_capture_retains_partial_trace(self):
+        evidence = {"first_trigger": None, "candidates": [], "truncated": False}
+        report = {"phase": "observe_fail_closed", "outcome": "failed", "passed": False}
+
+        class Active:
+            def observe_job_termination(self, *, reconstruction_evidence, **_kwargs):
+                reconstruction_evidence["first_trigger"] = {
+                    "branch": "same_container_identity",
+                    "elapsed_seconds": 0.75,
+                    "private_path": "/secret",
+                }
+                raise LookupError("private candidate identity failure")
+
+        active = Active()
+        with (
+            patch.object(check, "retain_failed_reconstruction") as retain,
+            self.assertRaisesRegex(
+                LookupError, "private candidate identity failure"
+            ) as raised,
+        ):
+            check.observe_with_partial_report(
+                active, report, elapsed={}, reconstruction=evidence
+            )
+        retain.assert_called_once_with(active, report, evidence)
+        self.assertIsNotNone(evidence["first_trigger"])
+        check.record_primary_failure(report, raised.exception)
+        check.finalize_report(report)
+        self.assertEqual(report["error_kind"], "LookupError")
+        self.assertEqual(
+            report["reconstruction_summary"]["rejection_reasons"],
+            ["candidate_identity_unrecorded", "observation_exception"],
+        )
+        self.assertNotIn("/secret", json.dumps(report))
+        self.assertFalse(report["passed"])
+
+    def test_strict_reconstruction_reasons_distinguish_trusted_and_unknown(self):
+        report = {}
+        evidence = {
+            "first_trigger": {"branch": "new_shim_descendant", "elapsed_seconds": 0.4},
+            "candidates": [
+                {
+                    "command_category": "other",
+                    "trusted_cleanup": False,
+                    "exit_observed_seconds": None,
+                    "argv": "private",
+                }
+            ],
+            "truncated": False,
+        }
+        check.partial_observation(
+            report, {}, evidence, completed=True, whole_group=False, reconstructed=True
+        )
+        self.assertEqual(
+            report["reconstruction_summary"]["rejection_reasons"],
+            [
+                "candidate_not_trusted",
+                "candidate_exit_unobserved",
+                "whole_group_unverified",
+                "reconstruction_detected",
+            ],
+        )
+        self.assertEqual(
+            report["reconstruction_summary"]["first_trigger_branch"],
+            "new_shim_descendant",
+        )
+        self.assertNotIn("private", json.dumps(report))
+        evidence["first_trigger"]["branch"] = "same_container_identity"
+        evidence["candidates"] = [
+            {
+                "command_category": "exact_delete_helper",
+                "trusted_cleanup": True,
+                "exit_observed_seconds": 1.2,
+            }
+        ]
+        check.partial_observation(
+            report, {}, evidence, completed=True, whole_group=True, reconstructed=True
+        )
+        self.assertEqual(
+            report["reconstruction_summary"]["rejection_reasons"],
+            ["reconstruction_detected"],
+        )
+        self.assertEqual(report["reconstruction_summary"]["trusted_cleanup_count"], 1)
 
     def test_resolver_requires_exact_inspect_and_resolve_responses(self):
         answers = [
