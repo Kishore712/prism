@@ -430,6 +430,15 @@ automatic stop.
 
 ## Repeat the isolated host check
 
+For read-only host status, check the installed unit names exactly. In
+particular, the watchdog is `prism-identity-host-watchdog.service`; a shortened
+`prism-host-watchdog.service` query checks a nonexistent unit and can produce a
+false alarm.
+
+```bash
+sudo systemctl is-active prism-identity-service.service prism-identity-host-watchdog.service tailscaled.service
+```
+
 The root-only check is retained on the private Linux host at
 `/var/lib/prism/identity-pilot/checks/m2-active-revoke-check.py` with SHA-256
 `ab76f3377c95adcbb7eaae3a3eb45aa80dd9e7162cea77899cc92a4eeec87cf2`. Its

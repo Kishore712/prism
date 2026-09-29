@@ -351,5 +351,28 @@
       "diff_check_passed": true
     },
     "acceptance_limit": "Diagnostic-only deployment and synthetic root-writer smoke test; no new real fault acceptance or availability claim."
+  },
+  "later_operator_status_check": {
+    "date_utc": "2026-09-29",
+    "initial_check_error": "An operator checked a nonexistent shortened watchdog unit name and misread the resulting inactive state as a watchdog failure. The actual installed unit is prism-identity-host-watchdog.service and was active.",
+    "operator_action": "The identity service was manually stopped as a precaution, then restarted after confirming the actual watchdog and tailscaled units were active. This was not a watchdog-triggered close or disconnect test.",
+    "final_actual_units_active": [
+      "prism-identity-service.service",
+      "prism-identity-host-watchdog.service",
+      "tailscaled.service"
+    ],
+    "tailnet_status": "Running/Online",
+    "shields_up_while_serving": false,
+    "safe_preferences_observed": "RouteAll=false, RunSSH=false, AdvertiseRoutes absent",
+    "private_https_review_status": 200,
+    "private_https_check": "The pinned Tailscale DNS name was used with normal TLS certificate validation; a raw tailnet-IP request was rejected by host binding and does not count as the endpoint check.",
+    "kata_task_list_empty": true,
+    "database_integrity": "ok",
+    "runs": 29,
+    "run_status_counts": {"cancelled": 1, "completed": 10, "failed": 18},
+    "model_dispatches": 77,
+    "grants": 15,
+    "new_invitation_or_fault": false,
+    "acceptance_limit": "A point-in-time recovery check only; it does not explain the delayed relapses or establish sustained availability."
   }
 }
