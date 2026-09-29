@@ -9,6 +9,7 @@ import ipaddress
 import json
 import os
 import re
+import secrets
 import socket
 import sqlite3
 import stat
@@ -32,10 +33,19 @@ TAILNET_POLL_SECONDS = 1.0
 TAILNET_PROBE_SECONDS = 0.9
 CLOSE_RESIDUAL_SECONDS = 2.0
 ENV = {"PATH": "/usr/bin:/bin", "LC_ALL": "C"}
+OFFLINE_EVENT_DIRECTORY = Path("/var/lib/prism-identity/offline-recovery")
 
 
 class WatchdogError(RuntimeError):
     pass
+
+
+class OfflineCloseRecorded(WatchdogError):
+    """Only this exit status may trigger the offline recovery controller."""
+
+    def __init__(self, event_id):
+        self.event_id = event_id
+        super().__init__("Fixed private tailnet state was lost (category=offline)")
 
 
 class TailnetProbeError(WatchdogError):
@@ -89,6 +99,60 @@ def _error_category(exc):
             return "value"
         current = current.__cause__ or current.__context__
     return "other"
+
+
+def _record_offline_event(directory=OFFLINE_EVENT_DIRECTORY):
+    """Persist a unique, root-private close event before recovery is eligible.
+
+    The event and directory fsyncs make a successful return a durable handoff.
+    A partial or failed write may leave an inert file, but never authorizes a
+    recovery controller to infer an event from the watchdog's exit alone.
+    """
+    if os.geteuid() != 0:
+        raise WatchdogError("Offline event requires root")
+    directory = Path(directory)
+    try:
+        parent = directory.parent.lstat()
+        info = directory.lstat()
+        if (
+            not stat.S_ISDIR(parent.st_mode)
+            or parent.st_uid != 0
+            or parent.st_mode & 0o022
+            or not stat.S_ISDIR(info.st_mode)
+            or info.st_uid != 0
+            or stat.S_IMODE(info.st_mode) != 0o700
+        ):
+            raise WatchdogError("Offline event directory is unsafe")
+        event_id = secrets.token_hex(16)
+        # O_EXCL is the durable episode latch. A failed or interrupted write
+        # leaves the latch in place and cannot grant another automatic attempt.
+        name = directory / "episode"
+        descriptor = os.open(
+            name,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC,
+            0o600,
+        )
+        try:
+            data = json.dumps(
+                {"version": 1, "event_id": event_id, "category": "offline"},
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("ascii") + b"\n"
+            if os.write(descriptor, data) != len(data):
+                raise WatchdogError("Offline event write was incomplete")
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+        directory_descriptor = os.open(
+            directory, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC
+        )
+        try:
+            os.fsync(directory_descriptor)
+        finally:
+            os.close(directory_descriptor)
+        return event_id
+    except OSError as exc:
+        raise WatchdogError("Offline event could not be persisted") from exc
 
 
 def _tailnet_ready(host, ip, *, clock=time.monotonic):
@@ -380,14 +444,15 @@ def _kill_service():
     fixed_group = "/system.slice/" + SERVICE
     if group is None:
         if state in ("inactive", "failed") and _group_drained(fixed_group):
-            return
+            return False
         raise WatchdogError("Service cgroup is missing while service may still run")
     if state == "inactive":
         if _group_drained(group):
-            return
+            return False
         _verified_close_residuals(group)
-        return
+        return False
     occupants = _group_processes(group)
+    serving = state == "active" and bool(occupants)
     try:
         subprocess.run(
             [
@@ -419,6 +484,7 @@ def _kill_service():
             raise WatchdogError("Preexisting service processes survived SIGKILL")
         time.sleep(0.1)
     _verified_close_residuals(group)
+    return serving
 
 
 def _row(db_path, run, resource, token, statuses):
@@ -558,12 +624,14 @@ class HostWatchdog:
         kill_service=_kill_service,
         clock=time.monotonic,
         tailnet_probe=None,
+        record_offline_event=_record_offline_event,
     ):
         self.db_path = Path(db_path)
         self.runtime = runtime or ReferenceLinuxRuntime(readiness=False)
         self.kill_service = kill_service
         self.clock = clock
         self.tailnet_probe = tailnet_probe
+        self.record_offline_event = record_offline_event
         self.next_tailnet_poll = 0.0
         self.active = None
         self.blocked = False
@@ -620,6 +688,8 @@ class HostWatchdog:
 
     def _check_tailnet(self, *, force=False):
         # Diagnostic callers can inject a probe; the installed CLI always pins one.
+        if self.blocked:
+            raise WatchdogError("Watchdog blocked")
         if self.tailnet_probe is None:
             return
         now = self.clock()
@@ -631,7 +701,7 @@ class HostWatchdog:
         except (OSError, ValueError, WatchdogError) as exc:
             try:
                 # Stop the service even when there is no leased Kata run.
-                self.kill_service()
+                closed_serving_service = self.kill_service()
             except (EngineError, OSError, ValueError, WatchdogError) as stop_exc:
                 self.blocked = True
                 raise WatchdogError(
@@ -649,6 +719,15 @@ class HostWatchdog:
                     ) from cleanup_exc
             self.blocked = True
             category = exc.category if isinstance(exc, TailnetProbeError) else "probe"
+            if category == "offline" and not force and closed_serving_service is True:
+                try:
+                    event_id = self.record_offline_event()
+                except (OSError, ValueError, WatchdogError) as event_exc:
+                    raise WatchdogError(
+                        "Fixed private tailnet state was lost "
+                        "(category=offline, event=unavailable)"
+                    ) from event_exc
+                raise OfflineCloseRecorded(event_id) from exc
             raise WatchdogError(
                 f"Fixed private tailnet state was lost (category={category})"
             ) from exc
@@ -893,6 +972,8 @@ def main(argv=None):
                 args.db,
                 tailnet_probe=lambda: _tailnet_ready(args.hostname, str(address)),
             ).serve()
+    except OfflineCloseRecorded as exc:
+        parser.exit(42, str(exc) + "\n")
     except (WatchdogError, EngineError, OSError, sqlite3.Error) as exc:
         parser.exit(1, str(exc) + "\n")
 

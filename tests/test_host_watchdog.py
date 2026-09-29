@@ -15,12 +15,15 @@ from prism.host_watchdog import (
     CLOSE_RESIDUAL_SECONDS,
     TAILNET_PROBE_SECONDS,
     HostWatchdog,
+    OfflineCloseRecorded,
     TailnetProbeError,
     WatchdogError,
     _group_processes,
     _kill_service,
+    _record_offline_event,
     _tailnet_ready,
     _verified_close_residuals,
+    main,
 )
 
 
@@ -77,7 +80,7 @@ class HostWatchdogTests(unittest.TestCase):
         self.watchdog = HostWatchdog(
             self.db,
             runtime=self.runtime,
-            kill_service=lambda: self.kills.append(True),
+            kill_service=lambda: self.kills.append(True) or True,
             clock=lambda: self.now[0],
             tailnet_probe=lambda: self.probes.append(True),
         )
@@ -275,6 +278,7 @@ class HostWatchdogTests(unittest.TestCase):
         self.watchdog.tailnet_probe = lambda: (_ for _ in ()).throw(
             TailnetProbeError("offline")
         )
+        self.watchdog.record_offline_event = lambda: "c" * 32
         self.now[0] += 1.1
         with self.assertRaisesRegex(
             WatchdogError, r"tailnet state was lost \(category=offline\)"
@@ -282,6 +286,169 @@ class HostWatchdogTests(unittest.TestCase):
             self.watchdog.tick()
         self.assertEqual(self.kills, [True])
         self.assertTrue(self.watchdog.blocked)
+
+    def test_only_offline_after_confirmed_close_records_one_event(self):
+        self.db.unlink()
+        self.watchdog.startup()
+        events = []
+        self.watchdog.record_offline_event = lambda: events.append("one") or "c" * 32
+        self.watchdog.tailnet_probe = lambda: (_ for _ in ()).throw(
+            TailnetProbeError("offline")
+        )
+        self.now[0] += 1.1
+        with self.assertRaises(OfflineCloseRecorded):
+            self.watchdog.tick()
+        self.assertEqual(events, ["one"])
+        self.assertEqual(self.kills, [True])
+        self.now[0] += 1.1
+        with self.assertRaises(WatchdogError):
+            self.watchdog.tick()
+        self.assertEqual(events, ["one"])
+
+    def test_offline_event_write_failure_keeps_fail_close_ineligible(self):
+        self.db.unlink()
+        self.watchdog.startup()
+        self.watchdog.record_offline_event = lambda: (_ for _ in ()).throw(
+            OSError("disk full")
+        )
+        self.watchdog.tailnet_probe = lambda: (_ for _ in ()).throw(
+            TailnetProbeError("offline")
+        )
+        self.now[0] += 1.1
+        with self.assertRaisesRegex(WatchdogError, "event=unavailable") as error:
+            self.watchdog.tick()
+        self.assertNotIsInstance(error.exception, OfflineCloseRecorded)
+        self.assertEqual(self.kills, [True])
+
+    def test_unverified_close_never_writes_offline_event(self):
+        self.db.unlink()
+        self.watchdog.startup()
+        events = []
+        self.watchdog.record_offline_event = lambda: events.append("wrong")
+        self.watchdog.kill_service = lambda: (_ for _ in ()).throw(
+            WatchdogError("Service cgroup drain could not be verified")
+        )
+        self.watchdog.tailnet_probe = lambda: (_ for _ in ()).throw(
+            TailnetProbeError("offline")
+        )
+        self.now[0] += 1.1
+        with self.assertRaisesRegex(WatchdogError, "termination unverified"):
+            self.watchdog.tick()
+        self.assertEqual(events, [])
+
+    def test_non_offline_tailnet_failure_never_writes_event(self):
+        self.db.unlink()
+        self.watchdog.startup()
+        events = []
+        self.watchdog.record_offline_event = lambda: events.append("wrong")
+        self.watchdog.tailnet_probe = lambda: (_ for _ in ()).throw(
+            TailnetProbeError("backend")
+        )
+        self.now[0] += 1.1
+        with self.assertRaisesRegex(WatchdogError, "category=backend"):
+            self.watchdog.tick()
+        self.assertEqual(self.kills, [True])
+        self.assertEqual(events, [])
+
+    def test_startup_offline_is_not_a_recovery_event(self):
+        self.db.unlink()
+        events = []
+        self.watchdog.record_offline_event = lambda: events.append("wrong")
+        self.watchdog.tailnet_probe = lambda: (_ for _ in ()).throw(
+            TailnetProbeError("offline")
+        )
+        with self.assertRaisesRegex(WatchdogError, "category=offline") as error:
+            self.watchdog.startup()
+        self.assertNotIsInstance(error.exception, OfflineCloseRecorded)
+        self.assertEqual(self.kills, [True])
+        self.assertEqual(events, [])
+
+    def test_offline_poll_without_serving_service_is_not_a_recovery_event(self):
+        self.db.unlink()
+        self.watchdog.startup()
+        events = []
+        self.watchdog.record_offline_event = lambda: events.append("wrong")
+        self.watchdog.kill_service = lambda: self.kills.append(True) or False
+        self.watchdog.tailnet_probe = lambda: (_ for _ in ()).throw(
+            TailnetProbeError("offline")
+        )
+        self.now[0] += 1.1
+        with self.assertRaisesRegex(WatchdogError, "category=offline") as error:
+            self.watchdog.tick()
+        self.assertNotIsInstance(error.exception, OfflineCloseRecorded)
+        self.assertEqual(self.kills, [True])
+        self.assertEqual(events, [])
+
+    def test_root_private_offline_event_file(self):
+        directory = Path(self.tmp.name) / "offline-recovery"
+        directory.mkdir(mode=0o700)
+        with (
+            patch("prism.host_watchdog.os.geteuid", return_value=0),
+            patch(
+                "prism.host_watchdog.Path.lstat",
+                return_value=SimpleNamespace(st_mode=0o40700, st_uid=0),
+            ),
+        ):
+            event_id = _record_offline_event(directory)
+        self.assertEqual(len(event_id), 32)
+        event = directory / "episode"
+        self.assertEqual(event.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(
+            json.loads(event.read_text()),
+            {"version": 1, "event_id": event_id, "category": "offline"},
+        )
+        with (
+            patch("prism.host_watchdog.os.geteuid", return_value=0),
+            patch(
+                "prism.host_watchdog.Path.lstat",
+                return_value=SimpleNamespace(st_mode=0o40700, st_uid=0),
+            ),
+            self.assertRaisesRegex(WatchdogError, "could not be persisted"),
+        ):
+            _record_offline_event(directory)
+
+    def test_incomplete_episode_write_stays_latched(self):
+        directory = Path(self.tmp.name) / "offline-recovery"
+        directory.mkdir(mode=0o700)
+        with (
+            patch("prism.host_watchdog.os.geteuid", return_value=0),
+            patch(
+                "prism.host_watchdog.Path.lstat",
+                return_value=SimpleNamespace(st_mode=0o40700, st_uid=0),
+            ),
+            patch("prism.host_watchdog.os.write", return_value=0),
+            self.assertRaisesRegex(WatchdogError, "incomplete"),
+        ):
+            _record_offline_event(directory)
+        self.assertTrue((directory / "episode").exists())
+        with (
+            patch("prism.host_watchdog.os.geteuid", return_value=0),
+            patch(
+                "prism.host_watchdog.Path.lstat",
+                return_value=SimpleNamespace(st_mode=0o40700, st_uid=0),
+            ),
+            self.assertRaisesRegex(WatchdogError, "could not be persisted"),
+        ):
+            _record_offline_event(directory)
+
+    def test_only_recorded_offline_close_gets_recovery_exit_status(self):
+        with (
+            patch("prism.host_watchdog.HostWatchdog") as watchdog,
+            self.assertRaises(SystemExit) as ended,
+        ):
+            watchdog.return_value.serve.side_effect = OfflineCloseRecorded("a" * 32)
+            main(
+                [
+                    "serve",
+                    "--db",
+                    str(self.db),
+                    "--hostname",
+                    "pilot.example.ts.net",
+                    "--bind-host",
+                    "100.100.100.100",
+                ]
+            )
+        self.assertEqual(ended.exception.code, 42)
 
     def test_tailnet_loss_on_startup_stops_service(self):
         self.db.unlink()
@@ -651,7 +818,7 @@ class HostWatchdogTests(unittest.TestCase):
             patch("prism.host_watchdog._service_cgroup", return_value=None),
             patch("prism.host_watchdog._group_drained", return_value=True),
         ):
-            _kill_service()
+            self.assertIs(_kill_service(), False)
         self.assertEqual(command.call_count, 1)
         with (
             patch("prism.host_watchdog.subprocess.run", return_value=shown),
@@ -660,6 +827,23 @@ class HostWatchdogTests(unittest.TestCase):
             self.assertRaises(WatchdogError),
         ):
             _kill_service()
+
+    def test_kill_reports_serving_epoch_only_for_active_occupied_service(self):
+        group = "/system.slice/prism-identity-service.service"
+        with (
+            patch(
+                "prism.host_watchdog.subprocess.run",
+                side_effect=[SimpleNamespace(stdout=b"active\n"), SimpleNamespace()],
+            ),
+            patch("prism.host_watchdog._service_cgroup", return_value=group),
+            patch("prism.host_watchdog._group_processes", return_value={123: 456}),
+            patch(
+                "prism.host_watchdog._start_time",
+                side_effect=WatchdogError("Process has exited"),
+            ),
+            patch("prism.host_watchdog._verified_close_residuals"),
+        ):
+            self.assertIs(_kill_service(), True)
 
     def test_close_helper_control_pid_race_retries_exact_identity(self):
         now = [10.0]
