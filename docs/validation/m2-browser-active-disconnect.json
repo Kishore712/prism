@@ -374,5 +374,71 @@
     "grants": 15,
     "new_invitation_or_fault": false,
     "acceptance_limit": "A point-in-time recovery check only; it does not explain the delayed relapses or establish sustained availability."
+  },
+  "same_feature_offline_close_checkpoint": {
+    "date": "2026-09-29",
+    "scope": "Same-feature offline-close lifecycle rule installed after local implementation and normal stop/restart validation. This checkpoint records installation identity and bounded normal service recovery only; it is not a live offline-fault acceptance.",
+    "approved_narrow_rule_implemented_locally": true,
+    "installed_lifecycle": {
+      "path": "/usr/local/libexec/prism-identity-service-lifecycle.py",
+      "sha256": "35c9ff71ffdec528d8e1718b52ac6e67ebf9f1458802aa1c3d8472c5f9bda965",
+      "owner": "root",
+      "mode": "0700",
+      "scope": "approved narrow offline-close rule",
+      "old_backup_retained_root_private": true
+    },
+    "separately_installed_helpers": [
+      {
+        "role": "uncertain-run resolver",
+        "version": "v10",
+        "sha256": "c601f26f2e1cb81b946e1d802a5546ac304a912c68507a1893c6e266dd8ea10c",
+        "owner": "root",
+        "mode": "0700",
+        "prior_version_v9_retained": true,
+        "nonexistent_id_inspect_reached_exact_row_lookup": true
+      },
+      {
+        "role": "browser-active observer",
+        "version": "v3",
+        "sha256": "3ac76b8a364d59eacb6e92c6b6859d041eb1ea37e5d329a9779adc23c8c69c12",
+        "owner": "root",
+        "mode": "0700",
+        "prior_version_v2_retained": true,
+        "loaded_pins_verified": true
+      }
+    ],
+    "normal_stop_checkpoint": {
+      "identity_service_active": false,
+      "watchdog_active": true,
+      "tailscaled_active": true,
+      "tailscale_running_online_shields_up": true
+    },
+    "normal_restart_checkpoint": {
+      "identity_service_active": true,
+      "watchdog_active": true,
+      "tailscaled_active": true,
+      "shields_up_while_serving": false,
+      "private_https_review_status": 200
+    },
+    "post_install_host_state": {
+      "identity_service_active": true,
+      "watchdog_active": true,
+      "tailscaled_active": true,
+      "private_https_review_status": 200,
+      "tailnet_running_online": true,
+      "shields_up_while_serving": false,
+      "database_integrity": "ok",
+      "runs": 29,
+      "grants": 15,
+      "model_dispatches": 77,
+      "pending_tasks": 0
+    },
+    "new_invitation_or_grant": false,
+    "model_calls": 0,
+    "live_offline_fault_injected": false,
+    "pilot_ready": false,
+    "attempt6_cause_known": false,
+    "two_delayed_relapse_causes_known": false,
+    "acceptance_limit": "Normal service stop/restart and post-install health are bounded recovery observations. No real offline fault was injected or accepted; prior attempt-6 uncertainty and both delayed relapses remain unresolved."
   }
 }
