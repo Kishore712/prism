@@ -1,0 +1,59 @@
+{
+  "title": "M2 Tailnet guarded recovery checkpoint",
+  "date_utc": "2026-09-29T22:42:42Z",
+  "status": {
+    "implementation": "V8 guarded recovery and the exact V11 uncertain-run resolver were installed on the private Linux service host.",
+    "pilot_ready": false,
+    "positive_recovery_exercised": false,
+    "scope": "One strict, gated automatic recovery attempt per genuine offline event was approved. This checkpoint did not trigger or validate that positive path."
+  },
+  "release_identity": {
+    "transfer_sha256": "85151e8a9d47da8c2c5e60c3af49b44bf47149f81b463888fadaff566003814e",
+    "source_sha256": "c0f9d990fa44dac1d04802bee11a4c58bae511a272ef098460489d5412fe2202",
+    "lifecycle_sha256": "f342f35e6edce3cb0a7848b50a9a29a9bb8ae5fd7fcdb0e7e660f804de78ec1b",
+    "resolver_v11_sha256": "7b296a08aa143b6584be1de74dc7921cdcf982e733bd66685af4434a2e56e476",
+    "systemd_units_sha256": {
+      "service": "461541c8303c1a2a943489b7d6688125a9f936ddc5b21be5e8e8d53f26616215",
+      "watchdog": "8a3864a0e7396ffe4ea1b09aff6f08ca04be3e4f74634edb741e6769adc02417",
+      "recovery": "ae7a9ec87d977ef152333347738a121cbf7634744fc5ca48c8f976bd2642cdaa"
+    }
+  },
+  "local_validation": {
+    "focused_tests": {
+      "passed": 125,
+      "breakdown": {
+        "tailnet_recovery_host_watchdog_identity_release_v11_resolver_offline_pins": "97/97",
+        "identity_guest_identity_lifecycle": "28/28"
+      }
+    },
+    "ruff_check": "passed",
+    "static_review": "High-level review found no P1/P2 issue; this is not a security audit."
+  },
+  "host_validation": {
+    "systemd_analyze_verify": "passed",
+    "normal_start_and_manual_stop_start": "passed",
+    "manual_stop_behavior": "The service stopped and drained; watchdog remained active; Shields Up was true; no offline episode or recovery attempt was recorded.",
+    "recovery_helper_without_watchdog_exit_42": "denied",
+    "resolver_v11_active_lock_and_missing_exact_run": "denied",
+    "final_state": "Service and watchdog active; recovery unit inactive; Tailnet Running/Online; Shields Up false while serving; private HTTPS returned 200; database integrity check passed; zero queued, running, or uncertain runs; Kata namespace empty.",
+    "preserved_point_in_time_counts": {
+      "dispatches": 77,
+      "grants": 16,
+      "independent_grant_baseline": false,
+      "run_statuses_changed": false,
+      "model_calls": 0,
+      "grant_delta": "Validation actions created no grant; an independent before/after grant baseline was not established.",
+      "public_access": false
+    }
+  },
+  "limits": [
+    "No genuine V8 Self.Online=false event or watchdog exit 42 was induced, so no positive automatic recovery occurred.",
+    "Safe fault isolation could not be guaranteed; the guarded positive path remains unverified and pilot_ready remains false.",
+    "A failed paired status/preference sample during the 60-second stability window immediately rejects that event; the implementation does not reset and restart the window as described in the earlier proposal text.",
+    "Live manual-start interleaving and requester provenance were not tested in a host race; these controls cannot be claimed as verified.",
+    "Resolver checks exercised denial cases only; no production uncertain run was resolved.",
+    "The earlier V7 failure at 2026-09-29T22:24:32Z after category=offline remains unexplained.",
+    "A parent check confirmed unit states and Tailnet Running/Online with Shields Up false. A separate file-mode check timed out, so file ownership and mode are not independently claimed here.",
+    "Point-in-time health, service start/stop checks, hashes, and local test results do not prove continuous health, safe positive recovery, an uptime bound, or broad security assurance."
+  ]
+}

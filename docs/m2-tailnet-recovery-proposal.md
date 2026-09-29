@@ -1,6 +1,10 @@
 # Proposal: Guarded Prism Recovery After an Offline Close
 
-**Status: Proposed for a material security-boundary decision; not authorized, implemented, or deployed. This proposal does not establish that automatic recovery is safe.**
+**Status (2026-09-29): The owner approved implementation and bounded host validation of strict, single-attempt automatic recovery gated on a genuine offline event. V8 and its pinned lifecycle units are installed. Positive recovery has not been exercised; `pilot_ready=false`. This approval does not establish that automatic recovery is safe or fully verified. See the [sanitized validation checkpoint](validation/m2-tailnet-guarded-recovery.json).**
+
+The detailed sequence and acceptance criteria below remain the approved design constraints, not evidence that each positive gate or fault case passed. The scope permits one attempt for a genuine offline event; manual operator stops are excluded. No such V8 event was safely induced in this checkpoint, so the installed automatic path remains unverified. Earlier statements below that called the proposal unauthorized describe the historical state before the 2026-09-29 approval.
+
+After a failed or exhausted episode, its event latch intentionally blocks a manual `systemctl start`. An operator must inspect the exact event, then explicitly invoke the root-only `recovery-abandon --event-id <id>` with Prism stopped, inbound shielding confirmed, and workload state verified empty before manual start is allowed. This records abandonment of that event; it does not authorize an automatic retry or direct latch deletion.
 
 ## Evidence and current behavior
 
