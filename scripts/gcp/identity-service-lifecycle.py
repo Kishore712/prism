@@ -42,6 +42,7 @@ RUN_RE = re.compile(r"[a-f0-9]{32}\Z")
 BUNDLE_RE = re.compile(r"[a-f0-9]{64}\Z")
 PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ENV = {"PATH": PATH, "LC_ALL": "C"}
+CGROUP_ROOT = Path("/sys/fs/cgroup")
 SOURCE_FILES = frozenset(
     (
         "README.md",
@@ -697,23 +698,36 @@ def old_timer_absent():
             raise ValueError("A prior identify restore timer is still active.")
 
 
-def tailnet_state(host, ip, shield):
+def tailnet_state(host, ip, shield, *, close_only_offline=False):
+    sampled_at = time.monotonic()
     status = json.loads(run("tailscale", "status", "--json").stdout)
     prefs = json.loads(run("tailscale", "debug", "prefs").stdout)
-    own = status.get("Self") or {}
-    addresses = own.get("TailscaleIPs") or []
+    # The offline exception is only for a fresh, local close observation. A
+    # slow pair of reads must not confirm protection based on an old sample.
+    fresh = time.monotonic() - sampled_at <= 5
+    if not isinstance(status, dict) or not isinstance(prefs, dict):
+        raise TypeError("The fixed private tailnet state is unavailable.")
+    own = status.get("Self")
+    if not isinstance(own, dict):
+        raise TypeError("The fixed private tailnet state is unavailable.")
+    addresses = own.get("TailscaleIPs")
+    online = own.get("Online")
+    dns_name = own.get("DNSName")
     if (
         status.get("BackendState") != "Running"
-        or own.get("Online") is not True
-        or own.get("DNSName", "").lower().rstrip(".") != host
+        or not (online is True or (close_only_offline and online is False and fresh))
+        or not isinstance(dns_name, str)
+        or dns_name.lower().rstrip(".") != host
+        or not isinstance(addresses, list)
         or addresses.count(ip) != 1
         or own.get("Tags") != ["tag:prism-host"]
         or prefs.get("ShieldsUp") is not shield
         or prefs.get("RunSSH") is not False
         or prefs.get("RouteAll") is not False
-        or prefs.get("AdvertiseRoutes")
-        or prefs.get("ExitNodeID")
-        or prefs.get("ExitNodeIP")
+        or "AdvertiseRoutes" not in prefs
+        or prefs["AdvertiseRoutes"] not in (None, [])
+        or prefs.get("ExitNodeID") != ""
+        or prefs.get("ExitNodeIP") != ""
     ):
         raise ValueError("The fixed private tailnet state is unavailable.")
 
@@ -737,18 +751,7 @@ def emergency_block():
             pass
     for _ in range(10):
         try:
-            prefs = json.loads(run("tailscale", "debug", "prefs", timeout=3).stdout)
-            if prefs.get("ShieldsUp") is True:
-                return
-        except (
-            OSError,
-            ValueError,
-            subprocess.CalledProcessError,
-            subprocess.TimeoutExpired,
-        ):
-            pass
-        try:
-            pid = run(
+            main_pid = run(
                 "systemctl",
                 "show",
                 "--value",
@@ -756,12 +759,55 @@ def emergency_block():
                 "tailscaled.service",
                 timeout=3,
             ).stdout.strip()
-            if pid == "0":
-                return
-        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            control_pid = run(
+                "systemctl",
+                "show",
+                "--value",
+                "--property=ControlPID",
+                "tailscaled.service",
+                timeout=3,
+            ).stdout.strip()
+            active = run(
+                "systemctl",
+                "show",
+                "--value",
+                "--property=ActiveState",
+                "tailscaled.service",
+                timeout=3,
+            ).stdout.strip()
+            group = run(
+                "systemctl",
+                "show",
+                "--value",
+                "--property=ControlGroup",
+                "tailscaled.service",
+                timeout=3,
+            ).stdout.strip()
+            fixed_group = "/system.slice/tailscaled.service"
+            if (
+                main_pid == "0"
+                and control_pid == "0"
+                and active in {"inactive", "failed", "deactivating"}
+                and group in {"", fixed_group}
+                and (group or active in {"inactive", "failed"})
+            ):
+                root = CGROUP_ROOT / fixed_group.lstrip("/")
+                if not root.exists():
+                    return
+                procs = list(root.rglob("cgroup.procs"))
+                if procs and not any(
+                    path.read_text(encoding="ascii").strip() for path in procs
+                ):
+                    return
+        except (
+            OSError,
+            UnicodeError,
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+        ):
             pass
         time.sleep(0.2)
-    raise ValueError("Tailnet inbound could not be independently blocked.")
+    raise ValueError("Tailnet daemon termination could not be independently verified.")
 
 
 def close_failure_category(exc):
@@ -779,10 +825,11 @@ def close(host, ip):
     restore_failure = None
     try:
         run(RESTORE, timeout=40)
-        tailnet_state(host, ip, True)
+        tailnet_state(host, ip, True, close_only_offline=True)
         return
     except (
         OSError,
+        TypeError,
         ValueError,
         subprocess.CalledProcessError,
         subprocess.TimeoutExpired,
@@ -790,10 +837,11 @@ def close(host, ip):
         restore_failure = close_failure_category(exc)
     try:
         run("tailscale", "set", "--shields-up=true", timeout=20)
-        tailnet_state(host, ip, True)
+        tailnet_state(host, ip, True, close_only_offline=True)
         return
     except (
         OSError,
+        TypeError,
         ValueError,
         subprocess.CalledProcessError,
         subprocess.TimeoutExpired,
@@ -811,6 +859,7 @@ def close(host, ip):
 
 def prepare(host, ip, record, bundle, run_id, project_sha256=None):
     close(host, ip)
+    tailnet_state(host, ip, True)
     guard_ready()
     old_timer_absent()
     installation(record, bundle, run_id)

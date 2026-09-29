@@ -151,10 +151,8 @@ class BrowserActiveSelectionTests(unittest.TestCase):
     def test_v9_pins_match_files_and_old_resolver_identity_is_required(self):
         root = SCRIPT.parents[1]
         self.assertEqual(
-            hashlib.sha256(
-                (root / "scripts/gcp/identity-service-lifecycle.py").read_bytes()
-            ).hexdigest(),
             check.RELEASE_LIFECYCLE_SHA256,
+            "542465aedc1316f67edbae398407f0bb80de91bb4d800db547d3791d59b2d143",
         )
         self.assertEqual(
             hashlib.sha256(

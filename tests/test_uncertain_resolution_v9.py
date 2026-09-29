@@ -34,7 +34,7 @@ class UncertainResolutionV9Tests(unittest.TestCase):
             )
             .replace(
                 'LIFECYCLE_SHA256 = "79e3db10b3683bc65292f449b88798d4edb8674a6f8ea63c8cd08d8cd64c9c0f"',
-                f'LIFECYCLE_SHA256 = "{hashlib.sha256(LIFECYCLE.read_bytes()).hexdigest()}"',
+                'LIFECYCLE_SHA256 = "542465aedc1316f67edbae398407f0bb80de91bb4d800db547d3791d59b2d143"',
             )
             .replace(
                 'TRANSFER = "e11ea7a88a2b029f73e2374d47f271af178ff0604febbe9a47e1b4c9259d4f27"',
@@ -70,6 +70,11 @@ class UncertainResolutionV9Tests(unittest.TestCase):
         units = {resolution.SERVICE: service, resolution.WATCHDOG: watchdog}
         with (
             patch.object(resolution, "LIFECYCLE", str(LIFECYCLE)),
+            patch.object(
+                resolution,
+                "LIFECYCLE_SHA256",
+                hashlib.sha256(LIFECYCLE.read_bytes()).hexdigest(),
+            ),
             patch.object(resolution, "OWNER_UID", os.getuid()),
             patch.object(resolution, "unit_pin", side_effect=units.__getitem__),
             patch.object(

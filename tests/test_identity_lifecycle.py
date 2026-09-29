@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -28,6 +29,251 @@ GUEST_SPEC.loader.exec_module(guest)
 
 
 class IdentityLifecycleTests(unittest.TestCase):
+    @staticmethod
+    def tailnet_samples(online=False, shield=True):
+        return (
+            {
+                "BackendState": "Running",
+                "Self": {
+                    "Online": online,
+                    "DNSName": "pilot.example.ts.net.",
+                    "TailscaleIPs": ["100.100.100.100"],
+                    "Tags": ["tag:prism-host"],
+                },
+            },
+            {
+                "ShieldsUp": shield,
+                "RunSSH": False,
+                "RouteAll": False,
+                "AdvertiseRoutes": [],
+                "ExitNodeID": "",
+                "ExitNodeIP": "",
+            },
+        )
+
+    @staticmethod
+    def sample_run(status, prefs):
+        def command(*argv, **_kwargs):
+            if argv == ("tailscale", "status", "--json"):
+                return SimpleNamespace(stdout=json.dumps(status))
+            if argv == ("tailscale", "debug", "prefs"):
+                return SimpleNamespace(stdout=json.dumps(prefs))
+            return SimpleNamespace(stdout="")
+
+        return command
+
+    def test_offline_close_is_fresh_shielded_and_does_not_stop_daemon(self):
+        for online, routes in ((False, []), (False, None), (True, []), (True, None)):
+            with self.subTest(online=online, routes=routes):
+                status, prefs = self.tailnet_samples(online=online)
+                prefs["AdvertiseRoutes"] = routes
+                commands = []
+
+                def command(*argv, samples=(status, prefs), output=commands, **kwargs):
+                    output.append(argv)
+                    return self.sample_run(*samples)(*argv, **kwargs)
+
+                with (
+                    patch.object(life, "run", side_effect=command),
+                    patch.object(life, "emergency_block") as blocked,
+                ):
+                    life.close("pilot.example.ts.net", "100.100.100.100")
+                blocked.assert_not_called()
+                self.assertEqual(commands[0], (life.RESTORE,))
+                self.assertNotIn(("tailscale", "set", "--shields-up=false"), commands)
+                self.assertFalse(
+                    any(argv[:2] == ("systemctl", "start") for argv in commands)
+                )
+
+    def test_offline_close_denies_missing_or_unsafe_state(self):
+        cases = []
+        for value in (False, None, "true"):
+            status, prefs = self.tailnet_samples(shield=value)
+            cases.append((f"shield={value!r}", status, prefs))
+        status, prefs = self.tailnet_samples()
+        prefs.pop("ShieldsUp")
+        cases.append(("missing shield", status, prefs))
+        for field, value in (
+            ("RunSSH", True),
+            ("RouteAll", True),
+            ("AdvertiseRoutes", ["10.0.0.0/8"]),
+            ("ExitNodeID", "other"),
+            ("ExitNodeIP", "100.1.2.3"),
+        ):
+            status, prefs = self.tailnet_samples()
+            prefs[field] = value
+            cases.append((field, status, prefs))
+        for field in (
+            "RunSSH",
+            "RouteAll",
+            "AdvertiseRoutes",
+            "ExitNodeID",
+            "ExitNodeIP",
+        ):
+            status, prefs = self.tailnet_samples()
+            prefs.pop(field)
+            cases.append((f"missing {field}", status, prefs))
+        for field, value in (
+            ("DNSName", "different.example.ts.net"),
+            ("DNSName", 1),
+            ("TailscaleIPs", []),
+            ("TailscaleIPs", "100.100.100.100"),
+            ("Tags", []),
+            ("Online", None),
+        ):
+            status, prefs = self.tailnet_samples()
+            status["Self"][field] = value
+            cases.append((field, status, prefs))
+        for field in ("Self", "BackendState"):
+            status, prefs = self.tailnet_samples()
+            status.pop(field)
+            cases.append((f"missing {field}", status, prefs))
+        status, prefs = self.tailnet_samples()
+        status["BackendState"] = "Stopped"
+        cases.append(("backend stopped", status, prefs))
+        status, prefs = self.tailnet_samples()
+        cases.extend(
+            (
+                ("null status", None, prefs),
+                ("malformed status type", [], prefs),
+                ("null preferences", status, None),
+                ("malformed preferences type", status, []),
+            )
+        )
+        for name, status, prefs in cases:
+            with (
+                self.subTest(name=name),
+                patch.object(life, "run", side_effect=self.sample_run(status, prefs)),
+                patch.object(life, "emergency_block") as blocked,
+                patch.object(life.sys, "stderr", io.StringIO()) as journal,
+            ):
+                life.close("pilot.example.ts.net", "100.100.100.100")
+                blocked.assert_called_once_with()
+                self.assertIn("restore=state, fallback=state", journal.getvalue())
+
+    def test_offline_close_denies_failed_unreadable_and_stale_samples(self):
+        status, prefs = self.tailnet_samples()
+        for failure in (
+            subprocess.CalledProcessError(1, "tailscale"),
+            subprocess.TimeoutExpired("tailscale", 1),
+            OSError("unavailable"),
+            ValueError("malformed json"),
+        ):
+
+            def command(*argv, failure=failure, **kwargs):
+                if argv == ("tailscale", "status", "--json"):
+                    raise failure
+                return self.sample_run(status, prefs)(*argv, **kwargs)
+
+            with (
+                self.subTest(failure=type(failure).__name__),
+                patch.object(life, "run", side_effect=command),
+                patch.object(life, "emergency_block") as blocked,
+                patch.object(life.sys, "stderr", io.StringIO()),
+            ):
+                life.close("pilot.example.ts.net", "100.100.100.100")
+                blocked.assert_called_once_with()
+        with (
+            patch.object(life, "run", side_effect=self.sample_run(status, prefs)),
+            patch.object(life.time, "monotonic", side_effect=[0, 6, 0, 6]),
+            patch.object(life, "emergency_block") as blocked,
+            patch.object(life.sys, "stderr", io.StringIO()) as journal,
+        ):
+            life.close("pilot.example.ts.net", "100.100.100.100")
+            blocked.assert_called_once_with()
+            self.assertIn("restore=state, fallback=state", journal.getvalue())
+
+        def malformed_json(*argv, **kwargs):
+            if argv == ("tailscale", "debug", "prefs"):
+                return SimpleNamespace(stdout="{")
+            return self.sample_run(status, prefs)(*argv, **kwargs)
+
+        with (
+            patch.object(life, "run", side_effect=malformed_json),
+            patch.object(life, "emergency_block") as blocked,
+            patch.object(life.sys, "stderr", io.StringIO()) as journal,
+        ):
+            life.close("pilot.example.ts.net", "100.100.100.100")
+            blocked.assert_called_once_with()
+            self.assertIn("restore=state, fallback=state", journal.getvalue())
+
+    def test_offline_is_rejected_for_serve_open_and_prepare(self):
+        status, prefs = self.tailnet_samples()
+        with (
+            patch.object(life, "run", side_effect=self.sample_run(status, prefs)),
+            self.assertRaises(ValueError),
+        ):
+            life.tailnet_state("pilot.example.ts.net", "100.100.100.100", True)
+        with (
+            patch.object(life, "model_budget"),
+            patch.object(
+                life,
+                "installation",
+                return_value=("/fixed/release", "a" * 64, "b" * 32),
+            ),
+            patch.object(life, "uses_watchdog", return_value=False),
+            patch.object(life, "guard_ready"),
+            patch.object(life, "old_timer_absent"),
+            patch.object(
+                life, "run", side_effect=self.sample_run(status, prefs)
+            ) as command,
+        ):
+            with self.assertRaises(ValueError):
+                life.serve(
+                    "pilot.example.ts.net",
+                    "100.100.100.100",
+                    str(life.INSTALLED),
+                    "a" * 64,
+                    "b" * 32,
+                )
+            with self.assertRaises(ValueError):
+                life.prepare(
+                    "pilot.example.ts.net",
+                    "100.100.100.100",
+                    str(life.INSTALLED),
+                    "a" * 64,
+                    "b" * 32,
+                )
+            with self.assertRaises(ValueError):
+                life.open_service(
+                    "pilot.example.ts.net",
+                    "100.100.100.100",
+                    str(life.INSTALLED),
+                    "a" * 64,
+                    "b" * 32,
+                )
+            self.assertFalse(
+                any(
+                    call.args[:3] == ("tailscale", "set", "--shields-up=false")
+                    for call in command.call_args_list
+                )
+            )
+
+    def test_repeated_and_concurrent_offline_close_is_deterministic(self):
+        status, prefs = self.tailnet_samples()
+        for shield, expected_blocks in ((True, 0), (False, 8)):
+            prefs["ShieldsUp"] = shield
+            with (
+                self.subTest(shield=shield),
+                patch.object(life, "run", side_effect=self.sample_run(status, prefs)),
+                patch.object(life, "emergency_block") as blocked,
+                patch.object(life.sys, "stderr", io.StringIO()) as journal,
+            ):
+                with ThreadPoolExecutor(max_workers=4) as executor:
+                    list(
+                        executor.map(
+                            lambda _: life.close(
+                                "pilot.example.ts.net", "100.100.100.100"
+                            ),
+                            range(8),
+                        )
+                    )
+                self.assertEqual(blocked.call_count, expected_blocks)
+                self.assertEqual(
+                    journal.getvalue().count("restore=state, fallback=state"),
+                    expected_blocks,
+                )
+
     def test_render_requires_reviewed_fixture_before_pinning_project(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
@@ -374,16 +620,88 @@ class IdentityLifecycleTests(unittest.TestCase):
 
         def command(*argv, **kwargs):
             events.append(argv)
-            if argv[:3] == ("tailscale", "debug", "prefs"):
-                raise subprocess.CalledProcessError(1, argv)
             if argv[:2] == ("systemctl", "show"):
-                return SimpleNamespace(stdout="0\n")
+                field = argv[3]
+                return SimpleNamespace(
+                    stdout={
+                        "--property=MainPID": "0\n",
+                        "--property=ControlPID": "0\n",
+                        "--property=ActiveState": "inactive\n",
+                        "--property=ControlGroup": "\n",
+                    }[field]
+                )
             return SimpleNamespace(stdout="")
 
         with patch.object(life, "run", side_effect=command):
             life.emergency_block()
         self.assertEqual(events[0][:2], ("systemctl", "kill"))
         self.assertEqual(events[1][:3], ("systemctl", "stop", "--no-block"))
+
+    def test_emergency_block_does_not_trust_shield_after_stop_failure(self):
+        events = []
+
+        def command(*argv, **kwargs):
+            events.append(argv)
+            if argv[:2] in (("systemctl", "kill"), ("systemctl", "stop")):
+                raise subprocess.CalledProcessError(1, argv)
+            if argv == ("tailscale", "debug", "prefs"):
+                return SimpleNamespace(stdout='{"ShieldsUp":true}')
+            if argv[:2] == ("systemctl", "show"):
+                return SimpleNamespace(stdout="42\n")
+            return SimpleNamespace(stdout="")
+
+        with (
+            patch.object(life, "run", side_effect=command),
+            patch.object(life.time, "sleep"),
+            self.assertRaisesRegex(
+                ValueError, "termination could not be independently verified"
+            ),
+        ):
+            life.emergency_block()
+        self.assertEqual(sum(argv[:2] == ("systemctl", "show") for argv in events), 40)
+        self.assertFalse(any(argv[:2] == ("tailscale", "debug") for argv in events))
+
+    def test_emergency_block_waits_for_cgroup_drain(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            group = root / "system.slice" / "tailscaled.service"
+            group.mkdir(parents=True)
+            procs = group / "cgroup.procs"
+            procs.write_text("42\n")
+            child = group / "child"
+            child.mkdir()
+            child_procs = child / "cgroup.procs"
+            child_procs.write_text("44\n")
+            reads = 0
+
+            def command(*argv, **kwargs):
+                nonlocal reads
+                if argv[:2] == ("systemctl", "show"):
+                    field = argv[3]
+                    if field == "--property=ControlGroup":
+                        reads += 1
+                        if reads == 2:
+                            procs.write_text("")
+                        if reads == 3:
+                            child_procs.write_text("")
+                    return SimpleNamespace(
+                        stdout={
+                            "--property=MainPID": "0\n",
+                            "--property=ControlPID": "0\n",
+                            "--property=ActiveState": "deactivating\n",
+                            "--property=ControlGroup": "/system.slice/tailscaled.service\n",
+                        }[field]
+                    )
+                return SimpleNamespace(stdout="")
+
+            with (
+                patch.object(life, "CGROUP_ROOT", root),
+                patch.object(life, "run", side_effect=command),
+                patch.object(life.time, "sleep") as sleep,
+            ):
+                life.emergency_block()
+            self.assertEqual(reads, 3)
+            self.assertEqual(sleep.call_count, 2)
 
 
 if __name__ == "__main__":
