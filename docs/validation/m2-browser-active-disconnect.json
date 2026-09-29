@@ -2,13 +2,13 @@
   "schema": 1,
   "kind": "m2-browser-active-disconnect-validation",
   "date": "2026-09-29",
-  "status": "bounded-attempts-passed-with-two-delayed-host-relapses",
+  "status": "latest-bounded-attempt-passed-with-three-delayed-host-relapses",
   "passed": false,
   "campaign_passed": false,
   "latest_bounded_attempt_passed": true,
   "pilot_ready": false,
   "model_calls": 0,
-  "scope": "Bounded attempt to submit the approved synthetic json-check from a separately authenticated recipient Chrome session and observe tailnet-loss handling while a Kata task was active. The browser submission used a same-origin diagnostic POST through DevTools with the session CSRF token; it did not use the normal conversation UI. No task network access or model call occurred.",
+  "scope": "Bounded browser-active attempt 9 using the approved synthetic three-file Document release and a separately authenticated Chrome session; submission used a same-origin DevTools diagnostic POST, not the conversation UI. Observer checks passed, but the browser showed failed/unknown with no completed result. No model call or task network access occurred.",
   "identity_and_fixture": {
     "owner_and_recipient_are_independent": true,
     "recipient_identity": "Previously verified USC Google OIDC identity in a separate Chrome incognito profile; identifiers omitted",
@@ -185,6 +185,49 @@
       "stability_samples": 37,
       "pilot_ready": false,
       "attempt_passed": true
+    },
+    {
+      "attempt": 9,
+      "run_number": 30,
+      "date": "2026-09-29",
+      "submission": "Authenticated Chrome same-origin DevTools diagnostic POST",
+      "http_status": 200,
+      "scope": "Approved fixed three-file synthetic Document release; one-hour USC Google OIDC invitation redeemed in a separate Chrome incognito profile; preflight passed.",
+      "observer_version": "v3",
+      "observer_outcome": "passed",
+      "observer_checks_passed": 13,
+      "observer_checks_total": 13,
+      "checks": {
+        "pinned_idle_scope": true,
+        "new_exact_granted_run": true,
+        "runtime_worker_client_kata_bound": true,
+        "exact_running_fault_edge": true,
+        "tailnet_stopped": true,
+        "watchdog_stopped_service": true,
+        "whole_group_stopped_within_30s": true,
+        "run_uncertain_null": true,
+        "resource_absent": true,
+        "no_group_reconstruction": true,
+        "uncertain_run_resolved": true,
+        "final_resource_and_process_absence": true,
+        "service_restored": true
+      },
+      "disappearance_seconds": {
+        "client": 0.924,
+        "driver": 0.992,
+        "worker": 0.992,
+        "qemu": 1.061,
+        "shim": 1.349,
+        "whole_group": 1.297,
+        "metadata": 1.467,
+        "uncertain_null": 5.558
+      },
+      "post_recovery_stability_observed_seconds": 180.119,
+      "post_recovery_stability_samples": 37,
+      "maximum_scan_gap_seconds": 0.174,
+      "browser_result": "Activity & results showed failed/unknown; no completed result or completion was shown.",
+      "model_calls": 0,
+      "task_network_access": false
     }
   ],
   "delayed_relapse": {
@@ -262,26 +305,26 @@
     "model_dispatches": 77,
     "vm_auto_stop_enabled": false,
     "grant_active": true,
-    "grant_revoked": false
+    "grant_revoked": false,
+    "grants": 15
   },
   "subsequent_grant_check": {
+    "checkpoint": "Historical post-attempt-8 grant check; does not describe the attempt-9 grant",
+    "applies_to_attempts": [6, 7, 8],
     "latest_one_hour_grant_expired_naturally": true,
     "unexpired_matching_test_grants": 0,
     "grant_revoked": false
   },
   "limits": [
-    "Attempts 7 and 8 passed their bounded observers, but attempt 6 failed strict whole-group checks after an unclassified extra candidate; raw evidence is unavailable and the cause is unknown.",
-    "The recipient submitted through a DevTools diagnostic POST, not the normal conversation UI.",
-    "The run used only the approved fixed synthetic json-check; no model call or task network access occurred.",
+    "Attempt 9 passed all 13 observer checks, but the browser showed failed/unknown and no completed result; task completion remains unproven.",
+    "Attempt 6 failed strict whole-group checks after an unclassified extra candidate; raw evidence is unavailable and the cause is unknown.",
+    "The recipient submitted through a same-origin DevTools diagnostic POST, not the normal conversation UI.",
+    "The run used only the approved fixed three-file synthetic Document release; no model call or task network access occurred.",
     "A bounded disappearance observation does not prove a universal hard shutdown deadline.",
-    "The delayed tailnet relapse remains unexplained, and the same-second PollNetMap EOF is not established as its cause.",
-    "Earlier attempts 1 through 5 retain their individual failed or inconclusive outcomes.",
-    "The final browser Activity & results view showed failed/unknown for attempts 6 through 8; no completed result was shown.",
-    "The latest one-hour grant was active at final host postcheck, then expired naturally without revocation.",
-    "The host postcheck does not independently prove browser-origin authorization or a completed result.",
-    "No hard SLA, broad safety claim, or pilot readiness is established.",
-    "A second delayed host relapse was observed after the 180-second stability windows for attempts 7 and 8; those windows did not establish sustained availability. Journal timing is correlation only and does not establish the PollNetMap reset as the cause.",
-    "Manual recovery records a point-in-time recovered state; it does not resolve the relapse cause or establish sustained availability."
+    "Three delayed offline relapses have been observed. For the latest event, the journal timing is recorded but does not prove root cause or continuous tailscaled operation.",
+    "Earlier attempts retain their individual outcomes in this record.",
+    "The latest one-hour grant was active and not revoked at the postcheck.",
+    "No hard SLA, broad safety claim, or pilot readiness is established."
   ],
   "privacy": "No account identifiers, authentication links, credentials, private URL, run ID, container ID or transcript are included.",
   "second_delayed_relapse": {
@@ -440,5 +483,59 @@
     "attempt6_cause_known": false,
     "two_delayed_relapse_causes_known": false,
     "acceptance_limit": "Normal service stop/restart and post-install health are bounded recovery observations. No real offline fault was injected or accepted; prior attempt-6 uncertainty and both delayed relapses remain unresolved."
+  },
+  "latest_browser_result_view_attempt9": {
+    "surface": "Separate Chrome incognito recipient Activity & results after refresh for attempt 9/run 30",
+    "new_execution_records_displayed": 1,
+    "displayed_task_state": "failed/unknown",
+    "completed_result_shown": false,
+    "interpretation": "Observer checks passed, but this browser view showed no completed result; task completion remains unproven."
+  },
+  "latest_host_postcheck": {
+    "units_active": [
+      "prism-identity-service",
+      "prism-identity-host-watchdog",
+      "tailscaled"
+    ],
+    "tailnet_status": "Running/Online",
+    "shields_up": false,
+    "private_https_review_path": "/review",
+    "private_https_review_status": 200,
+    "kata_task_list_empty": true,
+    "database_integrity": "ok",
+    "runs": 30,
+    "run_states": {
+      "cancelled": 1,
+      "completed": 10,
+      "failed": 19
+    },
+    "grants": 16,
+    "invitations": 17,
+    "sessions": 16,
+    "model_dispatches": 77,
+    "vm_auto_stop_enabled": false,
+    "newest_one_hour_grant_active": true,
+    "newest_one_hour_grant_revoked": false
+  },
+  "latest_same_feature_followup": {
+    "date": "2026-09-29",
+    "scope": "Follow-up to the historical same-feature offline-close installation checkpoint; records the naturally delayed event, attempt 9 and point-in-time recovery/postcheck.",
+    "natural_delayed_offline_event": {
+      "observed_utc": "2026-09-29T19:07:18Z",
+      "watchdog_category": "offline",
+      "prism_service_killed": true,
+      "watchdog_failed": true,
+      "tailscaled_pid": 1075702,
+      "same_pid_editprefs_shields_up_logged_utc": "2026-09-29T19:07:19Z",
+      "same_pid_netmap_returned_utc": "2026-09-29T19:08:58Z",
+      "root_cause_proven": false,
+      "continuous_daemon_operation_proven": false
+    },
+    "strict_pinned_recovery": {
+      "all_three_units_active": true,
+      "private_https_review_status": 200
+    },
+    "attempt9_reference": "#/attempts/8",
+    "acceptance_limit": "Attempt 9 observer checks passed, but the browser showed failed/unknown with no completed result. The natural offline event has no proven root cause, and the PID log does not establish continuous tailscaled operation. Attempt 6 remains unresolved; all three delayed relapses remain unexplained. pilot_ready=false; no hard SLA or broad safety claim is established."
   }
 }
