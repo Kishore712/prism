@@ -2,11 +2,13 @@
 
 import hashlib
 import json
+import tempfile
 import threading
 import time
 import uuid
 from dataclasses import asdict, dataclass
 from importlib.resources import files
+from pathlib import Path
 
 from prism.engine import API, Engine, EngineError
 
@@ -32,6 +34,10 @@ def json_check_program() -> str:
 
 
 def action_program(action: str) -> str:
+    if action == "python-workspace":
+        from prism.computation import program
+
+        return program()
     if action == "bootstrap":
         return probe_program()
     if action == "json-check":
@@ -145,12 +151,13 @@ class RunResult:
 
 
 class LogReader(threading.Thread):
-    def __init__(self, engine: Engine, name: str, timeout: float):
+    def __init__(self, engine: Engine, name: str, timeout: float, limit=OUTPUT_LIMIT):
         super().__init__(daemon=True)
         self.engine, self.name, self.timeout = engine, name, timeout
         self.stdout, self.stderr = bytearray(), bytearray()
         self.exceeded = threading.Event()
         self.failed = False
+        self.limit = limit
 
     def run(self):
         try:
@@ -169,7 +176,7 @@ class LogReader(threading.Thread):
                     ):
                         raise EngineError("Invalid log stream frame.")
                     length = int.from_bytes(header[4:], "big")
-                    remaining = OUTPUT_LIMIT - len(self.stdout) - len(self.stderr)
+                    remaining = self.limit - len(self.stdout) - len(self.stderr)
                     if length > remaining:
                         self.exceeded.set()
                         return
@@ -213,7 +220,13 @@ class DevelopmentRuntime:
         raise EngineError("Selftest resource removal was not confirmed.")
 
     def run(
-        self, action: str, argument=None, *, timeout: float = 10, cancel=None
+        self,
+        action: str,
+        argument=None,
+        *,
+        timeout: float = 10,
+        cancel=None,
+        _spec=None,
     ) -> RunResult:
         if not 0.1 <= timeout <= 30:
             raise ValueError(
@@ -221,7 +234,12 @@ class DevelopmentRuntime:
             )
         token = uuid.uuid4().hex
         name = "prism-m0-" + token
-        spec = container_spec(self.image_id, action, argument, token)
+        spec = (
+            container_spec(self.image_id, action, argument, token)
+            if _spec is None
+            else _spec
+        )
+        spec["Labels"] = {LABEL: token}
         started = time.monotonic()
         reader = None
         result = None
@@ -229,7 +247,12 @@ class DevelopmentRuntime:
         try:
             self.engine.request("POST", API + "/containers/create?name=" + name, spec)
             self.engine.request("POST", API + f"/containers/{name}/start")
-            reader = LogReader(self.engine, name, timeout + 6)
+            reader = LogReader(
+                self.engine,
+                name,
+                timeout + 6,
+                192 * 1024 if action == "python-workspace" else OUTPUT_LIMIT,
+            )
             reader.start()
             reason = "exited"
             while True:
@@ -282,8 +305,8 @@ class DevelopmentRuntime:
                 self.image_id,
                 hashlib.sha256(
                     (
-                        json_check_program()
-                        if action == "json-check"
+                        action_program(action)
+                        if action in ("json-check", "python-workspace")
                         else probe_program()
                     ).encode()
                 ).hexdigest(),
@@ -300,3 +323,58 @@ class DevelopmentRuntime:
             if result is not None:
                 result.cleaned_up = cleaned
         return result
+
+    def run_python(self, argument, *, cancel=None, timeout=30):
+        """Mount only freshly staged approved bytes; never mount an owner source."""
+        from prism.computation import decode_payload, program
+
+        value = decode_payload(argument)
+        with tempfile.TemporaryDirectory(prefix="prism-compute-") as temporary:
+            root = Path(temporary).resolve() / "project"
+            root.mkdir(mode=0o755)
+            for item in value["inputs"]:
+                path = root / item["name"]
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(item["text"], encoding="utf-8")
+                path.chmod(0o444)
+            for path in root.rglob("*"):
+                if path.is_dir():
+                    path.chmod(0o755)
+            launcher_policy = {
+                "entrypoint": value["entrypoint"],
+                "inputs": [f["name"] for f in value["inputs"]],
+                "outputs": value["outputs"],
+            }
+            import base64
+
+            spec = container_spec(self.image_id, "sleep", None, "pending")
+            spec["Cmd"] = [
+                "-I",
+                "-B",
+                "-u",
+                "-c",
+                program(),
+                base64.b64encode(json.dumps(launcher_policy).encode()).decode(),
+            ]
+            host = spec["HostConfig"]
+            host.update(
+                Memory=256 * 1024 * 1024,
+                MemorySwap=256 * 1024 * 1024,
+                NanoCpus=1_000_000_000,
+                Tmpfs={"/scratch": "rw,noexec,nosuid,nodev,size=32m,mode=1777"},
+                Mounts=[
+                    {
+                        "Type": "bind",
+                        "Source": str(root),
+                        "Target": "/project",
+                        "ReadOnly": True,
+                        "BindOptions": {
+                            "Propagation": "rprivate",
+                            "NonRecursive": True,
+                        },
+                    }
+                ],
+            )
+            return self.run(
+                "python-workspace", None, timeout=timeout, cancel=cancel, _spec=spec
+            )

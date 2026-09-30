@@ -43,6 +43,9 @@ class Jobs:
         self, store, socket=None, *, recover=True, registry=None, watchdog=None
     ):
         self.store = store
+        from prism.workspace import Workspaces
+
+        self.workspaces = Workspaces(store)
         self.socket = str(socket_path(socket))
         self.registry = registry or RuntimeRegistry(
             profile="development", socket=self.socket
@@ -180,18 +183,62 @@ class Jobs:
             argument,
         )
 
+    def submit_workspace_check(self, session, actor, expected_revision, request_key):
+        if not isinstance(request_key, str) or not 8 <= len(request_key) <= 80:
+            raise Denied("Use a bounded request identifier.", 400)
+        with self.store.connect() as db:
+            parameters, argument = self.workspaces.check_inputs(
+                db, session, actor, expected_revision
+            )
+        return self._submit(
+            session, actor, "json-check", parameters, request_key, argument
+        )
+
+    def submit_workspace_python(
+        self, session, actor, entrypoint, expected_revision, request_key
+    ):
+        with self.store.connect() as db:
+            parameters, argument = self.workspaces.computation_inputs(
+                db, session, actor, entrypoint, expected_revision
+            )
+        return self._submit(
+            session, actor, "python-workspace", parameters, request_key, argument
+        )
+
     def _submit(self, session, actor, action_id, parameters, request_key, argument):
         with self.store.connect() as db:
             state = self.store.authorized(db, session, actor)
             action = state["manifest"].get("action")
             if (
-                state["mode"] != "verify"
+                state["mode"] not in ("verify", "continue")
                 or action is None
                 or action.get("id") != action_id
             ):
                 raise Denied(
                     "This session may inspect evidence but may not run verification."
                 )
+            if state["mode"] == "continue":
+                # Recheck under the same write transaction as reservation: edited
+                # inputs cannot race approval/revoke/concurrent revision updates.
+                checked, payload = (
+                    self.workspaces.computation_inputs(
+                        db,
+                        session,
+                        actor,
+                        parameters.get("entrypoint"),
+                        parameters.get("workspace_revision"),
+                    )
+                    if action_id == "python-workspace"
+                    else self.workspaces.check_inputs(
+                        db, session, actor, parameters.get("workspace_revision")
+                    )
+                )
+                if (
+                    action_id not in ("json-check", "python-workspace")
+                    or checked != parameters
+                    or payload != argument
+                ):
+                    raise Denied("The exact workspace check inputs do not match.", 409)
             if action_id == "bootstrap":
                 canonical = bootstrap_action()
                 historical = {
@@ -203,6 +250,10 @@ class Jobs:
                         409,
                     )
             profile = action.get("profile")
+            if action_id == "python-workspace" and profile != "development":
+                raise Denied(
+                    "Python working-copy execution is currently development-only.", 503
+                )
             previous = db.execute(
                 "SELECT * FROM runs WHERE session=? AND request_key=?",
                 (session, request_key),
@@ -413,6 +464,10 @@ class Jobs:
                 lease_read_fd, lease_write_fd = os.pipe()
                 os.set_blocking(lease_write_fd, False)
                 worker_argv.extend([profile, resource, token, str(lease_read_fd)])
+            elif action == "python-workspace":
+                lease_read_fd, lease_write_fd = os.pipe()
+                os.set_blocking(lease_write_fd, False)
+                worker_argv.append(str(lease_read_fd))
             # Serialize the final authorization check and launch with revoke.
             # A revoke committed before this transaction cannot start a worker;
             # one committed after launch is observed by the cancellation loop.
@@ -435,12 +490,15 @@ class Jobs:
                 )
                 if profile == "reference-linux":
                     self.watchdog.attach(run, resource, token, process.pid)
+                if lease_write_fd is not None:
                     os.write(lease_write_fd, b"L")
             if lease_read_fd is not None:
                 os.close(lease_read_fd)
                 lease_read_fd = None
             encoded_argument = argument.encode("ascii")
-            if process.stdin is None or len(encoded_argument) > 100 * 1024:
+            if process.stdin is None or len(encoded_argument) > (
+                160 * 1024 if action == "python-workspace" else 100 * 1024
+            ):
                 raise ValueError("Invalid bounded action payload")
             process.stdin.write(encoded_argument)
             process.stdin.close()
@@ -453,14 +511,19 @@ class Jobs:
                     chunk = process.stdout.read(4096)
                     if not chunk:
                         return
-                    remaining = 80 * 1024 - len(worker_output)
+                    remaining = (
+                        256 * 1024 if action == "python-workspace" else 80 * 1024
+                    ) - len(worker_output)
                     worker_output.extend(chunk[:remaining])
                     if len(chunk) > remaining:
                         output_overflow.set()
 
             drain = threading.Thread(target=drain_worker, daemon=True)
             drain.start()
-            deadline, cancellation = time.monotonic() + 30, False
+            deadline, cancellation = (
+                time.monotonic() + (50 if action == "python-workspace" else 30),
+                False,
+            )
             next_renewal = time.monotonic() + LEASE_RENEW_SECONDS
             while process.poll() is None:
                 try:
@@ -474,7 +537,8 @@ class Jobs:
                     and time.monotonic() >= next_renewal
                 ):
                     try:
-                        self.watchdog.renew(run, resource, token)
+                        if profile == "reference-linux":
+                            self.watchdog.renew(run, resource, token)
                         os.write(lease_write_fd, b"L")
                     except (OSError, WatchdogError):
                         allowed = False
@@ -565,6 +629,10 @@ class Jobs:
                             != expected
                         ):
                             raise ValueError("Invalid result provenance")
+                    if action == "python-workspace":
+                        from prism.computation import accepted_output
+
+                        accepted_output(actual, parameters)
                     result = {
                         "action": action,
                         "inputs": parameters,

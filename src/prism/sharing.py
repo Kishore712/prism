@@ -468,7 +468,7 @@ class Store:
                 or (
                     r["approved"]
                     and not r["revoked"]
-                    and json.loads(r["manifest"])["schema"] in (1, 2)
+                    and json.loads(r["manifest"])["schema"] in (1, 2, 3)
                 )
             ]
 
@@ -539,7 +539,7 @@ class Store:
         if not isinstance(recipient, NamedPrincipal):
             raise Denied("Choose a named OIDC recipient.", 400)
         if (
-            mode not in ("inspect", "verify")
+            mode not in ("inspect", "verify", "continue")
             or type(expires_in) is not int
             or not 300 <= expires_in <= 86400
         ):
@@ -615,7 +615,9 @@ class Store:
             manifest = self.checked_manifest(row)
             return {
                 "mode": row["mode"],
-                "action": manifest.get("action") if row["mode"] == "verify" else None,
+                "action": manifest.get("action")
+                if row["mode"] in ("verify", "continue")
+                else None,
             }
 
     def redeem_invitation(self, token, recipient: NamedPrincipal):
@@ -792,7 +794,7 @@ class Store:
                 return {"id": request_id, "status": "denied"}
             if (
                 not isinstance(version, str)
-                or mode not in ("inspect", "verify")
+                or mode not in ("inspect", "verify", "continue")
                 or type(expires_in) is not int
                 or not 300 <= expires_in <= 86400
             ):
@@ -897,16 +899,32 @@ class Store:
         manifest = json.loads(row["manifest"])
         if digest(row["manifest"]) != row["digest"]:
             raise Denied("The approved version failed its integrity check.", 409)
-        if manifest.get("schema") not in (1, 2) or (
+        if manifest.get("schema") not in (1, 2, 3) or (
             manifest["schema"] == 2 and manifest.get("context", {}).get("schema") != 1
         ):
             raise Denied("This handoff format is not supported.", 409)
+        if manifest["schema"] == 3:
+            from prism.workspace import validate_manifest
+
+            validate_manifest(manifest)
+            if manifest.get("context") is not None and (
+                not isinstance(manifest["context"], dict)
+                or manifest["context"].get("schema") != 1
+            ):
+                raise Denied("This handoff background is unavailable.", 409)
+        elif manifest.get("mode") == "continue" or "workspace" in manifest:
+            raise Denied("This handoff has no supported workspace policy.", 409)
         return manifest
 
     @staticmethod
     def grant_action(manifest, mode):
         if mode == "inspect":
             return None
+        if mode == "continue":
+            if manifest.get("schema") != 3 or manifest.get("mode") != "continue":
+                raise Denied("This version does not authorize workspace editing.", 409)
+            action = manifest.get("action")
+            return action["id"] if action else None
         action = manifest.get("action")
         if (
             mode != "verify"

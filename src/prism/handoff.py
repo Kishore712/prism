@@ -34,7 +34,11 @@ class HandoffSelection(Selection):
     files: list[str] = Field(min_length=1, max_length=8)
     runs: list[str] = Field(max_length=6)
     excerpts: list[ExcerptSelection] = Field(min_length=1, max_length=24)
-    mode: Literal["inspect", "verify"]
+    mode: Literal["inspect", "verify", "continue"]
+    check_workspace: bool = False
+    python_entrypoint: str | None = Field(default=None, pattern=r"^[0-9a-f]{24}$")
+    python_outputs: list[str] = Field(default_factory=list, max_length=2)
+    editable_files: list[str] = Field(default_factory=list, max_length=8)
 
 
 def message_text(turn, part):
@@ -87,7 +91,11 @@ class Handoffs:
                 )
             ]
         action = copy.deepcopy(state["manifest"].get("action"))
-        if action and action.get("id") == "bootstrap" and "required_inputs" not in action:
+        if (
+            action
+            and action.get("id") == "bootstrap"
+            and "required_inputs" not in action
+        ):
             action["required_inputs"] = sorted(REQUIRED_INPUTS)
 
         def public_run(run):
@@ -403,7 +411,14 @@ class Handoffs:
                     400,
                 )
             frozen_action = None
-            if selection.mode == "verify":
+            if selection.mode == "verify" or selection.check_workspace:
+                if not source_action or (
+                    selection.check_workspace
+                    and source_action.get("id") != "json-check"
+                ):
+                    raise Denied(
+                        "The configured workspace checker is unavailable.", 400
+                    )
                 frozen_action = (
                     json_check_action(
                         selected_files, profile=source_action.get("profile")
@@ -421,6 +436,42 @@ class Handoffs:
                 "source_kind": state["manifest"].get("source_kind", "synthetic"),
                 "context": context,
             }
+            if selection.mode == "continue":
+                from prism.workspace import with_workspace
+
+                if any(key not in selection.files for key in selection.editable_files):
+                    raise Denied(
+                        "Select editable files from the shared selection.", 400
+                    )
+                if (
+                    selection.python_entrypoint
+                    and selection.python_entrypoint not in selection.files
+                ) or any(
+                    key not in selection.files for key in selection.python_outputs
+                ):
+                    raise Denied(
+                        "Python execution selections must be shared files.", 400
+                    )
+                manifest = with_workspace(
+                    manifest,
+                    [files[key]["name"] for key in selection.editable_files],
+                    check=selection.check_workspace,
+                    python_entrypoint=files[selection.python_entrypoint]["name"]
+                    if selection.python_entrypoint
+                    else None,
+                    python_outputs=[
+                        files[key]["name"] for key in selection.python_outputs
+                    ],
+                )
+            elif (
+                selection.editable_files
+                or selection.check_workspace
+                or selection.python_entrypoint
+                or selection.python_outputs
+            ):
+                raise Denied(
+                    "Editable files require workspace editing permission.", 400
+                )
             version = self.store.insert_candidate(
                 db, manifest, project_id=actor.project
             )

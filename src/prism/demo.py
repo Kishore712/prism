@@ -28,6 +28,7 @@ def serve(
     bind_host="127.0.0.1",
     tls_cert_file=None,
     tls_key_file=None,
+    no_model_budget_limit=False,
 ):
     if bool(key_file) != allow_openai:
         raise ValueError(
@@ -46,6 +47,8 @@ def serve(
     identity_mode = oidc_config is not None
     if model_budget_cents is None:
         model_budget_cents = 0 if identity_mode else 100
+    if type(no_model_budget_limit) is not bool:
+        raise ValueError("The model cost-cap option must be a trusted boolean.")
     if type(model_budget_cents) is not int or not (
         model_budget_cents == 0 or 5 <= model_budget_cents <= 10000
     ):
@@ -157,6 +160,7 @@ def serve(
             auth=auth,
             key=key,
             model_budget_cents=model_budget_cents,
+            no_model_budget_limit=no_model_budget_limit,
             project_sources=project_sources,
             runtime_registry=registry,
         )
@@ -164,14 +168,19 @@ def serve(
             "Local handoff demonstration with a retained synthetic fixture. Private pilot ready: false.",
             flush=True,
         )
-        if key and model_budget_cents == 0:
+        if key and model_budget_cents == 0 and not no_model_budget_limit:
             print(
                 "External inference credential configured, but model calls are blocked because this identity-service increment has no external-call allowance.",
                 flush=True,
             )
         elif key:
+            allowance = (
+                "no application cost cap"
+                if no_model_budget_limit
+                else f"${model_budget_cents / 100:.2f} reservation ceiling"
+            )
             print(
-                f"External inference: OpenAI GPT-5.4 mini. Questions, current-session history, selected project evidence and tool results may leave this computer. Owner chat requires its own disclosure acknowledgement; collaborator context stays limited to its reviewed version. Shared application allowance: ${model_budget_cents / 100:.2f}; store=false is not zero provider retention.",
+                f"External inference: OpenAI GPT-5.4 mini. Questions, current-session history, selected project evidence and tool results may leave this computer. Owner chat requires its own disclosure acknowledgement; collaborator context stays limited to its reviewed version. Shared model accounting: {allowance}; fixed reservations are not billed costs. store=false is not zero provider retention.",
                 flush=True,
             )
         if identity_mode:

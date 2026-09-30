@@ -62,11 +62,17 @@ def parser():
         action="store_true",
         help="Explicitly allow the documented external inference route",
     )
-    demo.add_argument(
+    demo_budget = demo.add_mutually_exclusive_group()
+    demo_budget.add_argument(
         "--model-budget-cents",
         type=int,
         default=100,
         help="Total local model reservation allowance in US cents (default: 100); changing it never resets prior reservations",
+    )
+    demo_budget.add_argument(
+        "--no-model-budget-limit",
+        action="store_true",
+        help="Explicitly remove the application cost cap; keep dispatch accounting and per-turn limits",
     )
     demo.add_argument(
         "--openai-key-file",
@@ -98,11 +104,17 @@ def parser():
         action="store_true",
         help="Explicitly allow the configured external inference route",
     )
-    identity.add_argument(
+    identity_budget = identity.add_mutually_exclusive_group()
+    identity_budget.add_argument(
         "--model-budget-cents",
         type=int,
         default=0,
         help="Persistent aggregate model reservation ceiling in cents (default: 0); changing it never resets or adds to prior reservations",
+    )
+    identity_budget.add_argument(
+        "--no-model-budget-limit",
+        action="store_true",
+        help="Explicitly remove the application cost cap; keep dispatch accounting and per-turn limits",
     )
     identity.add_argument("--openai-key-file")
     identity.add_argument("--tls-cert-file", required=True)
@@ -225,6 +237,7 @@ def main(argv=None):
                     args.model_budget_cents,
                     args.project,
                     args.runtime_profile,
+                    no_model_budget_limit=args.no_model_budget_limit,
                 )
             else:
                 serve(
@@ -233,6 +246,7 @@ def main(argv=None):
                     key_file=args.openai_key_file,
                     allow_openai=args.allow_openai,
                     model_budget_cents=args.model_budget_cents,
+                    no_model_budget_limit=args.no_model_budget_limit,
                     projects=args.project,
                     runtime_profile=args.runtime_profile,
                     oidc_config=args.oidc_config,

@@ -68,15 +68,21 @@ def main():
     cancelled = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: cancelled.set())
     signal.signal(signal.SIGINT, lambda *_: cancelled.set())
-    if len(sys.argv) not in (4, 8) or sys.argv[2] not in ("bootstrap", "json-check"):
+    if len(sys.argv) not in (4, 5, 8) or sys.argv[2] not in (
+        "bootstrap",
+        "json-check",
+        "python-workspace",
+    ):
         return 2
     action = sys.argv[2]
-    profile = "development" if len(sys.argv) == 4 else sys.argv[4]
+    profile = "development" if len(sys.argv) in (4, 5) else sys.argv[4]
     if profile not in ("development", "reference-linux"):
         return 2
     if profile == "reference-linux" and (action != "json-check" or len(sys.argv) != 8):
         return 2
-    if profile == "development" and len(sys.argv) != 4:
+    if profile == "development" and len(sys.argv) != (
+        5 if action == "python-workspace" else 4
+    ):
         return 2
     try:
         expected_hash = hashlib.sha256(action_program(action).encode()).hexdigest()
@@ -88,9 +94,14 @@ def main():
         sys.argv[7], cancelled
     ):
         return 2
+    if action == "python-workspace" and not _start_lease_monitor(
+        sys.argv[4], cancelled
+    ):
+        return 2
     try:
-        raw_argument = sys.stdin.buffer.read(100 * 1024 + 1)
-        if len(raw_argument) > 100 * 1024:
+        limit = 160 * 1024 if action == "python-workspace" else 100 * 1024
+        raw_argument = sys.stdin.buffer.read(limit + 1)
+        if len(raw_argument) > limit:
             return 2
         decoded = raw_argument.decode("ascii")
         argument = int(decoded) if action == "bootstrap" else decoded
@@ -104,16 +115,20 @@ def main():
     except (EngineError, ValueError):
         return 2
     try:
-        result = runtime.run(
-            "evaluate" if action == "bootstrap" else "json-check",
-            argument,
-            timeout=10,
-            cancel=cancelled,
-            **(
-                {"name": sys.argv[5], "token": sys.argv[6]}
-                if profile == "reference-linux"
-                else {}
-            ),
+        result = (
+            runtime.run_python(argument, timeout=30, cancel=cancelled)
+            if action == "python-workspace"
+            else runtime.run(
+                "evaluate" if action == "bootstrap" else "json-check",
+                argument,
+                timeout=10,
+                cancel=cancelled,
+                **(
+                    {"name": sys.argv[5], "token": sys.argv[6]}
+                    if profile == "reference-linux"
+                    else {}
+                ),
+            )
         )
         if profile == "reference-linux" and cancelled.is_set():
             result.stop_reason = "cancelled"

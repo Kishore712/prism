@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 import secrets
 import time
 import urllib.parse
@@ -11,7 +12,7 @@ from typing import Literal
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from prism.conversation import Conversations
@@ -22,6 +23,7 @@ from prism.jobs import Jobs
 from prism.owner import MODEL_POLICY, OwnerConversations, OwnerIdentity, OwnerWorkspace
 from prism.projects import ProjectSource
 from prism.sharing import Denied, NamedPrincipal, Source, Store
+from prism.workspace import Workspaces, with_workspace
 
 
 class Input(BaseModel):
@@ -33,13 +35,38 @@ class Login(Input):
 
 
 class Candidate(Input):
+    check_workspace: bool = False
+    python_entrypoint: str | None = Field(default=None, max_length=120)
+    python_outputs: list[str] = Field(default_factory=list, max_length=2)
     files: list[str] = Field(min_length=1, max_length=8)
     purpose: str = Field(min_length=5, max_length=1000)
-    mode: Literal["inspect", "verify"]
+    mode: Literal["inspect", "verify", "continue"]
+    editable_files: list[str] = Field(default_factory=list, max_length=8)
 
 
 class Approval(Input):
     digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class WorkspaceEdit(Input):
+    text: str = Field(max_length=32768)
+    expected_revision: int = Field(ge=0, le=20)
+
+
+class WorkspaceRevision(Input):
+    expected_revision: int = Field(ge=0, le=20)
+
+
+class WorkspaceCheck(WorkspaceRevision):
+    request_key: str = Field(min_length=8, max_length=80)
+
+
+class WorkspacePython(WorkspaceCheck):
+    entrypoint: str = Field(pattern=r"^[0-9a-f]{24}$")
+
+
+class WorkspaceApply(WorkspaceRevision):
+    run_id: str = Field(pattern=r"^[0-9a-f]{32}$")
 
 
 class SessionInput(Input):
@@ -68,14 +95,14 @@ class AccessInput(Input):
 class AccessDecisionInput(Input):
     decision: Literal["approve", "deny"]
     version: str | None = Field(default=None, pattern=r"^[0-9a-f]{32}$")
-    mode: Literal["inspect", "verify"] | None = None
+    mode: Literal["inspect", "verify", "continue"] | None = None
     expires_in: int | None = Field(default=None, ge=300, le=86400)
 
 
 class InvitationInput(Input):
     recipient_issuer: str = Field(min_length=8, max_length=2048)
     recipient_subject: str = Field(min_length=1, max_length=512)
-    mode: Literal["inspect", "verify"]
+    mode: Literal["inspect", "verify", "continue"]
     expires_in: int = Field(ge=300, le=86400)
 
 
@@ -131,6 +158,7 @@ def create_app(
     conversations=None,
     key=None,
     model_budget_cents=None,
+    no_model_budget_limit=False,
     project_sources=(),
     runtime_registry=None,
 ):
@@ -138,6 +166,10 @@ def create_app(
     identity_mode = isinstance(auth, OIDCAuth)
     if model_budget_cents is None:
         model_budget_cents = 0 if identity_mode else 100
+    if type(no_model_budget_limit) is not bool:
+        raise ValueError("The model cost-cap option must be a trusted boolean.")
+    if no_model_budget_limit:
+        model_budget_cents = None
     origin = auth.config.public_origin if identity_mode else f"http://127.0.0.1:{port}"
     canonical_host = (
         urllib.parse.urlsplit(origin).netloc if identity_mode else f"127.0.0.1:{port}"
@@ -164,6 +196,7 @@ def create_app(
         seen.add(project_source.project_id)
         owner_workspace.register_project(project_source, owner=auth.owner_key)
     handoffs = Handoffs(owner_workspace)
+    workspaces = Workspaces(store)
     # Both services use the same ledger, execution slots and aggregate limits.
     # Startup recovery ran above; constructing another scoped adapter must not
     # mark already admitted work as interrupted or uncertain.
@@ -186,7 +219,7 @@ def create_app(
         def activation_check(invitation):
             activation = store.invitation_activation(invitation)
             action = activation["action"]
-            if activation["mode"] == "verify":
+            if activation["mode"] == "verify" or action is not None:
                 if not isinstance(action, dict):
                     raise Denied("The invitation has no reviewed action.", 409)
                 try:
@@ -264,12 +297,22 @@ def create_app(
                     {"detail": "Use the same-origin JSON interface."}, status_code=403
                 )
             # Bound actual received bytes, including transfer-encoded requests.
+            body_limit = (
+                256 * 1024
+                if request.method == "POST"
+                and re.fullmatch(
+                    r"/api/review/sessions/[0-9a-f]{32}/workspace/files/[0-9a-f]{24}",
+                    request.url.path,
+                )
+                else 16 * 1024
+            )
             body = bytearray()
             async for chunk in request.stream():
                 body.extend(chunk)
-                if len(body) > 16 * 1024:
+                if len(body) > body_limit:
                     return JSONResponse(
-                        {"detail": "Request exceeds 16 KiB."}, status_code=413
+                        {"detail": f"Request exceeds {body_limit // 1024} KiB."},
+                        status_code=413,
                     )
             request._body = bytes(body)
         response = await call_next(request)
@@ -566,15 +609,44 @@ def create_app(
     @app.post("/api/owner/candidates")
     def candidate(body: Candidate, request: Request):
         auth.authenticate(request, owner=True)
+        manifest = source.freeze(
+            body.files,
+            body.purpose,
+            ("verify" if body.check_workspace else "inspect")
+            if body.mode == "continue"
+            else body.mode,
+        )
+        if body.mode == "continue":
+            manifest = with_workspace(
+                manifest,
+                body.editable_files,
+                check=body.check_workspace,
+                python_entrypoint=body.python_entrypoint,
+                python_outputs=body.python_outputs,
+            )
+        elif (
+            body.editable_files
+            or body.check_workspace
+            or body.python_entrypoint
+            or body.python_outputs
+        ):
+            raise Denied("Editable files require workspace editing permission.", 400)
         return store.candidate(
-            source.freeze(body.files, body.purpose, body.mode),
+            manifest,
             project_id="paired-evaluation",
         )
 
     @app.post("/api/owner/projects/{project}/candidates")
     def project_candidate(project: str, body: Candidate, request: Request):
         return owner_workspace.candidate(
-            owner_identity(request, project), body.files, body.purpose, body.mode
+            owner_identity(request, project),
+            body.files,
+            body.purpose,
+            body.mode,
+            body.editable_files,
+            body.check_workspace,
+            body.python_entrypoint,
+            body.python_outputs,
         )
 
     @app.get("/api/owner/versions/{version}")
@@ -726,7 +798,11 @@ def create_app(
         if version is not None:
             manifest = json.loads(version["manifest"])
             action = manifest.get("action")
-            if actor == "reviewer" and manifest.get("mode") == "verify" and action:
+            if (
+                actor == "reviewer"
+                and manifest.get("mode") in ("verify", "continue")
+                and action
+            ):
                 try:
                     runtime_registry.assert_ready(action.get("profile"))
                 except (EngineError, ValueError):
@@ -742,6 +818,85 @@ def create_app(
     @app.get("/api/review/sessions/{session}/background")
     def background(session: str, request: Request):
         return store.background(session, review_identity(request, session))
+
+    @app.get("/api/review/sessions/{session}/workspace")
+    def workspace_state(session: str, request: Request):
+        return workspaces.state(session, review_identity(request, session))
+
+    @app.get("/api/review/sessions/{session}/workspace/diff")
+    def workspace_diff(session: str, request: Request):
+        return workspaces.diff(session, review_identity(request, session))
+
+    @app.get("/api/review/sessions/{session}/workspace/files/{file_id}")
+    def workspace_file(session: str, file_id: str, request: Request):
+        return workspaces.read(session, review_identity(request, session), file_id)
+
+    @app.post("/api/review/sessions/{session}/workspace/files/{file_id}")
+    def workspace_edit(
+        session: str, file_id: str, body: WorkspaceEdit, request: Request
+    ):
+        return workspaces.edit(
+            session,
+            review_identity(request, session),
+            file_id,
+            body.text,
+            body.expected_revision,
+        )
+
+    @app.post("/api/review/sessions/{session}/workspace/check")
+    def workspace_check(session: str, body: WorkspaceCheck, request: Request):
+        return jobs.submit_workspace_check(
+            session,
+            review_identity(request, session),
+            body.expected_revision,
+            body.request_key,
+        )
+
+    @app.get("/api/review/sessions/{session}/workspace/returns")
+    def workspace_returns(session: str, request: Request):
+        return workspaces.returns(session, review_identity(request, session))
+
+    @app.post("/api/review/sessions/{session}/workspace/python")
+    def workspace_python(session: str, body: WorkspacePython, request: Request):
+        return jobs.submit_workspace_python(
+            session,
+            review_identity(request, session),
+            body.entrypoint,
+            body.expected_revision,
+            body.request_key,
+        )
+
+    @app.post("/api/review/sessions/{session}/workspace/computation-results")
+    def workspace_computation_results(
+        session: str, body: WorkspaceApply, request: Request
+    ):
+        return workspaces.apply_computation(
+            session,
+            review_identity(request, session),
+            body.run_id,
+            body.expected_revision,
+        )
+
+    @app.post("/api/review/sessions/{session}/workspace/returns")
+    def workspace_return(session: str, body: WorkspaceRevision, request: Request):
+        return workspaces.prepare_return(
+            session, review_identity(request, session), body.expected_revision
+        )
+
+    @app.get("/api/review/sessions/{session}/workspace/returns/{return_id}/download")
+    def workspace_download(session: str, return_id: str, request: Request):
+        data = workspaces.download(
+            session, review_identity(request, session), return_id
+        )
+        return Response(
+            data,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": 'attachment; filename="prism-return.zip"',
+                "Cache-Control": "no-store",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
 
     @app.get("/api/review/sessions/{session}/historical-runs/{run_id}")
     def historical_run(session: str, run_id: str, request: Request):

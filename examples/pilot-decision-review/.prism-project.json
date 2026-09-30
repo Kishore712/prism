@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "pilot-decision-review",
+  "title": "Pilot decision review",
+  "files": [
+    "requirements.md",
+    "data/pilot.csv",
+    "analysis.py",
+    "analysis-plan.json",
+    "report.md",
+    "results/metrics.json",
+    "results/data-quality.json"
+  ],
+  "action": null
+}

@@ -283,6 +283,22 @@ class OwnerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(failure.exception.status, 503)
         self.assertEqual(self.owner.route()["reserved_cents"], 0)
 
+    def test_no_cost_cap_shares_accounting_but_still_requires_owner_consent(self):
+        self.owner.budget_cents = self.review.budget_cents = None
+        for _ in range(30):
+            self.owner.reserve_dispatch(self.scope())
+            self.review.reserve_dispatch(self.scope(owner=False))
+        self.assertEqual(self.owner.route()["reserved_cents"], 300)
+        self.assertEqual(self.review.route()["reserved_cents"], 300)
+        self.assertIsNone(self.owner.route()["budget_cents"])
+        with self.store.connect() as db:
+            db.execute(
+                "UPDATE owner_chats SET model_policy=NULL WHERE id=?",
+                (self.chat["id"],),
+            )
+        with self.assertRaises(Denied):
+            self.owner.reserve_dispatch(self.scope())
+
     def test_shared_atomic_model_allowance_and_consent_at_dispatch(self):
         self.owner.budget_cents = self.review.budget_cents = 20
         scopes = [self.scope(owner=n % 2 == 0) for n in range(16)]

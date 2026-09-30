@@ -1,0 +1,2 @@
+# Preserve the CSV fixture's validated CRLF bytes; CSV writers use these endings.
+examples/pilot-decision-review/data/pilot.csv whitespace=cr-at-eol

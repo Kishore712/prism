@@ -1,0 +1,9 @@
+{
+  "target_weights": {
+    "new": 0.5,
+    "returning": 0.5
+  },
+  "seed": 17,
+  "resamples": 2000,
+  "approval": "pending"
+}

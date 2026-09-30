@@ -18,6 +18,7 @@ from pydantic_ai.exceptions import (
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
 
+from prism.cli import parser
 from prism.conversation import (
     ENDPOINT,
     MODEL,
@@ -543,6 +544,69 @@ class AgentTests(unittest.IsolatedAsyncioTestCase):
         alias.symlink_to(key)
         with self.assertRaises(OSError):
             read_key(alias)
+
+    def test_no_application_cap_preserves_ledger_and_per_turn_authorization(self):
+        finite = Conversations(self.store, self.jobs)
+        for _ in range(20):
+            finite.reserve_dispatch(self.running_scope(finite))
+        unlimited = Conversations(
+            self.store, self.jobs, key="synthetic-key", budget_cents=None
+        )
+        self.assertTrue(unlimited.route()["available"])
+        self.assertIsNone(unlimited.route()["budget_cents"])
+        self.assertFalse(unlimited.route()["budget_limited"])
+        scope = self.running_scope(unlimited)
+        for _ in range(4):
+            unlimited.reserve_dispatch(scope)
+        with self.assertRaises(Denied):
+            unlimited.reserve_dispatch(scope)
+        self.assertEqual(unlimited.route()["reserved_cents"], 120)
+        unlimited.reserve_dispatch(self.running_scope(unlimited))
+        restarted = Conversations(
+            self.store, self.jobs, budget_cents=None, recover=False
+        )
+        self.assertEqual(restarted.route()["reserved_cents"], 125)
+        self.assertEqual(
+            Conversations(self.store, self.jobs, key="synthetic-key").route()["status"],
+            "blocked",
+        )
+        self.store.revoke(self.session["version"])
+        with self.assertRaises(Denied):
+            unlimited.reserve_dispatch(self.running_scope(unlimited))
+
+    def test_cli_cost_cap_requires_explicit_trusted_startup_option(self):
+        self.assertFalse(parser().parse_args(["demo"]).no_model_budget_limit)
+        self.assertTrue(
+            parser()
+            .parse_args(["demo", "--no-model-budget-limit"])
+            .no_model_budget_limit
+        )
+        with patch("sys.stderr"), self.assertRaises(SystemExit):
+            parser().parse_args(
+                ["demo", "--no-model-budget-limit", "--model-budget-cents", "0"]
+            )
+        from prism.webapp import create_app
+
+        app = create_app(
+            self.store,
+            Source(self.root / "source"),
+            jobs=self.jobs,
+            no_model_budget_limit=True,
+        )
+        self.addCleanup(app.state.owner_jobs.shutdown)
+        self.assertIsNone(app.state.owner_conversations.budget_cents)
+        with self.assertRaises(ValueError):
+            create_app(
+                self.store,
+                Source(self.root / "source"),
+                jobs=self.jobs,
+                no_model_budget_limit="true",
+            )
+
+    def test_no_cost_cap_does_not_supply_a_credential(self):
+        unlimited = Conversations(self.store, self.jobs, budget_cents=None)
+        self.assertEqual(unlimited.route()["status"], "not_configured")
+        self.assertFalse(unlimited.route()["available"])
 
     def test_explicit_budget_increase_preserves_usage_and_still_caps_requests(self):
         service = Conversations(self.store, self.jobs)

@@ -1,0 +1,1 @@
+{"schema":1,"id":"agent-workspace","title":"Release package continuation","files":["requirements.md","config/release.json","docs/release.md"],"action":"json-check"}
