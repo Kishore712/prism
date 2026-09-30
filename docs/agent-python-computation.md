@@ -1,5 +1,7 @@
 # U4.1: Approved Python Working-Copy Computation
 
+**Later same-day update:** [U4 conversational computation](agent-conversational-computation.md) now extends this manual baseline locally. The dated evidence below remains U4.1 history; it is not the current agent capability.
+
 **Date:** 2026-09-30. **Scope:** Local development implementation. The [U4 proposal](agent-computation-scenario.md) separates this executor from later conversational analysis. No U4.2 task completion, reference-Linux Python release, owner acceptance or private-pilot readiness is established.
 
 ## Delivered capability

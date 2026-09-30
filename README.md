@@ -1,5 +1,7 @@
 # Prism
 
+**Latest local milestone (2026-09-30):** [Conversational computation](docs/agent-conversational-computation.md) connects the scoped agent to actual approved Python execution, numerical analysis, follow-up recalculation and immutable returns. Independent local self-validation retains failures; owner acceptance and reference-Linux Python deployment remain pending. `pilot_ready=false`.
+
 **Latest interface refinement (2026-09-19):** The authorized [general-purpose handoff workspace](docs/general-handoff-workspace.md) makes conversation the task entry point and groups supporting activity/results and capabilities. Dedicated experiment launch forms are removed; the fixed synthetic action remains a limited test fixture. Backend permissions are unchanged.
 
 **M2.2 status (2026-09-20):** The separately authorized [explicit project import increment](docs/m2-project-import.md) is implemented and validated in local development on `prototype/m2-project-import`, awaiting owner review. Backend, runtime, frontend, and browser evidence are recorded in the [validation record](docs/validation/m2-project-import.json). The scope remains one strict `.prism-project.json` format, explicit file selection, direct file-only handoff, and the bounded `json-check` action; private-pilot readiness remains false.

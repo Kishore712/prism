@@ -1,0 +1,1055 @@
+{
+  "schema": 1,
+  "date": "2026-09-30",
+  "branch": "prototype/agent-workspace",
+  "scope": "U4 conversational computation and follow-ups; local development self-validation only",
+  "implemented": true,
+  "self_validation_passed": true,
+  "owner_accepted": false,
+  "pilot_ready": false,
+  "private_linux_python_deployed": false,
+  "initial_completed_work_pushed": [
+    "1eb3316",
+    "3348dba",
+    "ac72a85"
+  ],
+  "backend": {
+    "passed": 501,
+    "focused_new_checks": 11,
+    "evidence": "Actual application/SQLite checks with labeled model/worker doubles; no aggregate reliability claim"
+  },
+  "runtime_regression": {
+    "passed": 31,
+    "evidence": "Real development Jobs/worker/container positive and denial paths; historical U4.1 record was not overwritten"
+  },
+  "independent_scoring": {
+    "schema": 1,
+    "scope": "Independent synthetic U4 local scoring and one actual development-runtime counterfactual; no model calls by this scorer",
+    "passed": true,
+    "pilot_ready": false,
+    "checks": [
+      {
+        "id": "initial_completed_answer",
+        "passed": true
+      },
+      {
+        "id": "initial_cleaning_counts",
+        "passed": true
+      },
+      {
+        "id": "initial_target_weights",
+        "passed": true
+      },
+      {
+        "id": "initial_A_overall",
+        "passed": true
+      },
+      {
+        "id": "initial_A_new",
+        "passed": true
+      },
+      {
+        "id": "initial_A_returning",
+        "passed": true
+      },
+      {
+        "id": "initial_standardized_A",
+        "passed": true
+      },
+      {
+        "id": "initial_B_overall",
+        "passed": true
+      },
+      {
+        "id": "initial_B_new",
+        "passed": true
+      },
+      {
+        "id": "initial_B_returning",
+        "passed": true
+      },
+      {
+        "id": "initial_standardized_B",
+        "passed": true
+      },
+      {
+        "id": "initial_difference",
+        "passed": true
+      },
+      {
+        "id": "initial_bootstrap",
+        "passed": true
+      },
+      {
+        "id": "initial_actual_run_reference",
+        "passed": true
+      },
+      {
+        "id": "initial_current_return",
+        "passed": true
+      },
+      {
+        "id": "followup_completed_answer",
+        "passed": true
+      },
+      {
+        "id": "followup_cleaning_counts",
+        "passed": true
+      },
+      {
+        "id": "followup_target_weights",
+        "passed": true
+      },
+      {
+        "id": "followup_A_overall",
+        "passed": true
+      },
+      {
+        "id": "followup_A_new",
+        "passed": true
+      },
+      {
+        "id": "followup_A_returning",
+        "passed": true
+      },
+      {
+        "id": "followup_standardized_A",
+        "passed": true
+      },
+      {
+        "id": "followup_B_overall",
+        "passed": true
+      },
+      {
+        "id": "followup_B_new",
+        "passed": true
+      },
+      {
+        "id": "followup_B_returning",
+        "passed": true
+      },
+      {
+        "id": "followup_standardized_B",
+        "passed": true
+      },
+      {
+        "id": "followup_difference",
+        "passed": true
+      },
+      {
+        "id": "followup_bootstrap",
+        "passed": true
+      },
+      {
+        "id": "followup_actual_run_reference",
+        "passed": true
+      },
+      {
+        "id": "followup_current_return",
+        "passed": true
+      },
+      {
+        "id": "new_target_one_new_run",
+        "passed": true
+      },
+      {
+        "id": "final_no_new_execution",
+        "passed": true
+      },
+      {
+        "id": "query_no_new_execution",
+        "passed": true
+      },
+      {
+        "id": "clarification_no_new_execution",
+        "passed": true
+      },
+      {
+        "id": "report_only_reuse",
+        "passed": true
+      },
+      {
+        "id": "query_completed_without_mutation",
+        "passed": true
+      },
+      {
+        "id": "clarification_completed_without_mutation",
+        "passed": true
+      },
+      {
+        "id": "clarification_no_access_request",
+        "passed": true
+      },
+      {
+        "id": "report_review_and_units",
+        "passed": true
+      },
+      {
+        "id": "initial_immutable_794376b445ee4b0fb9b4e9d353b75b06",
+        "passed": true
+      },
+      {
+        "id": "initial_zip_hashes_794376b445ee4b0fb9b4e9d353b75b06",
+        "passed": true
+      },
+      {
+        "id": "followup_immutable_1a5bcb6ff4544a72a8e1df3742b3409e",
+        "passed": true
+      },
+      {
+        "id": "followup_zip_hashes_1a5bcb6ff4544a72a8e1df3742b3409e",
+        "passed": true
+      },
+      {
+        "id": "followup_immutable_794376b445ee4b0fb9b4e9d353b75b06",
+        "passed": true
+      },
+      {
+        "id": "followup_zip_hashes_794376b445ee4b0fb9b4e9d353b75b06",
+        "passed": true
+      },
+      {
+        "id": "final_immutable_b40065ef9f80481c94ac2d2d5cf2388e",
+        "passed": true
+      },
+      {
+        "id": "final_zip_hashes_b40065ef9f80481c94ac2d2d5cf2388e",
+        "passed": true
+      },
+      {
+        "id": "final_immutable_1a5bcb6ff4544a72a8e1df3742b3409e",
+        "passed": true
+      },
+      {
+        "id": "final_zip_hashes_1a5bcb6ff4544a72a8e1df3742b3409e",
+        "passed": true
+      },
+      {
+        "id": "final_immutable_794376b445ee4b0fb9b4e9d353b75b06",
+        "passed": true
+      },
+      {
+        "id": "final_zip_hashes_794376b445ee4b0fb9b4e9d353b75b06",
+        "passed": true
+      },
+      {
+        "id": "query_immutable_b40065ef9f80481c94ac2d2d5cf2388e",
+        "passed": true
+      },
+      {
+        "id": "query_zip_hashes_b40065ef9f80481c94ac2d2d5cf2388e",
+        "passed": true
+      },
+      {
+        "id": "query_immutable_1a5bcb6ff4544a72a8e1df3742b3409e",
+        "passed": true
+      },
+      {
+        "id": "query_zip_hashes_1a5bcb6ff4544a72a8e1df3742b3409e",
+        "passed": true
+      },
+      {
+        "id": "query_immutable_794376b445ee4b0fb9b4e9d353b75b06",
+        "passed": true
+      },
+      {
+        "id": "query_zip_hashes_794376b445ee4b0fb9b4e9d353b75b06",
+        "passed": true
+      },
+      {
+        "id": "clarification_immutable_b40065ef9f80481c94ac2d2d5cf2388e",
+        "passed": true
+      },
+      {
+        "id": "clarification_zip_hashes_b40065ef9f80481c94ac2d2d5cf2388e",
+        "passed": true
+      },
+      {
+        "id": "clarification_immutable_1a5bcb6ff4544a72a8e1df3742b3409e",
+        "passed": true
+      },
+      {
+        "id": "clarification_zip_hashes_1a5bcb6ff4544a72a8e1df3742b3409e",
+        "passed": true
+      },
+      {
+        "id": "clarification_immutable_794376b445ee4b0fb9b4e9d353b75b06",
+        "passed": true
+      },
+      {
+        "id": "clarification_zip_hashes_794376b445ee4b0fb9b4e9d353b75b06",
+        "passed": true
+      },
+      {
+        "id": "owner_source_unchanged",
+        "passed": true
+      },
+      {
+        "id": "unshared_canary_absent",
+        "passed": true
+      },
+      {
+        "id": "actual_conflict_blocks_with_cleanup",
+        "passed": true
+      },
+      {
+        "id": "failed_conflict_no_import",
+        "passed": true
+      }
+    ]
+  },
+  "accepted_sequence": [
+    {
+      "session": "ea2cd5ffe2c945fd81318ebce152158e",
+      "version": "f04520f2fbd4470cb42228d682dd3c44",
+      "question": "Complete the pilot review according to requirements.md: repair the incomplete analysis script, actually calculate the cleaned segment and standardized results and seeded bootstrap interval, inspect the outputs, revise the report with limitations and pending human review, and prepare a return package. Do not publish or deploy anything.",
+      "turn": {
+        "id": "7189411d269744b8882d36a19ec34987",
+        "session": "ea2cd5ffe2c945fd81318ebce152158e",
+        "request_key": "u4-live-01dcba77b34c4760b9e4cfd8747ab878",
+        "question": "Complete the pilot review according to requirements.md: repair the incomplete analysis script, actually calculate the cleaned segment and standardized results and seeded bootstrap interval, inspect the outputs, revise the report with limitations and pending human review, and prepare a return package. Do not publish or deploy anything.",
+        "status": "completed",
+        "answer": {
+          "answer": "Completed. The script now cleans exact duplicates, rejects missing IDs, blocks conflicts, computes plan-weighted standardized B−A estimates, and produces the seeded 2,000-replicate stratified bootstrap interval.\n\nReport updated with the cleaned/standardized interpretation, composition caveat, percentage-points note, limitations, and pending human review. Publication, rollout, and deployment remain unauthorized.",
+          "citations": [],
+          "claims": [
+            {
+              "kind": "workspace",
+              "text": "Current workspace revision 2 contains the repaired analysis script, updated report, and deliverable JSON outputs for metrics and data quality."
+            },
+            {
+              "kind": "new_run",
+              "text": "Run 736c02f4dea742689e90ff14c5d00e10 completed successfully for the repaired analysis at revision 1, then imported into the current workspace revision 2."
+            },
+            {
+              "kind": "interpretation",
+              "text": "The outputs show no conflicting user IDs, 6 exact duplicates removed, 2 missing-ID rows rejected, and standardized B−A differences of 0.05 conversion rate and 2.0 revenue per user with the reported bootstrap intervals."
+            }
+          ],
+          "context_references": [],
+          "historical_run_references": [],
+          "limitations": [
+            "Synthetic pilot only; results are descriptive, not causal.",
+            "Finite-resample bootstrap uncertainty remains, even with the seeded 2,000 replicates.",
+            "Human review is still required before any publication or rollout."
+          ],
+          "pending_request_id": null,
+          "return_references": [
+            "794376b445ee4b0fb9b4e9d353b75b06"
+          ],
+          "run_references": [
+            "736c02f4dea742689e90ff14c5d00e10"
+          ],
+          "workspace_references": [
+            {
+              "file_id": "5afa4f3f8b4772d83dd5ffc7",
+              "revision": 2,
+              "sha256": "792d1279f379b7206900cd837582aeefc904f598cd6c32b7eb8703ab9ea61971"
+            },
+            {
+              "file_id": "8d372c625a27500f4165aa1e",
+              "revision": 2,
+              "sha256": "680e9732e38516c84c891e4e27872851c68d06aefb059d277d693e6ef1a3f211"
+            },
+            {
+              "file_id": "a22350b28862150572f20bd8",
+              "revision": 2,
+              "sha256": "d5cc1541aa32e17a69cb840fbdd2a81f211f77a2c46f6103aee979ab3dd7a876"
+            }
+          ]
+        },
+        "error": null,
+        "created": 1790767001.257631,
+        "finished": 1790767021.4836879,
+        "usage": {
+          "input_tokens": 37361,
+          "output_tokens": 3112,
+          "requests": 5,
+          "tool_calls": 4
+        }
+      },
+      "artifact_hashes": {
+        "794376b445ee4b0fb9b4e9d353b75b06": "8a177725bb4fbdb989bedce10a163ba5c529ab43b6dacb962ecca615d251f240"
+      }
+    },
+    {
+      "session": "ea2cd5ffe2c945fd81318ebce152158e",
+      "version": "f04520f2fbd4470cb42228d682dd3c44",
+      "question": "Change the target population to 70% new users and 30% returning users. Recalculate with the same required bootstrap method, update the report explaining what changed, and prepare a new return. Preserve the earlier package and keep human approval pending.",
+      "turn": {
+        "id": "aa977fd297c54db0a8e77a4f9bed292c",
+        "session": "ea2cd5ffe2c945fd81318ebce152158e",
+        "request_key": "u4-live-22e06debe4384ab883e845e484e20d78",
+        "question": "Change the target population to 70% new users and 30% returning users. Recalculate with the same required bootstrap method, update the report explaining what changed, and prepare a new return. Preserve the earlier package and keep human approval pending.",
+        "status": "completed",
+        "answer": {
+          "answer": "Done. I updated the target weights to 70% new / 30% returning, reran the seeded 2,000-replicate bootstrap, and prepared a new return package while preserving the earlier one.\n\nThe standardized lift is now 0.05 conversion-rate points and 2.0 revenue per user, with the updated 95% bootstrap intervals reflected in the outputs. The report now explains that only the segment composition changed; the observed segment rates did not.",
+          "citations": [],
+          "claims": [
+            {
+              "kind": "workspace",
+              "text": "Current workspace revision 4 contains the updated analysis-plan.json, report.md, and results files for the 70/30 target population."
+            },
+            {
+              "kind": "new_run",
+              "text": "Run 1f1f51bb49da46f4b0faf4329797cfee completed successfully for revision 3 and was imported into the current workspace revision 4."
+            },
+            {
+              "kind": "interpretation",
+              "text": "The recalculation changed only the standardization weights and bootstrap target mix; observed segment metrics stayed the same, while the standardized difference became 0.05 conversion-rate points and 2.0 revenue per user."
+            }
+          ],
+          "context_references": [],
+          "historical_run_references": [],
+          "limitations": [
+            "Synthetic pilot only; descriptive, not causal.",
+            "Bootstrap uncertainty still depends on finite resampling.",
+            "Human approval remains pending; no publication or deployment."
+          ],
+          "pending_request_id": null,
+          "return_references": [
+            "1a5bcb6ff4544a72a8e1df3742b3409e"
+          ],
+          "run_references": [
+            "1f1f51bb49da46f4b0faf4329797cfee"
+          ],
+          "workspace_references": [
+            {
+              "file_id": "5afa4f3f8b4772d83dd5ffc7",
+              "revision": 4,
+              "sha256": "f821fd4ba3d28d38b446c94caa3b043ec3692aa6d53bc1a4dbd19b1fb31a87da"
+            },
+            {
+              "file_id": "8d372c625a27500f4165aa1e",
+              "revision": 4,
+              "sha256": "680e9732e38516c84c891e4e27872851c68d06aefb059d277d693e6ef1a3f211"
+            },
+            {
+              "file_id": "a22350b28862150572f20bd8",
+              "revision": 4,
+              "sha256": "284aad2f60cc86490a112a6ec746935533098da2d372162e85f928f0b99e8857"
+            }
+          ]
+        },
+        "error": null,
+        "created": 1790767060.6799822,
+        "finished": 1790767069.8686678,
+        "usage": {
+          "input_tokens": 31097,
+          "output_tokens": 1121,
+          "requests": 4,
+          "tool_calls": 3
+        }
+      },
+      "artifact_hashes": {
+        "1a5bcb6ff4544a72a8e1df3742b3409e": "603f530c1ad1ade2a644a36cd80f782a99a139325b5ff3f7571a5a363b1e87b8",
+        "794376b445ee4b0fb9b4e9d353b75b06": "8a177725bb4fbdb989bedce10a163ba5c529ab43b6dacb962ecca615d251f240"
+      }
+    },
+    {
+      "session": "ea2cd5ffe2c945fd81318ebce152158e",
+      "version": "f04520f2fbd4470cb42228d682dd3c44",
+      "question": "Improve only report.md to show the actual observed overall versus 70/30 standardized A/B conversion and revenue per user, explain percentage points versus relative change and composition effects, and summarize the actual bootstrap intervals, assumptions and pending review. Use accurate units (revenue is synthetic, not currency). Use saved results, do not change computational inputs or rerun, and prepare a current return for the updated report.",
+      "turn": {
+        "id": "81ca348b1fe046acbd84c970f1b38be8",
+        "session": "ea2cd5ffe2c945fd81318ebce152158e",
+        "request_key": "u4-live-3bd22977d9404cc6b313e25996769448",
+        "question": "Improve only report.md to show the actual observed overall versus 70/30 standardized A/B conversion and revenue per user, explain percentage points versus relative change and composition effects, and summarize the actual bootstrap intervals, assumptions and pending review. Use accurate units (revenue is synthetic, not currency). Use saved results, do not change computational inputs or rerun, and prepare a current return for the updated report.",
+        "status": "completed",
+        "answer": {
+          "answer": "Updated the report only, using the saved results and without rerunning the analysis. The report now shows the observed overall vs 70/30 standardized A/B conversion and synthetic revenue per user, explains percentage points versus relative change and the composition effect, and summarizes the bootstrap intervals, assumptions, and pending human review.\n\nA new return package has been prepared for the revised report, and the earlier package is preserved.",
+          "citations": [],
+          "claims": [
+            {
+              "kind": "workspace",
+              "text": "Current workspace revision 5 contains the revised report.md only; analysis inputs and saved result files were left unchanged."
+            },
+            {
+              "kind": "workspace",
+              "text": "The current report file records observed overall conversion A=20.0% and B=30.0%, standardized 70/30 conversion A=21.0% and B=26.0%, and synthetic revenue per user rather than currency."
+            },
+            {
+              "kind": "workspace",
+              "text": "The report also summarizes the seeded 2,000-replicate bootstrap intervals and states that human review, publication, rollout, and deployment remain pending or unauthorized."
+            }
+          ],
+          "context_references": [],
+          "historical_run_references": [],
+          "limitations": [
+            "Synthetic pilot only; no causal claim.",
+            "Bootstrap intervals are finite-resample estimates.",
+            "Human review remains pending; no publication or deployment."
+          ],
+          "pending_request_id": null,
+          "return_references": [
+            "b40065ef9f80481c94ac2d2d5cf2388e"
+          ],
+          "run_references": [
+            "1f1f51bb49da46f4b0faf4329797cfee"
+          ],
+          "workspace_references": [
+            {
+              "file_id": "a22350b28862150572f20bd8",
+              "revision": 5,
+              "sha256": "77d314e4b71580aac67e598aa6af3b7170bcf0d2a75c8febd59debce4a431588"
+            },
+            {
+              "file_id": "5afa4f3f8b4772d83dd5ffc7",
+              "revision": 5,
+              "sha256": "f821fd4ba3d28d38b446c94caa3b043ec3692aa6d53bc1a4dbd19b1fb31a87da"
+            },
+            {
+              "file_id": "8d372c625a27500f4165aa1e",
+              "revision": 5,
+              "sha256": "680e9732e38516c84c891e4e27872851c68d06aefb059d277d693e6ef1a3f211"
+            }
+          ]
+        },
+        "error": null,
+        "created": 1790767168.779376,
+        "finished": 1790767180.866325,
+        "usage": {
+          "input_tokens": 42872,
+          "output_tokens": 1708,
+          "reference_failures": [
+            "Background claims need an approved context reference."
+          ],
+          "requests": 5,
+          "tool_calls": 3
+        }
+      },
+      "artifact_hashes": {
+        "b40065ef9f80481c94ac2d2d5cf2388e": "e51545929f05bfc4e411919fa2ff83f65f5d649ce60e704e89b7be16c0d03341",
+        "1a5bcb6ff4544a72a8e1df3742b3409e": "603f530c1ad1ade2a644a36cd80f782a99a139325b5ff3f7571a5a363b1e87b8",
+        "794376b445ee4b0fb9b4e9d353b75b06": "8a177725bb4fbdb989bedce10a163ba5c529ab43b6dacb962ecca615d251f240"
+      }
+    },
+    {
+      "session": "ea2cd5ffe2c945fd81318ebce152158e",
+      "version": "f04520f2fbd4470cb42228d682dd3c44",
+      "question": "Do these saved 70/30 results establish that B should be rolled out? Explain the existing interval and composition limitation. Do not change files, calculate again, or prepare another package.",
+      "turn": {
+        "id": "143dd9b690734ab0a8be2cfd5f973864",
+        "session": "ea2cd5ffe2c945fd81318ebce152158e",
+        "request_key": "u4-live-cf9ecfbee2d24e6c8f59285f2b5b27a7",
+        "question": "Do these saved 70/30 results establish that B should be rolled out? Explain the existing interval and composition limitation. Do not change files, calculate again, or prepare another package.",
+        "status": "completed",
+        "answer": {
+          "answer": "No. The saved 70/30 results do not establish that B should be rolled out.\n\nThe 95% bootstrap interval for the standardized conversion difference is [-0.0750, 0.1792], which includes zero, so the result is not clearly positive. The revenue-per-user interval [-3.0, 7.1675] synthetic units also spans zero. That means the current saved evidence is consistent with both a benefit and no benefit.\n\nThe key composition limitation is that the 70/30 standardized results are not the same as the observed overall mix. They reweight toward new users, who perform worse than returning users, so the standardized lift is smaller than the observed overall lift. That makes the answer sensitive to the target population, and it is still a synthetic pilot with no causal claim. Human review remains pending.",
+          "citations": [],
+          "claims": [
+            {
+              "kind": "workspace",
+              "text": "The current report shows observed overall conversion A=20.0%, B=30.0% and standardized 70/30 conversion A=21.0%, B=26.0%, with synthetic revenue per user values A=8.0 vs B=12.0 overall and A=8.4 vs B=10.4 standardized."
+            },
+            {
+              "kind": "workspace",
+              "text": "The report’s seeded 2,000-replicate bootstrap intervals are [-0.0750, 0.1792] for standardized conversion difference and [-3.0, 7.1675] for standardized revenue-per-user difference."
+            },
+            {
+              "kind": "interpretation",
+              "text": "Because both intervals include zero and the standardized result depends on the 70/30 composition choice, the saved results are not enough to justify rollout."
+            }
+          ],
+          "context_references": [],
+          "historical_run_references": [],
+          "limitations": [
+            "Synthetic pilot only; no causal claim.",
+            "Bootstrap intervals are finite-resample estimates.",
+            "Human review remains pending; no publication or deployment."
+          ],
+          "pending_request_id": null,
+          "return_references": [
+            "b40065ef9f80481c94ac2d2d5cf2388e"
+          ],
+          "run_references": [
+            "1f1f51bb49da46f4b0faf4329797cfee"
+          ],
+          "workspace_references": [
+            {
+              "file_id": "a22350b28862150572f20bd8",
+              "revision": 5,
+              "sha256": "77d314e4b71580aac67e598aa6af3b7170bcf0d2a75c8febd59debce4a431588"
+            }
+          ]
+        },
+        "error": null,
+        "created": 1790767324.74211,
+        "finished": 1790767332.463659,
+        "usage": {
+          "input_tokens": 25605,
+          "output_tokens": 830,
+          "requests": 3,
+          "tool_calls": 2
+        }
+      },
+      "artifact_hashes": {
+        "b40065ef9f80481c94ac2d2d5cf2388e": "e51545929f05bfc4e411919fa2ff83f65f5d649ce60e704e89b7be16c0d03341",
+        "1a5bcb6ff4544a72a8e1df3742b3409e": "603f530c1ad1ade2a644a36cd80f782a99a139325b5ff3f7571a5a363b1e87b8",
+        "794376b445ee4b0fb9b4e9d353b75b06": "8a177725bb4fbdb989bedce10a163ba5c529ab43b6dacb962ecca615d251f240"
+      }
+    },
+    {
+      "session": "ea2cd5ffe2c945fd81318ebce152158e",
+      "version": "f04520f2fbd4470cb42228d682dd3c44",
+      "question": "For a different target population, I want a new standardized comparison but have not supplied the new/returning population weights. What do you need before changing or calculating anything? Do not reuse the previous population assumption automatically.",
+      "turn": {
+        "id": "421d0937b5264e1fa497d40f231bef75",
+        "session": "ea2cd5ffe2c945fd81318ebce152158e",
+        "request_key": "u4-live-27a307e107084549a002463fb86ff59b",
+        "question": "For a different target population, I want a new standardized comparison but have not supplied the new/returning population weights. What do you need before changing or calculating anything? Do not reuse the previous population assumption automatically.",
+        "status": "completed",
+        "answer": {
+          "answer": "I need the exact target-population mix before changing or recalculating anything: the new weights for new users and returning users, stated as percentages or fractions that sum to 100%.\n\nIf you want, I can also use a third category if your target population is more granular, but I should not assume the previous 70/30 mix.",
+          "citations": [],
+          "claims": [
+            {
+              "kind": "interpretation",
+              "text": "A new standardized comparison requires explicit target-population weights; I should not reuse the prior 70/30 assumption automatically."
+            }
+          ],
+          "context_references": [],
+          "historical_run_references": [],
+          "limitations": [
+            "No calculation should be run until the new weights are provided."
+          ],
+          "pending_request_id": null,
+          "return_references": [],
+          "run_references": [],
+          "workspace_references": []
+        },
+        "error": null,
+        "created": 1790767402.176957,
+        "finished": 1790767407.389441,
+        "usage": {
+          "input_tokens": 17277,
+          "output_tokens": 328,
+          "requests": 2,
+          "tool_calls": 1
+        }
+      },
+      "artifact_hashes": {
+        "b40065ef9f80481c94ac2d2d5cf2388e": "e51545929f05bfc4e411919fa2ff83f65f5d649ce60e704e89b7be16c0d03341",
+        "1a5bcb6ff4544a72a8e1df3742b3409e": "603f530c1ad1ade2a644a36cd80f782a99a139325b5ff3f7571a5a363b1e87b8",
+        "794376b445ee4b0fb9b4e9d353b75b06": "8a177725bb4fbdb989bedce10a163ba5c529ab43b6dacb962ecca615d251f240"
+      }
+    }
+  ],
+  "current_service_api": {
+    "schema": 1,
+    "scope": "Real updated-service HTTP API and development-runtime smoke; raw incomplete operator script, not live-agent analysis; zero model calls",
+    "passed": true,
+    "pilot_ready": false,
+    "checks": [
+      {
+        "id": "local_role_login",
+        "passed": true
+      },
+      {
+        "id": "local_role_login",
+        "passed": true
+      },
+      {
+        "id": "create_after_retained_24_versions",
+        "passed": true
+      },
+      {
+        "id": "reviewed_schema_four",
+        "passed": true
+      },
+      {
+        "id": "report_excluded_runtime",
+        "passed": true
+      },
+      {
+        "id": "explicit_approve",
+        "passed": true
+      },
+      {
+        "id": "fresh_scope",
+        "passed": true
+      },
+      {
+        "id": "unknown_entrypoint_denied",
+        "passed": true
+      },
+      {
+        "id": "runtime_override_denied",
+        "passed": true
+      },
+      {
+        "id": "authorized_run_admitted",
+        "passed": true
+      },
+      {
+        "id": "actual_scoped_raw_execution_completed",
+        "passed": true
+      },
+      {
+        "id": "actual_outputs_imported",
+        "passed": true
+      },
+      {
+        "id": "schema_four_return_provenance",
+        "passed": true
+      },
+      {
+        "id": "own_smoke_version_revoke",
+        "passed": true
+      },
+      {
+        "id": "revoke_blocks_future_access",
+        "passed": true
+      }
+    ],
+    "version": "43d0bb4d543f4956b8ced16e6a1cdf20",
+    "session": "f357d3fa438b4b4ea0d227419d9195a3",
+    "run": "252c7f8f49c545fb9c49220fad25938e",
+    "return": "ae3bcfcf8fae4696b76681565b8dac0d",
+    "runtime_profile": "development",
+    "model_calls": 0,
+    "smoke_version_revoked": true
+  },
+  "current_service_model": {
+    "schema": 1,
+    "scope": "Actual HTTP-authenticated updated local service and real external model; no browser click claim",
+    "passed": true,
+    "turn": {
+      "id": "a6cc48997c0e410082be84b79a5d4778",
+      "session": "ea2cd5ffe2c945fd81318ebce152158e",
+      "request_key": "u4-current-service-model-check",
+      "question": "Give the exact saved data-quality counts for this completed pilot review. Do not edit, execute, or prepare another package.",
+      "status": "completed",
+      "answer": {
+        "answer": "Exact saved data-quality counts:\n- raw_rows: 168\n- exact_duplicates_removed: 6\n- missing_id_rows: 2\n- eligible_users: 160\n- conflicting_user_ids: []\n- rejection_reasons: exact_duplicate = 6, missing_user_id = 2\n- conservation_check: true",
+        "citations": [],
+        "claims": [
+          {
+            "kind": "workspace",
+            "text": "The saved results/data-quality.json at revision 5 reports raw_rows=168, exact_duplicates_removed=6, missing_id_rows=2, eligible_users=160, conflicting_user_ids=[], and conservation_check=true."
+          }
+        ],
+        "context_references": [],
+        "historical_run_references": [],
+        "limitations": [],
+        "pending_request_id": null,
+        "return_references": [],
+        "run_references": [],
+        "workspace_references": [
+          {
+            "file_id": "a483ed8a851e3a1e46924fba",
+            "revision": 5,
+            "sha256": "fe7e131fca5995d8300686fe9ada5bab08bd3d61389f6b68215a4f5fb444d6b3"
+          }
+        ]
+      },
+      "error": null,
+      "created": 1790768790.775635,
+      "finished": 1790768795.949044,
+      "usage": {
+        "input_tokens": 17858,
+        "output_tokens": 345,
+        "requests": 2,
+        "tool_calls": 1
+      }
+    },
+    "workspace_unchanged": true,
+    "runs_unchanged": true,
+    "pilot_ready": false
+  },
+  "browser": {
+    "conversation_rendered": true,
+    "two_actual_executions_rendered": true,
+    "schema_four_selected_inputs_rendered": true,
+    "three_computation_bearing_return_revisions_rendered": true,
+    "local_session_url_reopen_verified": true,
+    "new_owner_selector_click_flow_verified": false,
+    "final_post_restart_click_regression_verified": false,
+    "blocker": "Mac locked; computer-use automatic unlock failed. User was asked to unlock. Actual updated-service HTTP API checks supplement, not replace, browser evidence."
+  },
+  "accounting": {
+    "before_dispatches": 99,
+    "after_dispatches": 216,
+    "new_dispatches": 117,
+    "before_reserved_cents": 495,
+    "after_reserved_cents": 1080,
+    "observed_new_input_tokens": 1067117,
+    "observed_new_output_tokens": 45217,
+    "reservation_is_billed_cost": false,
+    "provider_invoice_verified": false,
+    "original_history_retained": true,
+    "application_cost_cap_enabled": false,
+    "application_model": "gpt-5.4-mini-2026-03-17",
+    "python_reasoning": "low",
+    "development_model": "GPT-6.1 sol",
+    "local_lifetime_run_allowance": 64,
+    "local_lifetime_version_allowance": 64
+  },
+  "retained_attempts": [
+    {
+      "local_record": "u4-live-acceptance.json",
+      "status": "completed",
+      "error": null,
+      "usage": {
+        "input_tokens": 56357,
+        "output_tokens": 3203,
+        "requests": 7,
+        "tool_calls": 6
+      },
+      "not_counted_as_full_accepted_sequence": true
+    },
+    {
+      "local_record": "u4-live-complete.json",
+      "status": "completed",
+      "error": null,
+      "usage": {
+        "input_tokens": 77370,
+        "output_tokens": 2826,
+        "requests": 6,
+        "tool_calls": 5
+      },
+      "not_counted_as_full_accepted_sequence": true
+    },
+    {
+      "local_record": "u4-live-conservation.json",
+      "status": "completed",
+      "error": null,
+      "usage": {
+        "input_tokens": 57405,
+        "output_tokens": 3365,
+        "reference_failures": [
+          "The model's reported findings need valid source references."
+        ],
+        "requests": 7,
+        "tool_calls": 5
+      },
+      "not_counted_as_full_accepted_sequence": true
+    },
+    {
+      "local_record": "u4-live-contract-delivery.json",
+      "status": "completed",
+      "error": null,
+      "usage": {
+        "input_tokens": 22134,
+        "output_tokens": 756,
+        "requests": 3,
+        "tool_calls": 2
+      },
+      "not_counted_as_full_accepted_sequence": true
+    },
+    {
+      "local_record": "u4-live-contract-followup.json",
+      "status": "failed",
+      "error": "The model did not return a valid structured answer within this turn. No answer was fabricated. Try a narrower question and inspect existing runs before retrying work. Saved working copies, checks and returns are not rolled back. Inspect Working copies and Activity before retrying.",
+      "usage": {
+        "dispatched_requests": 5,
+        "failure_kind": "invalid_model_output",
+        "fields": [],
+        "input_tokens": 45354,
+        "output_tokens": 1742,
+        "partial": true,
+        "reference_failures": [
+          "The model's reported findings need valid source references.",
+          "The model's reported findings need valid source references."
+        ],
+        "requests": 5,
+        "tool_calls": 3
+      },
+      "not_counted_as_full_accepted_sequence": true
+    },
+    {
+      "local_record": "u4-live-contract.json",
+      "status": "completed",
+      "error": null,
+      "usage": {
+        "input_tokens": 62856,
+        "output_tokens": 3340,
+        "requests": 7,
+        "tool_calls": 6
+      },
+      "not_counted_as_full_accepted_sequence": true
+    },
+    {
+      "local_record": "u4-live-diagnostic.json",
+      "status": "completed",
+      "error": null,
+      "usage": {
+        "input_tokens": 70499,
+        "output_tokens": 2969,
+        "reference_failures": [
+          "The model referenced a run without a completed result."
+        ],
+        "requests": 8,
+        "tool_calls": 6
+      },
+      "not_counted_as_full_accepted_sequence": true
+    },
+    {
+      "local_record": "u4-live-final-followup.json",
+      "status": "completed",
+      "error": null,
+      "usage": {
+        "input_tokens": 39311,
+        "output_tokens": 1091,
+        "requests": 5,
+        "tool_calls": 4
+      },
+      "not_counted_as_full_accepted_sequence": true
+    },
+    {
+      "local_record": "u4-live-final.json",
+      "status": "completed",
+      "error": null,
+      "usage": {
+        "input_tokens": 89326,
+        "output_tokens": 2694,
+        "requests": 9,
+        "tool_calls": 8
+      },
+      "not_counted_as_full_accepted_sequence": true
+    },
+    {
+      "local_record": "u4-live-followup.json",
+      "status": "completed",
+      "error": null,
+      "usage": {
+        "input_tokens": 52747,
+        "output_tokens": 3114,
+        "reference_failures": [
+          "The model's reported findings need valid source references."
+        ],
+        "requests": 5,
+        "tool_calls": 3
+      },
+      "not_counted_as_full_accepted_sequence": true
+    },
+    {
+      "local_record": "u4-live-initial.json",
+      "status": "failed",
+      "error": "Select one to three distinct approved working-copy IDs. Saved working copies, checks and returns are not rolled back. Inspect Working copies and Activity before retrying.",
+      "usage": {
+        "dispatched_requests": 6,
+        "input_tokens": 42677,
+        "output_tokens": 1839,
+        "partial": true,
+        "requests": 6,
+        "tool_calls": 5
+      },
+      "not_counted_as_full_accepted_sequence": true
+    },
+    {
+      "local_record": "u4-live-logs.json",
+      "status": "completed",
+      "error": null,
+      "usage": {
+        "input_tokens": 72259,
+        "output_tokens": 3365,
+        "reference_failures": [
+          "The model's reported findings need valid source references."
+        ],
+        "requests": 8,
+        "tool_calls": 6
+      },
+      "not_counted_as_full_accepted_sequence": true
+    },
+    {
+      "local_record": "u4-live-query.json",
+      "status": "completed",
+      "error": null,
+      "usage": {
+        "input_tokens": 21414,
+        "output_tokens": 617,
+        "requests": 2,
+        "tool_calls": 1
+      },
+      "not_counted_as_full_accepted_sequence": true
+    },
+    {
+      "local_record": "u4-live-repaired.json",
+      "status": "failed",
+      "error": "Select one to three distinct approved working-copy IDs. Saved working copies, checks and returns are not rolled back. Inspect Working copies and Activity before retrying.",
+      "usage": {
+        "dispatched_requests": 3,
+        "input_tokens": 15924,
+        "output_tokens": 158,
+        "partial": true,
+        "requests": 3,
+        "tool_calls": 2
+      },
+      "not_counted_as_full_accepted_sequence": true
+    },
+    {
+      "local_record": "u4-live-report-reuse.json",
+      "status": "completed",
+      "error": null,
+      "usage": {
+        "input_tokens": 33260,
+        "output_tokens": 1481,
+        "requests": 4,
+        "tool_calls": 3
+      },
+      "not_counted_as_full_accepted_sequence": true
+    },
+    {
+      "local_record": "u4-live-reviewed.json",
+      "status": "completed",
+      "error": null,
+      "usage": {
+        "input_tokens": 88137,
+        "output_tokens": 3683,
+        "requests": 6,
+        "tool_calls": 5
+      },
+      "not_counted_as_full_accepted_sequence": true
+    },
+    {
+      "local_record": "u4-live-units.json",
+      "status": "completed",
+      "error": null,
+      "usage": {
+        "input_tokens": 48017,
+        "output_tokens": 1530,
+        "requests": 5,
+        "tool_calls": 4
+      },
+      "not_counted_as_full_accepted_sequence": true
+    }
+  ],
+  "final_active_work": {
+    "runs": 0,
+    "turns": 0
+  },
+  "checks": {
+    "targeted_ruff_lint": "passed",
+    "targeted_ruff_format": "passed excluding the deliberately hash-pinned guest launcher",
+    "frontend_prettier": "passed",
+    "frontend_build": "passed",
+    "diff_check": "passed"
+  },
+  "source_sha256": {
+    "src/prism/conversation.py": "7bd5386ace95491478d6d88020845265f02a531cdb99f69e5248bf01c74691f8",
+    "src/prism/computation.py": "f66e2179a7826d15e341d1d8f3a37f60ce04744914b795fb81686364b9580aeb",
+    "src/prism/workspace.py": "236419397a355c4adf9d8f2ac30bfee62454082c732a32c3ccb7c52220250e4d",
+    "src/prism/jobs.py": "ef6e8a0d7aae886af84c2317afd54f976de042a3ff4d08fc19b1179a7e73094c",
+    "src/prism/fixtures/python_workspace.py": "0798a869084020635c6d901afb053ce225788dd339feed9f4a33ee605ca06396",
+    "src/prism/owner.py": "260943757153092f5d96e270df80b03a24fcb0c200db4f28c6bd7e51308a1952",
+    "src/prism/handoff.py": "a1205e6f1747a9ece1b7e6770ea2f98f09afd2a7510e8e5c2ff2b1df465fcb76",
+    "src/prism/webapp.py": "477456ff740f66c7629c35bdd5718f5b8ae929542fd987068d5687c816af2045",
+    "src/prism/sharing.py": "792d60732e0b05664e4ec226a11a6c083e39f49ef54060368525152125ad69f8",
+    "src/prism/demo.py": "e8758ee0a73d060137ea2433d32868e7fbca01469c67356d152675246490b75a",
+    "src/prism/cli.py": "f3749f2dbf2c447aa14317582b501b3e111c967027528ce19f976abf7dd73ddd",
+    "frontend/src/main.jsx": "3d854e01e60ae219b8cfb261bf5c98a4d01e2df84726d5f79702e78cb735c712",
+    "frontend/src/handoff.jsx": "e4624a9e10a699877fb435b21d63ae4b53cd24b4da76a9638ec605e74356603e",
+    "frontend/src/python-approval.jsx": "c8bc45f8347f5eeda97b42a95e7748c6471dc9a6a220089eaa3c253f09b4b9d8",
+    "frontend/src/workspace.jsx": "745799fc141b1b15ef80121095a048c7ad5d6ed4e0ab67688a8fe22911a7a4a3",
+    "tests/test_computation_agent.py": "328236efc94304921ddf656275e4f72bc8ebbbc8887319969a12122e33954510"
+  },
+  "limitations": [
+    "Synthetic accepted sequence is not a general reliability rate or security audit.",
+    "Historical model, methodology, unit, reference and schema-four attachment failures remain; requirements and behavior constraints changed before accepted sequence.",
+    "Accepted report-only turn needed one bounded final reference correction; it did not replay saved effects.",
+    "Reference-Linux/Kata Python, M2 private-pilot readiness, owner acceptance and final locked-Mac browser clicks remain unverified.",
+    "Earlier Python approvals bind the previous launcher hash and are not silently upgraded.",
+    "Original source files are unchanged by accepted agent tasks; operator clarified synthetic requirements as part of milestone development."
+  ]
+}
