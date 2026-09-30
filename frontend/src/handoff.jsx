@@ -53,6 +53,7 @@ export function HandoffBuilder({
       check_workspace: false,
       python_entrypoint: null,
       python_outputs: [],
+      python_inputs: null,
     },
   );
   useEffect(() => {
@@ -155,6 +156,10 @@ export function HandoffBuilder({
                   : null,
               python_outputs:
                 draft.mode === "continue" ? draft.python_outputs || [] : [],
+              python_inputs:
+                draft.mode === "continue"
+                  ? (draft.python_inputs ?? null)
+                  : null,
               check_workspace:
                 draft.mode === "continue" && !!draft.check_workspace,
               editable_files:
@@ -406,7 +411,11 @@ export function HandoffBuilder({
                       ...d,
                       check_workspace: event.target.checked,
                       ...(event.target.checked
-                        ? { python_entrypoint: null, python_outputs: [] }
+                        ? {
+                            python_entrypoint: null,
+                            python_outputs: [],
+                            python_inputs: null,
+                          }
                         : {}),
                     }))
                   }
@@ -419,11 +428,13 @@ export function HandoffBuilder({
               editable={draft.editable_files || []}
               entrypoint={draft.python_entrypoint}
               outputs={draft.python_outputs || []}
-              onChange={(entrypoint, outputs) =>
+              inputs={draft.python_inputs ?? null}
+              onChange={(entrypoint, outputs, inputs) =>
                 setDraft((d) => ({
                   ...d,
                   python_entrypoint: entrypoint,
                   python_outputs: outputs,
+                  python_inputs: inputs,
                   ...(entrypoint ? { check_workspace: false } : {}),
                 }))
               }

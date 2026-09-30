@@ -5,6 +5,7 @@ export function PythonApproval({
   editable,
   entrypoint,
   outputs,
+  inputs = null,
   onChange,
 }) {
   const scripts = files.filter(
@@ -23,7 +24,7 @@ export function PythonApproval({
         Python execution (separate explicit approval)
         <select
           value={entrypoint || ""}
-          onChange={(e) => onChange(e.target.value || null, [])}
+          onChange={(e) => onChange(e.target.value || null, [], null)}
         >
           <option value="">No Python execution</option>
           {scripts.map((f) => (
@@ -53,6 +54,7 @@ export function PythonApproval({
                     e.target.checked
                       ? [...outputs, f.id]
                       : outputs.filter((id) => id !== f.id),
+                    inputs === null ? null : inputs.filter((id) => id !== f.id),
                   )
                 }
               />
@@ -62,6 +64,42 @@ export function PythonApproval({
           {!targets.length && (
             <p>First select editable results/*.json files.</p>
           )}
+          <strong>Execution inputs — readable by the script</strong>
+          <p>
+            Only checked files enter the runtime. Other shared files remain
+            available to chat. Exclude a report here to allow report-only edits
+            to retain matching numerical provenance.
+          </p>
+          {files
+            .filter((f) => !outputs.includes(f.id))
+            .map((f) => (
+              <label className="check" key={`input-${f.id}`}>
+                <input
+                  type="checkbox"
+                  disabled={f.id === entrypoint}
+                  checked={
+                    f.id === entrypoint ||
+                    inputs === null ||
+                    inputs.includes(f.id)
+                  }
+                  onChange={(e) => {
+                    const current =
+                      inputs ??
+                      files
+                        .filter((f) => !outputs.includes(f.id))
+                        .map((f) => f.id);
+                    onChange(
+                      entrypoint,
+                      outputs,
+                      e.target.checked
+                        ? [...current, f.id]
+                        : current.filter((id) => id !== f.id),
+                    );
+                  }}
+                />
+                {f.name}
+              </label>
+            ))}
           <p className="muted">
             30 seconds · 1 CPU · 256 MiB · 32 processes · 32 MiB scratch.
             Execution is not mathematical validation or owner approval.

@@ -460,7 +460,8 @@ function App() {
   }
   useEffect(() => {
     const token = new URLSearchParams(location.hash.slice(1)).get("token");
-    if (location.hash) history.replaceState(null, "", location.pathname);
+    if (location.hash)
+      history.replaceState(null, "", location.pathname + location.search);
     act(async () => {
       if (isIdentify && location.pathname === "/identify/completed") return;
       if (isInvite || isIdentify) {
@@ -590,6 +591,7 @@ function Owner({ state, refresh, act, busy }) {
     [checkWorkspace, setCheckWorkspace] = useState(false),
     [pythonEntrypoint, setPythonEntrypoint] = useState(null),
     [pythonOutputs, setPythonOutputs] = useState([]),
+    [pythonInputs, setPythonInputs] = useState(null),
     [purpose, setPurpose] = useState(
       "Help the collaborator understand the selected work, its evidence, limitations, and outstanding tasks.",
     ),
@@ -612,6 +614,7 @@ function Owner({ state, refresh, act, busy }) {
     setEditable([]);
     setPythonEntrypoint(null);
     setPythonOutputs([]);
+    setPythonInputs(null);
     setFile(null);
     setCandidate(null);
     if (!projectId) return () => {};
@@ -671,6 +674,7 @@ function Owner({ state, refresh, act, busy }) {
         check_workspace: mode === "continue" && checkWorkspace,
         python_entrypoint: mode === "continue" ? pythonEntrypoint : null,
         python_outputs: mode === "continue" ? pythonOutputs : [],
+        python_inputs: mode === "continue" ? pythonInputs : null,
         editable_files:
           mode === "continue"
             ? editable.filter((name) => shareSelected.includes(name))
@@ -1049,6 +1053,7 @@ function Owner({ state, refresh, act, busy }) {
                             if (event.target.checked) {
                               setPythonEntrypoint(null);
                               setPythonOutputs([]);
+                              setPythonInputs(null);
                             }
                           }}
                         />
@@ -1060,9 +1065,11 @@ function Owner({ state, refresh, act, busy }) {
                       editable={editable}
                       entrypoint={pythonEntrypoint}
                       outputs={pythonOutputs}
-                      onChange={(entrypoint, outputs) => {
+                      inputs={pythonInputs}
+                      onChange={(entrypoint, outputs, inputs) => {
                         setPythonEntrypoint(entrypoint);
                         setPythonOutputs(outputs);
+                        setPythonInputs(inputs);
                         if (entrypoint) setCheckWorkspace(false);
                       }}
                     />
@@ -1209,7 +1216,7 @@ function Owner({ state, refresh, act, busy }) {
                     </div>
                     <p className="muted">
                       {candidate.manifest.action.id === "python-workspace"
-                        ? "Execution is requested manually from Working copies in this increment."
+                        ? "Execution can be requested in this scoped conversation or manually from Working copies."
                         : "Requests originate in the conversation."}{" "}
                       The server checks the approved file selection, action
                       identity, parameters, session limits and current grant
@@ -2407,11 +2414,14 @@ function Reviewer({ state, refresh, act, busy }) {
       act(() => openSession(state.session));
       return;
     }
-    const previous = sessionStorage.getItem("prism-session");
+    const previous =
+      new URLSearchParams(location.search).get("session") ||
+      sessionStorage.getItem("prism-session");
     if (previous)
       act(async () => {
         try {
-          setSession(await api("/review/sessions/" + previous));
+          await openSession(previous);
+          sessionStorage.setItem("prism-session", previous);
         } catch (e) {
           sessionStorage.removeItem("prism-session");
           throw e;

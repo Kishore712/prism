@@ -190,8 +190,10 @@ export function WorkspacePanel({ session, api, act, busy }) {
               </strong>
               <p>
                 Read-only staged inputs; isolated writes; declared results:{" "}
-                {workspace.validator.outputs.map((f) => f.name).join(", ")}. No
-                automatic chat execution in this increment.
+                {workspace.validator.outputs.map((f) => f.name).join(", ")}.
+                Chat can perform requested computation within this same
+                approval. Execution inputs:{" "}
+                {workspace.validator.required_inputs.join(", ")}.
               </p>
               <button
                 disabled={busy || !!dirty}
