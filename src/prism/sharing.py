@@ -298,7 +298,10 @@ def prepare_source(root: Path):
 
 
 class Store:
-    def __init__(self, path: Path, *, measurements=False):
+    def __init__(self, path: Path, *, measurements=False, version_limit=24):
+        if type(version_limit) is not int or not 1 <= version_limit <= 256:
+            raise ValueError("Use a finite local version allowance between 1 and 256.")
+        self.version_limit = version_limit
         self.path, self.measurements = path, measurements
         with self.connect() as db:
             db.executescript("""
@@ -388,8 +391,13 @@ class Store:
     def insert_candidate(self, db, manifest, *, project_id=None):
         """Insert frozen bytes in the caller's transaction, including source mapping."""
         body, version = packed(manifest), ident()
-        if db.execute("SELECT count(*) FROM versions").fetchone()[0] >= 24:
-            raise Denied("The demo's 24-version limit is reached.", 429)
+        if (
+            db.execute("SELECT count(*) FROM versions").fetchone()[0]
+            >= self.version_limit
+        ):
+            raise Denied(
+                f"The demo's {self.version_limit}-version limit is reached.", 429
+            )
         db.execute(
             "INSERT INTO versions(id,digest,manifest,created) VALUES(?,?,?,?)",
             (version, digest(body), body, time.time()),

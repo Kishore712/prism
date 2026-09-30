@@ -224,6 +224,7 @@ class OwnerWorkspace:
         check_workspace=False,
         python_entrypoint=None,
         python_outputs=None,
+        python_inputs=None,
     ):
         with self.connect() as db:
             self.project(db, actor)
@@ -245,8 +246,15 @@ class OwnerWorkspace:
                 check=check_workspace,
                 python_entrypoint=python_entrypoint,
                 python_outputs=python_outputs,
+                python_inputs=python_inputs,
             )
-        elif editable or check_workspace or python_entrypoint or python_outputs:
+        elif (
+            editable
+            or check_workspace
+            or python_entrypoint
+            or python_outputs
+            or python_inputs is not None
+        ):
             raise Denied("Editable files require workspace editing permission.", 400)
         return self.base.candidate(manifest, project_id=actor.project)
 

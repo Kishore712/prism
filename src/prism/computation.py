@@ -20,7 +20,7 @@ def program():
     return files("prism.fixtures").joinpath("python_workspace.py").read_text()
 
 
-def python_action(shared, entrypoint, outputs):
+def python_action(shared, entrypoint, outputs, inputs=None):
     catalog = {f["name"]: f for f in shared}
     if (
         not isinstance(entrypoint, str)
@@ -37,6 +37,18 @@ def python_action(shared, entrypoint, outputs):
             400,
         )
     names = list(catalog)
+    if inputs is not None and (
+        not isinstance(inputs, list)
+        or not inputs
+        or any(not isinstance(n, str) or n not in catalog for n in inputs)
+        or len(set(inputs)) != len(inputs)
+        or entrypoint not in inputs
+        or set(inputs) & set(outputs)
+    ):
+        raise Denied(
+            "Execution inputs must be selected files, include the script and exclude result paths.",
+            400,
+        )
     if any(a != b and b.startswith(a + "/") for a in names for b in names):
         raise Denied("Selected file paths overlap.", 400)
     return {
@@ -48,7 +60,9 @@ def python_action(shared, entrypoint, outputs):
         "entrypoint": catalog[entrypoint]["id"],
         "entrypoint_name": entrypoint,
         "outputs": [{"id": catalog[n]["id"], "name": n} for n in sorted(outputs)],
-        "required_inputs": sorted(n for n in catalog if n not in outputs),
+        "required_inputs": sorted(
+            inputs if inputs is not None else (n for n in catalog if n not in outputs)
+        ),
         "profile": "development",
         "timeout_seconds": 30,
         "network": "none",

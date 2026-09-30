@@ -32,7 +32,13 @@ def checked_text(text):
 
 
 def with_workspace(
-    manifest, editable, *, check=False, python_entrypoint=None, python_outputs=None
+    manifest,
+    editable,
+    *,
+    check=False,
+    python_entrypoint=None,
+    python_outputs=None,
+    python_inputs=None,
 ):
     """Owner preparation only; rights are frozen into the approval digest."""
     if (
@@ -59,7 +65,7 @@ def with_workspace(
         "schema": 2 if check else 1,
         "editable": sorted(files[name]["id"] for name in editable),
     }
-    if python_entrypoint is not None or python_outputs:
+    if python_entrypoint is not None or python_outputs or python_inputs is not None:
         from prism.computation import python_action
 
         if (
@@ -72,9 +78,13 @@ def with_workspace(
                 400,
             )
         result["action"] = python_action(
-            result["files"], python_entrypoint, python_outputs
+            result["files"], python_entrypoint, python_outputs, python_inputs
         )
-        result["workspace"]["schema"] = 3
+        result["workspace"]["schema"] = 4 if python_inputs is not None else 3
+        if python_inputs is not None:
+            result["workspace"]["inputs"] = sorted(
+                files[n]["id"] for n in python_inputs
+            )
     validate_manifest(result)
     return result
 
@@ -84,9 +94,14 @@ def validate_manifest(manifest):
     if (
         manifest.get("mode") != "continue"
         or not isinstance(policy, dict)
-        or set(policy) != {"schema", "editable"}
+        or set(policy)
+        != (
+            {"schema", "editable", "inputs"}
+            if policy.get("schema") == 4
+            else {"schema", "editable"}
+        )
         or type(policy["schema"]) is not int
-        or policy["schema"] not in (1, 2, 3)
+        or policy["schema"] not in (1, 2, 3, 4)
         or not isinstance(policy["editable"], list)
         or not 1 <= len(policy["editable"]) <= 8
         or any(
@@ -133,17 +148,27 @@ def validate_manifest(manifest):
             json_check_action(manifest.get("files", []), profile=action.get("profile"))
         ):
             raise Denied("The reviewed workspace checker policy is unavailable.", 409)
-    if policy["schema"] == 3:
+    if policy["schema"] in (3, 4):
         from prism.computation import python_action
 
         action = manifest.get("action")
         if not isinstance(action, dict):
             raise Denied("The Python execution policy is unavailable.", 409)
+        if policy["schema"] == 4 and (
+            not isinstance(policy["inputs"], list)
+            or not 1 <= len(policy["inputs"]) <= 7
+            or any(not isinstance(i, str) or i not in ids for i in policy["inputs"])
+            or len(set(policy["inputs"])) != len(policy["inputs"])
+        ):
+            raise Denied("The execution input selection is invalid.", 409)
         try:
             canonical = python_action(
                 files,
                 action.get("entrypoint_name"),
                 [f["name"] for f in action.get("outputs", [])],
+                [f["name"] for f in files if f["id"] in policy["inputs"]]
+                if policy["schema"] == 4
+                else None,
             )
         except (KeyError, TypeError, Denied):
             raise Denied("The Python execution policy is invalid.", 409) from None
@@ -376,7 +401,7 @@ class Workspaces:
         state, revision, contents = self._state(db, session, actor)
         action = state["manifest"].get("action")
         if (
-            state["manifest"]["workspace"]["schema"] != 3
+            state["manifest"]["workspace"]["schema"] not in (3, 4)
             or not action
             or entrypoint != action["entrypoint"]
         ):
@@ -424,6 +449,14 @@ class Workspaces:
             # All outputs commit together; total/edit guards also cover generated files.
             updates = [{"id": f["id"], "text": f["text"]} for f in actual["files"]]
         return self.edit_many(session, actor, updates, expected_revision)
+
+    def matching_computation(self, session, actor, expected_revision):
+        """Reuse only exact executable input/output bytes under the same policy."""
+        with self.store.connect() as db:
+            state, revision, contents = self._state(db, session, actor)
+            if type(expected_revision) is not int or revision != expected_revision:
+                raise Denied("The workspace revision changed.", 409)
+            return self._matching_computation(db, state, revision, contents)
 
     @staticmethod
     def _trusted_computation(result, parameters, action):
@@ -598,7 +631,9 @@ class Workspaces:
             else None,
         }
 
-    def prepare_return(self, session, actor, expected_revision):
+    def prepare_return(
+        self, session, actor, expected_revision, *, computation_run=None
+    ):
         from prism.sharing import ident
 
         with self.store.connect() as db:
@@ -639,8 +674,15 @@ class Workspaces:
                 "source_modified": False,
                 "notice": "JSON syntax only; semantic correctness and owner acceptance are not established.",
             }
-            if state["manifest"]["workspace"]["schema"] == 3:
+            if state["manifest"]["workspace"]["schema"] in (3, 4):
                 match = self._matching_computation(db, state, revision, contents)
+                if computation_run is not None and (
+                    not match or match["id"] != computation_run
+                ):
+                    raise Denied(
+                        "The computation no longer matches these return inputs and outputs.",
+                        409,
+                    )
                 payload["computation"] = None
                 if match:
                     row = db.execute(

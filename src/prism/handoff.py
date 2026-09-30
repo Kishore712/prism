@@ -38,6 +38,7 @@ class HandoffSelection(Selection):
     check_workspace: bool = False
     python_entrypoint: str | None = Field(default=None, pattern=r"^[0-9a-f]{24}$")
     python_outputs: list[str] = Field(default_factory=list, max_length=2)
+    python_inputs: list[str] | None = Field(default=None, max_length=7)
     editable_files: list[str] = Field(default_factory=list, max_length=8)
 
 
@@ -444,10 +445,17 @@ class Handoffs:
                         "Select editable files from the shared selection.", 400
                     )
                 if (
-                    selection.python_entrypoint
-                    and selection.python_entrypoint not in selection.files
-                ) or any(
-                    key not in selection.files for key in selection.python_outputs
+                    (
+                        selection.python_entrypoint
+                        and selection.python_entrypoint not in selection.files
+                    )
+                    or any(
+                        key not in selection.files for key in selection.python_outputs
+                    )
+                    or any(
+                        key not in selection.files
+                        for key in (selection.python_inputs or [])
+                    )
                 ):
                     raise Denied(
                         "Python execution selections must be shared files.", 400
@@ -462,12 +470,18 @@ class Handoffs:
                     python_outputs=[
                         files[key]["name"] for key in selection.python_outputs
                     ],
+                    python_inputs=[
+                        files[key]["name"] for key in selection.python_inputs
+                    ]
+                    if selection.python_inputs is not None
+                    else None,
                 )
             elif (
                 selection.editable_files
                 or selection.check_workspace
                 or selection.python_entrypoint
                 or selection.python_outputs
+                or selection.python_inputs is not None
             ):
                 raise Denied(
                     "Editable files require workspace editing permission.", 400

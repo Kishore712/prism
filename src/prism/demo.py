@@ -29,6 +29,8 @@ def serve(
     tls_cert_file=None,
     tls_key_file=None,
     no_model_budget_limit=False,
+    demo_run_limit=32,
+    demo_version_limit=24,
 ):
     if bool(key_file) != allow_openai:
         raise ValueError(
@@ -146,7 +148,13 @@ def serve(
             lifecycle = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(lifecycle)
             lifecycle.recovery_final(*lifecycle._recovery_unit_arguments())
-        store = Store(root / "demo.sqlite", measurements=measurements)
+        if identity_mode and demo_version_limit != 24:
+            raise ValueError("Custom version allowances are local-development only.")
+        store = Store(
+            root / "demo.sqlite",
+            measurements=measurements,
+            version_limit=demo_version_limit,
+        )
         registry = RuntimeRegistry(profile=runtime_profile)
         auth = (
             OIDCAuth(store, config, client_secret=client_secret)
@@ -163,6 +171,7 @@ def serve(
             no_model_budget_limit=no_model_budget_limit,
             project_sources=project_sources,
             runtime_registry=registry,
+            demo_run_limit=demo_run_limit,
         )
         print(
             "Local handoff demonstration with a retained synthetic fixture. Private pilot ready: false.",

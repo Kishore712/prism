@@ -1,5 +1,6 @@
 """Synthetic U4.1 real development-worker/runtime checks; never calls a model."""
 
+import argparse
 import csv
 import hashlib
 import io
@@ -97,6 +98,13 @@ def oracle():
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=ROOT / "docs/validation/agent-computation-runtime.json",
+    )
+    args = parser.parse_args()
     checks = []
 
     def check(name, passed):
@@ -398,7 +406,7 @@ for child in children:
         "future_analysis_oracle": targets,
         "full_agent_analysis_verified": False,
     }
-    destination = ROOT / "docs/validation/agent-computation-runtime.json"
+    destination = args.output
     destination.write_text(json.dumps(report, indent=2) + "\n")
     print(
         json.dumps(

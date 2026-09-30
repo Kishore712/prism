@@ -38,6 +38,7 @@ class Candidate(Input):
     check_workspace: bool = False
     python_entrypoint: str | None = Field(default=None, max_length=120)
     python_outputs: list[str] = Field(default_factory=list, max_length=2)
+    python_inputs: list[str] | None = Field(default=None, max_length=7)
     files: list[str] = Field(min_length=1, max_length=8)
     purpose: str = Field(min_length=5, max_length=1000)
     mode: Literal["inspect", "verify", "continue"]
@@ -161,9 +162,12 @@ def create_app(
     no_model_budget_limit=False,
     project_sources=(),
     runtime_registry=None,
+    demo_run_limit=32,
 ):
     auth = auth or DemoAuth()
     identity_mode = isinstance(auth, OIDCAuth)
+    if identity_mode and demo_run_limit != 32:
+        raise ValueError("Custom demo run limits are local-development only.")
     if model_budget_cents is None:
         model_budget_cents = 0 if identity_mode else 100
     if type(no_model_budget_limit) is not bool:
@@ -175,7 +179,7 @@ def create_app(
         urllib.parse.urlsplit(origin).netloc if identity_mode else f"127.0.0.1:{port}"
     )
     if jobs is None:
-        jobs = Jobs(store, registry=runtime_registry)
+        jobs = Jobs(store, registry=runtime_registry, global_run_limit=demo_run_limit)
     elif runtime_registry is not None and jobs.registry is not runtime_registry:
         raise ValueError("Jobs and the application must share one runtime registry.")
     runtime_registry = jobs.registry
@@ -205,6 +209,7 @@ def create_app(
         socket=jobs.socket,
         recover=False,
         registry=runtime_registry,
+        global_run_limit=jobs.global_run_limit,
     )
     owner_conversations = OwnerConversations(
         owner_workspace,
@@ -623,12 +628,14 @@ def create_app(
                 check=body.check_workspace,
                 python_entrypoint=body.python_entrypoint,
                 python_outputs=body.python_outputs,
+                python_inputs=body.python_inputs,
             )
         elif (
             body.editable_files
             or body.check_workspace
             or body.python_entrypoint
             or body.python_outputs
+            or body.python_inputs is not None
         ):
             raise Denied("Editable files require workspace editing permission.", 400)
         return store.candidate(
@@ -647,6 +654,7 @@ def create_app(
             body.check_workspace,
             body.python_entrypoint,
             body.python_outputs,
+            body.python_inputs,
         )
 
     @app.get("/api/owner/versions/{version}")

@@ -40,8 +40,18 @@ runpy.run_module('prism.worker', run_name='__main__', alter_sys=True)
 
 class Jobs:
     def __init__(
-        self, store, socket=None, *, recover=True, registry=None, watchdog=None
+        self,
+        store,
+        socket=None,
+        *,
+        recover=True,
+        registry=None,
+        watchdog=None,
+        global_run_limit=GLOBAL_DEMO_RUN_LIMIT,
     ):
+        if type(global_run_limit) is not int or not 1 <= global_run_limit <= 256:
+            raise ValueError("Use a finite application run limit between 1 and 256.")
+        self.global_run_limit = global_run_limit
         self.store = store
         from prism.workspace import Workspaces
 
@@ -295,7 +305,7 @@ class Jobs:
                 ).fetchone()[0]
                 >= 6
                 or db.execute("SELECT count(*) FROM runs").fetchone()[0]
-                >= GLOBAL_DEMO_RUN_LIMIT
+                >= self.global_run_limit
             ):
                 raise Denied("The local verification budget is exhausted.", 429)
             if self.stop.is_set():
@@ -657,6 +667,29 @@ class Jobs:
                     error = (
                         "Verification did not complete successfully within its limits."
                     )
+                    if action == "python-workspace":
+                        # Scoped runtime logs are untrusted diagnostics, never deliverable
+                        # output or evidence of successful execution/import.
+                        result = {
+                            "action": action,
+                            "inputs": parameters,
+                            "program_sha256": program_hash,
+                            "exit_code": record.get("exit_code"),
+                            "stop_reason": record.get("stop_reason"),
+                            "output_limited": bool(record.get("output_limited")),
+                            "elapsed_seconds": record.get("elapsed_seconds", 0),
+                            "cleaned_up": True,
+                            "profile": profile,
+                            "diagnostics": {
+                                "untrusted": True,
+                                **{
+                                    k: str(record.get(k, ""))
+                                    .encode("utf-8")[:4096]
+                                    .decode("utf-8", errors="replace")
+                                    for k in ("stdout", "stderr")
+                                },
+                            },
+                        }
                 if profile == "reference-linux" and cleanup_confirmed:
                     self.watchdog.finishing(run, resource, token)
                     trusted_finish = True

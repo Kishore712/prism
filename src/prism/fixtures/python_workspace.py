@@ -28,6 +28,18 @@ def limits():
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 
 
+def read_logs():
+    logs = {}
+    for name in ("stdout", "stderr"):
+        fd = os.open("/scratch/." + name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(fd, "rb") as stream:
+            info = os.fstat(stream.fileno())
+            if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_size > 4096:
+                raise ValueError("Output log limit")
+            logs[name] = stream.read(4097).decode("utf-8", errors="replace")
+    return logs
+
+
 with open("/scratch/.stdout", "xb") as out, open("/scratch/.stderr", "xb") as err:
     child = subprocess.run(
         [sys.executable, "-I", "-B", str(root / policy["entrypoint"])],
@@ -44,6 +56,10 @@ with open("/scratch/.stdout", "xb") as out, open("/scratch/.stderr", "xb") as er
         check=False,
     )
 if child.returncode:
+    # Failure remains nonzero; expose only bounded scoped logs for diagnosis.
+    logs = read_logs()
+    print(logs["stdout"], end="", flush=True)
+    print(logs["stderr"], end="", file=sys.stderr, flush=True)
     raise SystemExit(1)
 # Walk using dirfds and NOFOLLOW: neither parent symlinks nor special files
 # can turn declared artifact collection into an arbitrary file read.
@@ -80,14 +96,7 @@ for item in policy["outputs"]:
         )
     finally:
         os.close(fd)
-logs = {}
-for name in ("stdout", "stderr"):
-    fd = os.open("/scratch/." + name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-    with os.fdopen(fd, "rb") as stream:
-        info = os.fstat(stream.fileno())
-        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_size > 4096:
-            raise ValueError("Output log limit")
-        logs[name] = stream.read(4097).decode("utf-8", errors="replace")
+logs = read_logs()
 print(
     json.dumps({"action": "python-workspace", "files": collected, **logs}), flush=True
 )

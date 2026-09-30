@@ -53,6 +53,18 @@ def parser():
     )
     demo.add_argument("--port", type=int, default=8765)
     demo.add_argument(
+        "--demo-run-limit",
+        type=int,
+        default=32,
+        help="Finite local lifetime run allowance, 1–256 (default: 32); never removes history or changes per-session/runtime limits",
+    )
+    demo.add_argument(
+        "--demo-version-limit",
+        type=int,
+        default=24,
+        help="Finite local version allowance, 1–256 (default: 24); preserves immutable prior versions",
+    )
+    demo.add_argument(
         "--measurements",
         action="store_true",
         help="Enable optional local numeric research measurements",
@@ -238,6 +250,8 @@ def main(argv=None):
                     args.project,
                     args.runtime_profile,
                     no_model_budget_limit=args.no_model_budget_limit,
+                    demo_run_limit=args.demo_run_limit,
+                    demo_version_limit=args.demo_version_limit,
                 )
             else:
                 serve(
