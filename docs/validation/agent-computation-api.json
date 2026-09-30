@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "scope": "Actual running loopback API walkthrough, not a completed browser walkthrough",
+  "passed": true,
+  "model_calls": 0,
+  "pilot_ready": false,
+  "version": "17d8044b4e354bc4b61190eead551b1a",
+  "session": "0ccd94a9248c441b9330eb31500745c9",
+  "run": "109599e799c741ed8d2e577b27325716",
+  "return": "c21141cc784840f18f9957e5760b8705",
+  "archive_sha256": "fe127b2af1543b5dc3edbab4e5bc20accf3ecee54ac478f5a1e13328ab159f9a",
+  "revision": 2,
+  "source_approval": "pending",
+  "browser_full_walkthrough": false
+}

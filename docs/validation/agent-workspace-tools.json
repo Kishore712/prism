@@ -1,0 +1,118 @@
+{
+  "date": "2026-09-29",
+  "increment": "U2: scoped agent working-copy tools and returns",
+  "branch": "prototype/agent-workspace",
+  "status": "local_tools_browser_manual_and_single_real_model_task_passed_owner_review_pending",
+  "pilot_ready": false,
+  "checks": {
+    "focused_workspace_agent_tests": 15,
+    "u1_workspace_tests": 16,
+    "full_backend_checkpoint": {
+      "passed": 461,
+      "note": "Before final two focused tests, failure-state notice and bounded-diff change; final focused tests passed."
+    },
+    "real_development_runtime": {
+      "kind": "local-development-real-worker",
+      "scripted_edits": true,
+      "model_calls": 0,
+      "run_id": "e99e7c755d8e46239e73d9e215ca51f4",
+      "status": "completed",
+      "error": null,
+      "revision": 1,
+      "input_hashes": [
+        {
+          "id": "c6b565a3f2578047a6a35ab8",
+          "sha256": "d48194f534559b98d7a3ce8e1b2eaf112e976b0974ad19147e6a644a2a978a4b"
+        }
+      ],
+      "json_valid": true,
+      "cleaned_up": true,
+      "profile": "development",
+      "program_sha256": "aa36c641a81f4032549d5890a8d1e50899ec0076c23677a31c038a7bf55e3480",
+      "image_id": "sha256:ee51c581302a65863c900c10ab025acf294badb9ee5c2b05c540498d6cd5a2c0",
+      "exit_code": 0,
+      "elapsed_seconds": 0.326,
+      "return_validated": true,
+      "download_hashes_match": true,
+      "two_changed_files": true,
+      "originals_unchanged": true,
+      "pilot_ready": false
+    },
+    "scripted_model_loop": "Actual PydanticAI loop and scoped tools, with FunctionModel and worker doubles; four requests. Not live model evidence.",
+    "browser": {
+      "status": "manual_local_path_passed",
+      "evidence": {
+        "kind": "chrome-local-manual-walkthrough-real-worker",
+        "model_calls": 0,
+        "revision": 2,
+        "run_id": "eb9bd9c6481645e9aa1a3fc4076ca0a4",
+        "exact_run_matches": true,
+        "json_valid": true,
+        "cleaned_up": true,
+        "profile": "development",
+        "zip_sha256": "679f3b672e591fa4a1a17f2bd89a50e1a7fcc6cd1b7f0165f55dc16b824f3d80",
+        "download_hashes_match": true,
+        "changes": 2,
+        "approval_pending": true,
+        "source_modified": false,
+        "pilot_ready": false
+      },
+      "steps": [
+        "owner chooses three files, two editable files and explicitly opts into fixed JSON check",
+        "owner previews and approves exact version",
+        "reviewer enters fresh scoped session",
+        "manual UI edits correct release identifier and audience while approval stays pending",
+        "saved diff shows both exact changes",
+        "real job submitted by browser, completed and refreshed",
+        "immutable return shows JSON syntax passed",
+        "Chrome download finished; downloaded ZIP hashes/diff/check verified independently",
+        "requirements text area read only and Save disabled",
+        "final preview explicitly distinguishes original approval hashes from revised checker inputs",
+        "local restart preserves revision 2 and immutable checked return; Chrome reauthentication/reopen confirms persistence"
+      ],
+      "caveat": "No model conversation occurred. Initial native controls and transient blank page did not complete acceptance; later navigation and keyboard focus/AX text entry completed the manual path. This does not establish a code root cause for earlier observations."
+    },
+    "live_external_model": "One repaired task passed with four real requests, three tools and an actual development-container check; see agent-workspace-live-pass.json. Historical failures retained.",
+    "new_kata_path": "Not exercised in this increment; existing deployed release unchanged.",
+    "full_backend_final": {
+      "passed": 463,
+      "note": "Final backend including new workspace policy and failed-answer state tests."
+    },
+    "targeted_ruff": "passed",
+    "ruff_format": "passed on nine changed Python files",
+    "frontend": "Final Prettier check and build passed; final approved-version preview inspected in Chrome.",
+    "live_followup_backend": {
+      "passed": 464,
+      "focused_workspace_agent": 16
+    },
+    "live_extension": "Authorized same-ledger 350-cent total and five-request Continue turns: both paid attempts produced edits/checks/returns but failed final answers; see agent-workspace-live-extension.json.",
+    "extension_backend": {
+      "passed": 467,
+      "focused_workspace": 35
+    },
+    "output_reference_repair": {
+      "record": "agent-workspace-output-repair.json",
+      "backend_tests": 468,
+      "external_calls": 0,
+      "live_acceptance": "pending"
+    }
+  },
+  "verified_boundaries": [
+    "atomic edits deny partial writes/read-only IDs/stale revision",
+    "exact revised-byte payload and concurrent input/revision conflict",
+    "explicit canonical validation policy, named Continue grant action binding, Inspect downgrade",
+    "strict current workspace/immutable return references; output repair cannot execute tools",
+    "failed final answer retains saved work with explicit inspect-before-retry notice",
+    "exact ZIP bytes, diff and completed matching check; stale returns remain older revisions",
+    "completed invalid JSON check is distinct from validated JSON",
+    "cross-session, revoke, CSRF, owner-only cookie and return quota checks"
+  ],
+  "limits": [
+    "No live model reliability or complete autonomous task acceptance established; Chrome manual path passed",
+    "No private-server release or new model allowance/ledger",
+    "Fixed JSON syntax only, no arbitrary project scripts/network/source writeback",
+    "Logical database copies, not new per-session VMs",
+    "Historical release packaging lacks workspace module; new source is not deployable by those old packagers",
+    "M2 fault/recovery limitations and pilot_ready=false preserved"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "status": "implemented-local",
+  "operator_option": "--no-model-budget-limit",
+  "backend_full_suite_passed": 482,
+  "new_focused_checks": 4,
+  "preserves_previous_dispatch_ledger": true,
+  "missing_key_cannot_enable_calls": true,
+  "revoked_access_remains_denied": true,
+  "owner_consent_remains_required": true,
+  "per_turn_request_limits_remain": true,
+  "explicit_zero_still_disables_calls": true,
+  "cost_policy_not_client_or_model_controlled": true,
+  "frontend_prettier_and_build_passed": true,
+  "live_local_route_activated": true,
+  "actual_provider_bill_not_read": true,
+  "reserved_cents_are_estimates": true,
+  "model": "gpt-5.4-mini-2026-03-17",
+  "remote_deployed": false,
+  "pilot_ready": false
+}

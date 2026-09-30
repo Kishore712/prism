@@ -1,0 +1,54 @@
+{
+  "date": "2026-09-29",
+  "increment": "U2 no-background final-output repair",
+  "status": "deterministic_checks_and_one_live_task_passed_owner_review_pending",
+  "pilot_ready": false,
+  "scope": "Same U2 output-reference failure; no later feature or runtime release.",
+  "findings": [
+    "Without approved background, the general Answer schema previously still allowed nonempty background references; membership checks rejected them only after generation.",
+    "The installed OpenAI schema adapter does not automatically opt a strict-incompatible Answer definition into strict mode. The repaired file-only output tool explicitly sets strict=True.",
+    "The shared prompt still stated four requests after Continue gained a fifth final-only correction request.",
+    "These implementation findings do not reconstruct the unknown fifth-response issue from the historical live failures."
+  ],
+  "changes": [
+    "NoBackgroundAnswer requires empty context_references and historical_run_references for collaborator versions with no approved background.",
+    "Only that final-output tool explicitly enables provider strict mode. Existing context-bearing and owner output schemas remain unchanged.",
+    "Service-side membership, stale-reference, version, grant and revocation checks remain; no reference is stripped, repaired, or granted automatically.",
+    "The prompt uses trusted model_limits matching the actual request and tool policy."
+  ],
+  "checks": {
+    "focused_workspace_agent_tests": 20,
+    "retained_u1_workspace_tests": 16,
+    "full_backend_tests": 468,
+    "targeted_ruff": "passed",
+    "format": "passed",
+    "sdk_wire_test": "Actual Responses SDK and guarded transport with an explicitly fake HTTP provider. Captured strict=True, maxItems=0, required reference fields, unchanged 1500-token/store=false settings. A deliberate invalid response was rejected locally and corrected with final_result as the only tool; no edits/runs/returns occurred.",
+    "context_handoff_regression": "Existing approved-background positive and denial tests passed in the full suite.",
+    "limitations": "Fake HTTP/model results do not establish live provider acceptance or reliable autonomous behavior."
+  },
+  "external_model_calls": 0,
+  "existing_ledger": {
+    "dispatches_before": 70,
+    "dispatches_after": 70,
+    "reserved_before_cents": 350,
+    "reserved_after_cents": 350,
+    "remaining_cents": 0,
+    "reset": false
+  },
+  "docs_reference": {
+    "url": "https://developers.openai.com/api/docs/guides/structured-outputs",
+    "checked": "2026-09-29",
+    "basis": "Official supported array constraints include maxItems; this does not replace real endpoint acceptance."
+  },
+  "pending_proposal": {
+    "authorized": true,
+    "owner_selected_total_budget_cents": 500,
+    "max_attempts": 1,
+    "attempts_used": 1
+  },
+  "not_done": [
+    "No remote release, U3, commit or push",
+    "Owner review remains pending"
+  ],
+  "live_followup_record": "agent-workspace-live-pass.json"
+}

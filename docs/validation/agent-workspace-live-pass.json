@@ -1,0 +1,100 @@
+{
+  "date": "2026-09-29",
+  "increment": "U2 real-model repaired task acceptance",
+  "status": "single_local_real_model_task_passed_owner_review_pending",
+  "pilot_ready": false,
+  "branch": "prototype/agent-workspace",
+  "model": "gpt-5.4-mini-2026-03-17",
+  "provider": "existing fixed OpenAI Responses route",
+  "runtime_profile": "development",
+  "identity_entry": "trusted synthetic driver; previous Chrome manual-path acceptance is separate",
+  "authorization": {
+    "total_budget_cents": 500,
+    "requested_attempts": 1,
+    "attempts_used": 1,
+    "request_limit": 5,
+    "tool_calls_limit": 8,
+    "seconds_per_turn": 90,
+    "output_tokens": 1500
+  },
+  "ledger": {
+    "original_database": true,
+    "reset": false,
+    "reserved_before_cents": 350,
+    "reserved_after_cents": 370,
+    "remaining_cents": 130,
+    "note": "Application reservations, not measured provider billing."
+  },
+  "turn": {
+    "status": "completed",
+    "error": null,
+    "usage": {
+      "input_tokens": 13145,
+      "output_tokens": 578,
+      "requests": 4,
+      "tool_calls": 3
+    },
+    "answer": "Reconciled and checked. I updated the JSON release identifier to `synthetic-2026-09`, kept `approved` false, and returned the package for review. Approval remains pending; no deploy was performed.",
+    "claim_kinds": [
+      "new_run",
+      "workspace",
+      "workspace"
+    ],
+    "final_correction_needed": false
+  },
+  "run": {
+    "id": "25b54a61ee36424fbc06f7b227691f94",
+    "status": "completed",
+    "revision": 1,
+    "inputs": [
+      {
+        "id": "c6b565a3f2578047a6a35ab8",
+        "sha256": "751144f3e65c4499341d3b56540d35bde8e5d0221956427a45588dfa5371df4b"
+      }
+    ],
+    "program_sha256": "aa36c641a81f4032549d5890a8d1e50899ec0076c23677a31c038a7bf55e3480",
+    "cleaned_up": true,
+    "elapsed_seconds": 0.355,
+    "json_valid": true
+  },
+  "return": {
+    "revision": 1,
+    "count": 1,
+    "zip_sha256": "549d5cacb8c1b2d4a656e3a40f3218648997490612ac3267e2607a9dec3b08c9",
+    "source_modified": false
+  },
+  "scoring": {
+    "release_matches_requirements": true,
+    "audience_matches_requirements": true,
+    "approval_pending": true,
+    "two_changed_files": true,
+    "requirements_unchanged": true,
+    "matching_completed_check": true,
+    "download_hashes_match": true,
+    "originals_unchanged": true,
+    "completed_final_answer": true,
+    "answer_references_actual_return": true,
+    "answer_references_actual_run": true,
+    "no_unapproved_background_references": true
+  },
+  "checks": {
+    "backend": 468,
+    "focused_workspace_agent": 20,
+    "retained_u1": 16,
+    "targeted_ruff": "passed",
+    "format": "passed",
+    "docs_links": "passed"
+  },
+  "limitations": [
+    "One bounded synthetic task; not a reliability rate or complete agent evaluation.",
+    "Actual model and development worker, not a newly released Linux/Kata path.",
+    "The live entry used a trusted driver; no new browser/second-identity acceptance in this follow-up.",
+    "JSON syntax check does not prove requirements or documentation correctness; file requirements were independently checked for this fixed case.",
+    "Historical failed turns and reservations remain; latest success does not establish their previously unretained detailed causes.",
+    "Owner acceptance, U3 follow-up cases and private pilot readiness remain pending."
+  ],
+  "database_integrity": "ok",
+  "active_turns": 0,
+  "active_runs": 0,
+  "model_dispatches": 74
+}

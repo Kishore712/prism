@@ -1,0 +1,107 @@
+{
+  "date": "2026-09-29",
+  "increment": "U2 authorized bounded allowance extension",
+  "status": "real_edits_checks_returns_passed_final_answers_failed",
+  "pilot_ready": false,
+  "authorization": {
+    "budget_before_cents": 300,
+    "budget_after_cents": 350,
+    "maximum_attempts": 2,
+    "attempts_used": 2,
+    "request_limit_continue": 5,
+    "request_limit_other_modes": 4,
+    "tools_hidden_from_request": 4,
+    "tool_calls_limit": 8,
+    "seconds_per_turn": 90,
+    "output_tokens_per_request": 1500
+  },
+  "ledger": {
+    "existing_database": true,
+    "reset": false,
+    "reserved_before_cents": 300,
+    "reserved_after_cents": 350,
+    "remaining_cents": 0,
+    "note": "Reservations are conservative application accounting, not an API invoice."
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "status": "failed",
+      "error": "The model did not return a valid structured answer within this turn. No answer was fabricated. Try a narrower question and inspect existing runs before retrying work. Saved working copies, checks and returns are not rolled back. Inspect Working copies and Activity before retrying.",
+      "usage": {
+        "dispatched_requests": 5,
+        "failure_kind": "invalid_model_output",
+        "fields": [],
+        "input_tokens": 16839,
+        "output_tokens": 660,
+        "partial": true,
+        "requests": 5,
+        "tool_calls": 3
+      },
+      "revision": 1,
+      "completed_check": true,
+      "return_count": 1,
+      "originals_unchanged": true
+    },
+    {
+      "attempt": 2,
+      "status": "failed",
+      "error": "The model did not return a valid structured answer within this turn. No answer was fabricated. Try a narrower question and inspect existing runs before retrying work. Saved working copies, checks and returns are not rolled back. Inspect Working copies and Activity before retrying.",
+      "usage": {
+        "dispatched_requests": 5,
+        "failure_kind": "invalid_model_output",
+        "fields": [],
+        "input_tokens": 17697,
+        "output_tokens": 1137,
+        "partial": true,
+        "reference_failures": [
+          "The model referenced unavailable handoff background."
+        ],
+        "requests": 5,
+        "tool_calls": 3
+      },
+      "revision": 1,
+      "completed_check": true,
+      "return_count": 1,
+      "originals_unchanged": true
+    }
+  ],
+  "artifact": {
+    "sha256": "bcf7b29be00c72ed749fcd84c3fa1891816a6c8b010958d04f0cb8b75b696001",
+    "scoring": {
+      "release_matches_requirements": true,
+      "audience_matches_requirements": true,
+      "approval_pending": true,
+      "two_changed_files": true,
+      "requirements_unchanged": true,
+      "matching_completed_check": true,
+      "download_hashes_match": true,
+      "originals_unchanged": true,
+      "completed_final_answer": false
+    }
+  },
+  "checks": {
+    "focused_workspace": 35,
+    "full_backend_before_final_prompt_clarification": 467,
+    "targeted_ruff": "passed",
+    "format": "passed",
+    "final_prompt_agent_tests": 14,
+    "final_prompt_owner_tests": 11
+  },
+  "fixes": [
+    "Same-transaction edit results include exact updated file references.",
+    "Specific trusted reference errors guide final-only output correction; at most two fixed error messages retained.",
+    "Failed turns retain partial SDK counters, separately labelled dispatched requests.",
+    "Prompt and output schema clarify that absent approved background permits no context references; current allowed context IDs explicitly provided."
+  ],
+  "limitations": [
+    "No successful final answer in either extension attempt.",
+    "Second attempt captured unavailable handoff background reference denial; the first attempt did not retain a specific reference failure, and the exact fifth-response issue remains unclassified.",
+    "Final allowed-context prompt clarification has deterministic checks only, no further paid acceptance.",
+    "No Linux/Kata deployment, U3, commit or push; existing cloud configuration unchanged."
+  ],
+  "next_action": "Review these bounded failures before authorizing further paid acceptance; no automatic additional calls.",
+  "database_integrity": "ok",
+  "active_runs": 0,
+  "active_turns": 0
+}

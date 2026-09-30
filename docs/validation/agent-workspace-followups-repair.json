@@ -1,0 +1,180 @@
+{
+  "schema": 1,
+  "status": "document-followup-pass-clarification-quality-failed",
+  "application_cost_cap": false,
+  "model": "gpt-5.4-mini-2026-03-17",
+  "runtime": "real development container, not Kata",
+  "setup": "New local session under the same approved synthetic version; scripted baseline copies from the retained owner artifact and one real worker check. Original expired session not extended.",
+  "expired_original_session_not_extended": true,
+  "baseline_run": "5308736a380f4ae689810aab73e3c57f",
+  "baseline_scripted_not_agent_completion": true,
+  "reserved_before_cents": 460,
+  "reserved_after_cents": 495,
+  "fixed_reservations_are_not_provider_costs": true,
+  "cases": [
+    {
+      "name": "repaired_document_followup",
+      "status": "completed",
+      "checks": {
+        "completed": true,
+        "sources_unchanged": true,
+        "earlier_archives_unchanged": true,
+        "no_new_execution": true,
+        "no_new_access_request": true,
+        "revision_advanced": true,
+        "only_notes_changed": true,
+        "one_return": true,
+        "exact_reuse_proof": true
+      },
+      "usage": {
+        "input_tokens": 14538,
+        "output_tokens": 610,
+        "requests": 4,
+        "tool_calls": 3
+      },
+      "answer": {
+        "answer": "Done. I appended the requested sentence as a new final paragraph to docs/release.md and left all other files unchanged. I checked the package and prepared it for owner review.\n\nJSON check was reused: yes. It reused the existing completed check for config/release.json, but only for unchanged JSON syntax; it does not validate the edited documentation.",
+        "citations": [],
+        "claims": [
+          {
+            "kind": "new_run",
+            "text": "The revised package was checked and prepared for owner review in this session."
+          },
+          {
+            "kind": "workspace",
+            "text": "docs/release.md was updated with the requested final paragraph, and other files were left unchanged."
+          },
+          {
+            "kind": "new_run",
+            "text": "The existing JSON check was reused; the tool reported the check was reused and that it only covers unchanged JSON syntax, not the edited documentation."
+          }
+        ],
+        "context_references": [],
+        "historical_run_references": [],
+        "limitations": [],
+        "pending_request_id": null,
+        "return_references": [
+          "71fd76e166004314ad9dfa08e8c1af5d"
+        ],
+        "run_references": [
+          "5308736a380f4ae689810aab73e3c57f"
+        ],
+        "workspace_references": [
+          {
+            "file_id": "87479ac9ea16cec5ceafce00",
+            "revision": 2,
+            "sha256": "ff02a650cb91451011c1e837fd2e79fa26f127a0e5fdc7cf0252afb1be8528cd"
+          },
+          {
+            "file_id": "c6b565a3f2578047a6a35ab8",
+            "revision": 2,
+            "sha256": "5c3812860086f21b61b604538fc51728f05180b824b40c71f584dcbb6c84037b"
+          },
+          {
+            "file_id": "5bea49bc6a4a5effcab01d13",
+            "revision": 2,
+            "sha256": "8f579e19f35e9ec2057579484e24bdd16def21416875f02282199a85d85002b3"
+          }
+        ]
+      },
+      "error": null,
+      "revision": 2,
+      "matching_check": {
+        "id": "5308736a380f4ae689810aab73e3c57f",
+        "checked_revision": 1,
+        "applies_to_revision": 2,
+        "input_hashes": [
+          {
+            "id": "c6b565a3f2578047a6a35ab8",
+            "sha256": "5c3812860086f21b61b604538fc51728f05180b824b40c71f584dcbb6c84037b"
+          }
+        ],
+        "reused": true,
+        "validated": true
+      },
+      "artifacts": [
+        {
+          "id": "71fd76e166004314ad9dfa08e8c1af5d",
+          "sha256": "e314930526fe8243b6b0ee1429ecfe47807f0f84c8f4c57b95cb27cb11d3251f",
+          "file": "u3-document-repair-verified.zip"
+        }
+      ]
+    },
+    {
+      "name": "repaired_clarification",
+      "status": "completed",
+      "checks": {
+        "completed": true,
+        "sources_unchanged": true,
+        "earlier_archives_unchanged": true,
+        "no_new_execution": true,
+        "no_new_access_request": false,
+        "no_edit": true,
+        "no_new_return": true,
+        "no_pending_request_in_answer": false
+      },
+      "usage": {
+        "input_tokens": 12893,
+        "output_tokens": 456,
+        "requests": 3,
+        "tool_calls": 2
+      },
+      "answer": {
+        "answer": "I need the exact release identifier you want used in both `config/release.json` and `docs/release.md`. Please provide the identifier, and I can then make the change without guessing. I will not change approval or any other file until you confirm it.",
+        "citations": [],
+        "claims": [
+          {
+            "kind": "interpretation",
+            "text": "Before editing, the missing input is the desired release identifier for both release files."
+          }
+        ],
+        "context_references": [],
+        "historical_run_references": [],
+        "limitations": [
+          "I have not changed any files because the target release identifier is unspecified."
+        ],
+        "pending_request_id": "5d82026b55d74887b8c0ada2beaa494c",
+        "return_references": [],
+        "run_references": [],
+        "workspace_references": [
+          {
+            "file_id": "c6b565a3f2578047a6a35ab8",
+            "revision": 2,
+            "sha256": "5c3812860086f21b61b604538fc51728f05180b824b40c71f584dcbb6c84037b"
+          },
+          {
+            "file_id": "87479ac9ea16cec5ceafce00",
+            "revision": 2,
+            "sha256": "ff02a650cb91451011c1e837fd2e79fa26f127a0e5fdc7cf0252afb1be8528cd"
+          },
+          {
+            "file_id": "5bea49bc6a4a5effcab01d13",
+            "revision": 2,
+            "sha256": "8f579e19f35e9ec2057579484e24bdd16def21416875f02282199a85d85002b3"
+          }
+        ]
+      },
+      "error": null,
+      "revision": 2,
+      "matching_check": {
+        "id": "5308736a380f4ae689810aab73e3c57f",
+        "checked_revision": 1,
+        "applies_to_revision": 2,
+        "input_hashes": [
+          {
+            "id": "c6b565a3f2578047a6a35ab8",
+            "sha256": "5c3812860086f21b61b604538fc51728f05180b824b40c71f584dcbb6c84037b"
+          }
+        ],
+        "reused": true,
+        "validated": true
+      },
+      "artifacts": []
+    }
+  ],
+  "passed": false,
+  "remote_deployed": false,
+  "owner_accepted": false,
+  "pilot_ready": false,
+  "limitation": "The missing-target answer is useful and preserves files, but the model still creates an unnecessary access request. Prompt changes alone have not solved that quality issue. No new capability is granted."
+}

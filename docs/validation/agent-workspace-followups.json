@@ -1,0 +1,451 @@
+{
+  "schema": 1,
+  "status": "implemented-local-live-acceptance-incomplete",
+  "scope": "U3 follow-ups and exact-input check reuse",
+  "branch": "prototype/agent-workspace",
+  "model": "gpt-5.4-mini-2026-03-17",
+  "external_inference": true,
+  "runtime": "development container; no reference-Linux/Kata release",
+  "budget": {
+    "ceiling_cents": 500,
+    "reserved_before_cents": 370,
+    "reserved_after_cents": 460,
+    "remaining_cents": 40,
+    "new_dispatches": 18,
+    "new_reserved_cents": 90,
+    "reservation_not_actual_invoice": true,
+    "ledger_reset": false,
+    "additional_paid_retry": false
+  },
+  "automated": {
+    "full_suite_passed": 478,
+    "final_prompt_workspace_suite_passed": 46,
+    "u3_focused_passed": 10,
+    "scripted_models_and_worker_doubles_are_not_live_evidence": true,
+    "targeted_ruff": true,
+    "frontend_prettier_and_build": true
+  },
+  "browser": {
+    "native_chrome": true,
+    "actual_owner_transcript_verified": true,
+    "ephemeral_model_disabled_viewer": true,
+    "workspace_reuse_labels_not_browser_exercised_this_increment": true
+  },
+  "preservation": {
+    "old_u2_manifest_and_file_bytes_unchanged": true,
+    "old_u2_stored_zip_sha256": "549d5cacb8c1b2d4a656e3a40f3218648997490612ac3267e2607a9dec3b08c9",
+    "stored_zip_matches_record": true,
+    "source_files_unchanged": true
+  },
+  "cases": [
+    {
+      "name": "document_followup",
+      "status": "failed",
+      "checks": {
+        "completed": false,
+        "source_unchanged": true,
+        "prior_returns_unchanged": false,
+        "approval_pending": true,
+        "requirements_unchanged": true,
+        "revision_advanced": true,
+        "only_notes_changed": true,
+        "no_new_execution": true,
+        "new_return": true,
+        "exact_reuse_proof": true,
+        "archive_matches_files": true
+      },
+      "usage": {
+        "dispatched_requests": 5,
+        "failure_kind": "invalid_model_output",
+        "fields": [],
+        "input_tokens": 20915,
+        "output_tokens": 894,
+        "partial": true,
+        "reference_failures": [
+          "The model referenced a stale or mismatched working copy.",
+          "The model referenced a stale or mismatched working copy."
+        ],
+        "requests": 5,
+        "tool_calls": 3
+      },
+      "answer": null,
+      "error": "The model did not return a valid structured answer within this turn. No answer was fabricated. Try a narrower question and inspect existing runs before retrying work. Saved working copies, checks and returns are not rolled back. Inspect Working copies and Activity before retrying.",
+      "workspace_revision": 2,
+      "matching_check": {
+        "id": "25b54a61ee36424fbc06f7b227691f94",
+        "checked_revision": 1,
+        "applies_to_revision": 2,
+        "input_hashes": [
+          {
+            "id": "c6b565a3f2578047a6a35ab8",
+            "sha256": "751144f3e65c4499341d3b56540d35bde8e5d0221956427a45588dfa5371df4b"
+          }
+        ],
+        "reused": true,
+        "validated": true
+      },
+      "new_archives": [
+        {
+          "id": "91d5ece3ca8442408341eb931cafd2ae",
+          "sha256": "1b8a020a0aab998fd0c6066a4e080a2a58beeae5459ba215f2a54bd4072be0ad",
+          "file": "u3-document_followup.zip"
+        }
+      ],
+      "reserved_after_cents": 395
+    },
+    {
+      "name": "existing_result",
+      "status": "completed",
+      "checks": {
+        "completed": true,
+        "source_unchanged": true,
+        "prior_returns_unchanged": true,
+        "approval_pending": true,
+        "requirements_unchanged": true,
+        "no_edit": true,
+        "no_new_execution": true,
+        "no_new_return": true
+      },
+      "usage": {
+        "input_tokens": 8792,
+        "output_tokens": 256,
+        "requests": 2,
+        "tool_calls": 1
+      },
+      "answer": {
+        "answer": "The last JSON syntax check reported the file as valid JSON: `config/release.json` had type `object`, `valid: true`, and `error: null`, with 1 object, 1 array, 4 keys, and 4 scalars. It does not establish semantic correctness, requirement compliance, or deployment readiness; it only validates syntax for the approved input at the checked workspace revision.",
+        "citations": [],
+        "claims": [
+          {
+            "kind": "new_run",
+            "text": "The completed JSON check found `config/release.json` valid with `error: null` and exit code 0."
+          },
+          {
+            "kind": "new_run",
+            "text": "The check only counted JSON structure and syntax-related metadata; it did not assess requirements or deployment status."
+          }
+        ],
+        "context_references": [],
+        "historical_run_references": [],
+        "limitations": [],
+        "pending_request_id": null,
+        "return_references": [],
+        "run_references": [
+          "25b54a61ee36424fbc06f7b227691f94"
+        ],
+        "workspace_references": []
+      },
+      "error": null,
+      "workspace_revision": 2,
+      "matching_check": {
+        "id": "25b54a61ee36424fbc06f7b227691f94",
+        "checked_revision": 1,
+        "applies_to_revision": 2,
+        "input_hashes": [
+          {
+            "id": "c6b565a3f2578047a6a35ab8",
+            "sha256": "751144f3e65c4499341d3b56540d35bde8e5d0221956427a45588dfa5371df4b"
+          }
+        ],
+        "reused": true,
+        "validated": true
+      },
+      "new_archives": [],
+      "reserved_after_cents": 405
+    },
+    {
+      "name": "missing_target",
+      "status": "completed",
+      "checks": {
+        "completed": true,
+        "source_unchanged": true,
+        "prior_returns_unchanged": true,
+        "approval_pending": true,
+        "requirements_unchanged": true,
+        "no_edit": true,
+        "no_new_execution": true,
+        "no_new_return": true
+      },
+      "usage": {
+        "input_tokens": 18131,
+        "output_tokens": 346,
+        "requests": 4,
+        "tool_calls": 3
+      },
+      "answer": {
+        "answer": "Before I change anything, I need the exact release identifier you want used in both `config/release.json` and `docs/release.md`. I also need your confirmation to keep `approved` false and only update those two files. I will not guess the target or change approval without your direction.",
+        "citations": [
+          {
+            "end": 7,
+            "id": "5bea49bc6a4a5effcab01d13",
+            "name": "requirements.md",
+            "sha256": "8f579e19f35e9ec2057579484e24bdd16def21416875f02282199a85d85002b3",
+            "start": 3,
+            "version": "b398c3710180411aaead71bbf6ab6cdc"
+          }
+        ],
+        "claims": [
+          {
+            "kind": "reported",
+            "text": "The requirements say the release identifier must match in both files, the audience must be `reviewer`, and `approved` must stay false until owner review."
+          },
+          {
+            "kind": "interpretation",
+            "text": "Because you have not chosen the identifier yet, I need the exact string before editing the package."
+          }
+        ],
+        "context_references": [],
+        "historical_run_references": [],
+        "limitations": [],
+        "pending_request_id": "7d3c93945c814945a40c3ff8c5c19705",
+        "return_references": [],
+        "run_references": [],
+        "workspace_references": []
+      },
+      "error": null,
+      "workspace_revision": 2,
+      "matching_check": {
+        "id": "25b54a61ee36424fbc06f7b227691f94",
+        "checked_revision": 1,
+        "applies_to_revision": 2,
+        "input_hashes": [
+          {
+            "id": "c6b565a3f2578047a6a35ab8",
+            "sha256": "751144f3e65c4499341d3b56540d35bde8e5d0221956427a45588dfa5371df4b"
+          }
+        ],
+        "reused": true,
+        "validated": true
+      },
+      "new_archives": [],
+      "reserved_after_cents": 425,
+      "quality_limitation": "Unnecessary access request and repeated approval=false confirmation."
+    },
+    {
+      "name": "conflicting_target",
+      "status": "completed",
+      "checks": {
+        "completed": true,
+        "source_unchanged": true,
+        "prior_returns_unchanged": true,
+        "approval_pending": true,
+        "requirements_unchanged": true,
+        "no_edit": true,
+        "no_new_execution": true,
+        "no_new_return": true
+      },
+      "usage": {
+        "input_tokens": 14802,
+        "output_tokens": 302,
+        "requests": 3,
+        "tool_calls": 2
+      },
+      "answer": {
+        "answer": "Before editing, we need to resolve the audience conflict: the requirements specify `reviewer` in both files, while your request says `public`. I should not guess which value wins. Approval should remain false, and the release identifier stays `synthetic-2026-09` unless you say otherwise.",
+        "citations": [
+          {
+            "end": 8,
+            "id": "5bea49bc6a4a5effcab01d13",
+            "name": "requirements.md",
+            "sha256": "8f579e19f35e9ec2057579484e24bdd16def21416875f02282199a85d85002b3",
+            "start": 1,
+            "version": "b398c3710180411aaead71bbf6ab6cdc"
+          }
+        ],
+        "claims": [
+          {
+            "kind": "reported",
+            "text": "The requirements say the audience must be `reviewer` in both files and `approved` must stay false until owner review."
+          },
+          {
+            "kind": "interpretation",
+            "text": "The only unresolved item before editing is whether to follow `reviewer` or your requested `public` audience value."
+          }
+        ],
+        "context_references": [],
+        "historical_run_references": [],
+        "limitations": [],
+        "pending_request_id": null,
+        "return_references": [],
+        "run_references": [],
+        "workspace_references": []
+      },
+      "error": null,
+      "workspace_revision": 2,
+      "matching_check": {
+        "id": "25b54a61ee36424fbc06f7b227691f94",
+        "checked_revision": 1,
+        "applies_to_revision": 2,
+        "input_hashes": [
+          {
+            "id": "c6b565a3f2578047a6a35ab8",
+            "sha256": "751144f3e65c4499341d3b56540d35bde8e5d0221956427a45588dfa5371df4b"
+          }
+        ],
+        "reused": true,
+        "validated": true
+      },
+      "new_archives": [],
+      "reserved_after_cents": 440
+    },
+    {
+      "name": "changed_json",
+      "status": "completed",
+      "checks": {
+        "completed": true,
+        "source_unchanged": true,
+        "prior_returns_unchanged": true,
+        "approval_pending": true,
+        "requirements_unchanged": true,
+        "revision_advanced": true,
+        "only_requested_change": true,
+        "one_new_real_execution": true,
+        "new_return": true,
+        "exact_new_check": true,
+        "fresh_proof": true,
+        "archive_matches_files": true
+      },
+      "usage": {
+        "input_tokens": 21844,
+        "output_tokens": 567,
+        "requests": 4,
+        "tool_calls": 3
+      },
+      "answer": {
+        "answer": "Updated `config/release.json` to set `documents` from 2 to 3, preserved `approved: false`, and left release notes unchanged. The JSON check passed on the edited file, so the revised package is ready for review. This required a new execution because the JSON input changed; the prior reusable check only covered the earlier revision, and the new revision was validated separately.",
+        "citations": [],
+        "claims": [
+          {
+            "kind": "new_run",
+            "text": "The changed `config/release.json` validated successfully at workspace revision 3 with exit code 0."
+          },
+          {
+            "kind": "workspace",
+            "text": "`config/release.json` now has `documents: 3` while keeping `release`, `audience`, and `approved: false` unchanged."
+          },
+          {
+            "kind": "interpretation",
+            "text": "A new execution was required because the JSON input changed from the previously checked revision, so the earlier reusable result did not cover this edit."
+          }
+        ],
+        "context_references": [],
+        "historical_run_references": [],
+        "limitations": [],
+        "pending_request_id": null,
+        "return_references": [
+          "6275c2fae6aa44f8a7c66147aa940405"
+        ],
+        "run_references": [
+          "e684fcf6325341c186a4a2d7a759af45"
+        ],
+        "workspace_references": [
+          {
+            "file_id": "c6b565a3f2578047a6a35ab8",
+            "revision": 3,
+            "sha256": "5c3812860086f21b61b604538fc51728f05180b824b40c71f584dcbb6c84037b"
+          },
+          {
+            "file_id": "87479ac9ea16cec5ceafce00",
+            "revision": 3,
+            "sha256": "0fe7597a0571848febf16b1bf0cd9da4df28dead72b8a9dfda4981211b1efc1a"
+          }
+        ]
+      },
+      "error": null,
+      "workspace_revision": 3,
+      "matching_check": {
+        "id": "e684fcf6325341c186a4a2d7a759af45",
+        "checked_revision": 3,
+        "applies_to_revision": 3,
+        "input_hashes": [
+          {
+            "id": "c6b565a3f2578047a6a35ab8",
+            "sha256": "5c3812860086f21b61b604538fc51728f05180b824b40c71f584dcbb6c84037b"
+          }
+        ],
+        "reused": false,
+        "validated": true
+      },
+      "new_archives": [
+        {
+          "id": "6275c2fae6aa44f8a7c66147aa940405",
+          "sha256": "cb53e147e47f0192c824f060aedc996683cc44805bbb5b2a7f471d6ce64f49a5",
+          "file": "u3-changed_json.zip"
+        }
+      ],
+      "reserved_after_cents": 460,
+      "new_real_run": {
+        "id": "e684fcf6325341c186a4a2d7a759af45",
+        "action": "json-check",
+        "parameters": {
+          "files": [
+            {
+              "id": "c6b565a3f2578047a6a35ab8",
+              "sha256": "5c3812860086f21b61b604538fc51728f05180b824b40c71f584dcbb6c84037b"
+            }
+          ],
+          "workspace_revision": 3
+        },
+        "status": "completed",
+        "result": {
+          "profile": "development",
+          "program_sha256": "aa36c641a81f4032549d5890a8d1e50899ec0076c23677a31c038a7bf55e3480",
+          "image": "docker.io/library/python@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a",
+          "image_id": "sha256:ee51c581302a65863c900c10ab025acf294badb9ee5c2b05c540498d6cd5a2c0",
+          "inputs": {
+            "files": [
+              {
+                "id": "c6b565a3f2578047a6a35ab8",
+                "sha256": "5c3812860086f21b61b604538fc51728f05180b824b40c71f584dcbb6c84037b"
+              }
+            ],
+            "workspace_revision": 3
+          },
+          "exit_code": 0,
+          "cleaned_up": true,
+          "output": {
+            "action": "json-check",
+            "files": [
+              {
+                "counts": {
+                  "arrays": 1,
+                  "items": 1,
+                  "keys": 4,
+                  "objects": 1,
+                  "scalars": 4
+                },
+                "error": null,
+                "id": "c6b565a3f2578047a6a35ab8",
+                "sha256": "5c3812860086f21b61b604538fc51728f05180b824b40c71f584dcbb6c84037b",
+                "type": "object",
+                "valid": true
+              }
+            ]
+          },
+          "elapsed_seconds": 0.264
+        }
+      }
+    }
+  ],
+  "post_failure_repairs": {
+    "stable_zip_timestamps": true,
+    "delivery_has_current_reference_catalog": true,
+    "output_only_correction_has_authorized_current_catalog": true,
+    "clarification_not_access_request_prompt": true,
+    "document_followup_live_rerun_pending": true,
+    "clarification_prompt_live_retest_pending": true
+  },
+  "limitations": [
+    "First document follow-up edited, correctly reused the completed check and returned real files, but failed final answer reference validation twice.",
+    "The trusted denial was stale or mismatched working copy. The exact rejected tuple was not retained, so no exact field-level cause is claimed.",
+    "First archive hash preservation check failed because downloads used wall-clock ZIP timestamps. Original manifest/files and stored U2 ZIP are unchanged.",
+    "Missing-target clarification also recorded one unnecessary access request and re-asked for an already stated approval condition. No capability was granted.",
+    "The final clarification prompt adjustment has focused regression but no paid live retest.",
+    "Syntax checks do not establish semantics, broad reliability or owner acceptance."
+  ],
+  "passed": false,
+  "owner_accepted": false,
+  "remote_deployed": false,
+  "pilot_ready": false,
+  "next": "Review preserved failures; bounded repaired document-followup/clarification recheck within the existing remaining ceiling before U4."
+}

@@ -1,0 +1,291 @@
+{
+  "schema": 1,
+  "scope": "U4.1 local development Python execution; no model calls or Kata",
+  "passed": true,
+  "pilot_ready": false,
+  "model_calls": 0,
+  "checks": [
+    {
+      "id": "independent_fixture_counts",
+      "passed": true
+    },
+    {
+      "id": "real_jobs_worker_completed",
+      "passed": true
+    },
+    {
+      "id": "real_cleanup_confirmed",
+      "passed": true
+    },
+    {
+      "id": "revised_script_executed",
+      "passed": true
+    },
+    {
+      "id": "raw_arithmetic_A",
+      "passed": true
+    },
+    {
+      "id": "raw_arithmetic_B",
+      "passed": true
+    },
+    {
+      "id": "initial_method_incomplete_labeled",
+      "passed": true
+    },
+    {
+      "id": "actual_outputs_and_exact_provenance_in_zip",
+      "passed": true
+    },
+    {
+      "id": "stable_download",
+      "passed": true
+    },
+    {
+      "id": "active_container_observed_before_revoke",
+      "passed": true
+    },
+    {
+      "id": "revoke_cancelled_without_result",
+      "passed": true
+    },
+    {
+      "id": "revoked_exact_container_absent",
+      "passed": true
+    },
+    {
+      "id": "boundary_probe_completed_cleaned",
+      "passed": true
+    },
+    {
+      "id": "readonly",
+      "passed": true
+    },
+    {
+      "id": "excluded_absent",
+      "passed": true
+    },
+    {
+      "id": "no_socket",
+      "passed": true
+    },
+    {
+      "id": "no_key",
+      "passed": true
+    },
+    {
+      "id": "external_and_metadata_network_denied",
+      "passed": true
+    },
+    {
+      "id": "memory_process_cpu_scratch_limits",
+      "passed": true
+    },
+    {
+      "id": "artifact_symlink_denied",
+      "passed": true
+    },
+    {
+      "id": "parent_symlink_denied",
+      "passed": true
+    },
+    {
+      "id": "special_fifo_denied",
+      "passed": true
+    },
+    {
+      "id": "hardlink_denied",
+      "passed": true
+    },
+    {
+      "id": "oversized_artifact_denied",
+      "passed": true
+    },
+    {
+      "id": "stdout_flood_denied",
+      "passed": true
+    },
+    {
+      "id": "invalid_json_denied",
+      "passed": true
+    },
+    {
+      "id": "process_creation_actually_limited",
+      "passed": true
+    },
+    {
+      "id": "runtime_timeout_cleaned",
+      "passed": true
+    },
+    {
+      "id": "worker_pipe_loss_cancelled_cleaned",
+      "passed": true
+    },
+    {
+      "id": "all_source_files_unchanged",
+      "passed": true
+    },
+    {
+      "id": "no_remaining_owned_runtime_resources",
+      "passed": true
+    }
+  ],
+  "run": {
+    "id": "c423c4d7020b4cefbe743d2b2b15dbd8",
+    "session": "1c8eb776e3144613a5b872e6f0a41c16",
+    "version": "dbad0101932f49329f2ea1a13535827e",
+    "action": "python-workspace",
+    "parameters": {
+      "entrypoint": "8d372c625a27500f4165aa1e",
+      "files": [
+        {
+          "id": "5afa4f3f8b4772d83dd5ffc7",
+          "name": "analysis-plan.json",
+          "sha256": "792d1279f379b7206900cd837582aeefc904f598cd6c32b7eb8703ab9ea61971"
+        },
+        {
+          "id": "8d372c625a27500f4165aa1e",
+          "name": "analysis.py",
+          "sha256": "b2d0d28f9f96a4dfdd8398ade1424e3711473d19dee3083b9a16b03628b39806"
+        },
+        {
+          "id": "fb5f83480287c3033047c63b",
+          "name": "data/pilot.csv",
+          "sha256": "198daa51b107960eff4b8c355165471e05da1011beadb69a2eb50e4e9cfa2fb9"
+        },
+        {
+          "id": "a22350b28862150572f20bd8",
+          "name": "report.md",
+          "sha256": "002d2348ed5bc89c2525360c5fe1ce18d7a39bc9fd8709a690ef5266c382dff5"
+        },
+        {
+          "id": "5bea49bc6a4a5effcab01d13",
+          "name": "requirements.md",
+          "sha256": "96451178575661db800e56eadbc9d3ad2c9cc1927ca54e4a362b72f230deba8e"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "a483ed8a851e3a1e46924fba",
+          "name": "results/data-quality.json"
+        },
+        {
+          "id": "d7b30ca910e0996a3ae59526",
+          "name": "results/metrics.json"
+        }
+      ],
+      "policy_sha256": "d6d743844a0f0f3c852b1c094f05e851b376abefd531bde5fc82fe44b9cf08e6",
+      "workspace_revision": 1
+    },
+    "status": "completed",
+    "created": 1790760228.01153,
+    "finished": 1790760228.5590389,
+    "result": {
+      "action": "python-workspace",
+      "cleaned_up": true,
+      "elapsed_seconds": 0.426,
+      "exit_code": 0,
+      "image": "docker.io/library/python@sha256:7415fbc3c9e4979cc717d92377ab2bc7b2b4a2af1ac03cc52b5f3f88efedaf3a",
+      "image_id": "sha256:ee51c581302a65863c900c10ab025acf294badb9ee5c2b05c540498d6cd5a2c0",
+      "inputs": {
+        "entrypoint": "8d372c625a27500f4165aa1e",
+        "files": [
+          {
+            "id": "5afa4f3f8b4772d83dd5ffc7",
+            "name": "analysis-plan.json",
+            "sha256": "792d1279f379b7206900cd837582aeefc904f598cd6c32b7eb8703ab9ea61971"
+          },
+          {
+            "id": "8d372c625a27500f4165aa1e",
+            "name": "analysis.py",
+            "sha256": "b2d0d28f9f96a4dfdd8398ade1424e3711473d19dee3083b9a16b03628b39806"
+          },
+          {
+            "id": "fb5f83480287c3033047c63b",
+            "name": "data/pilot.csv",
+            "sha256": "198daa51b107960eff4b8c355165471e05da1011beadb69a2eb50e4e9cfa2fb9"
+          },
+          {
+            "id": "a22350b28862150572f20bd8",
+            "name": "report.md",
+            "sha256": "002d2348ed5bc89c2525360c5fe1ce18d7a39bc9fd8709a690ef5266c382dff5"
+          },
+          {
+            "id": "5bea49bc6a4a5effcab01d13",
+            "name": "requirements.md",
+            "sha256": "96451178575661db800e56eadbc9d3ad2c9cc1927ca54e4a362b72f230deba8e"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "a483ed8a851e3a1e46924fba",
+            "name": "results/data-quality.json"
+          },
+          {
+            "id": "d7b30ca910e0996a3ae59526",
+            "name": "results/metrics.json"
+          }
+        ],
+        "policy_sha256": "d6d743844a0f0f3c852b1c094f05e851b376abefd531bde5fc82fe44b9cf08e6",
+        "workspace_revision": 1
+      },
+      "output": {
+        "action": "python-workspace",
+        "files": [
+          {
+            "id": "a483ed8a851e3a1e46924fba",
+            "name": "results/data-quality.json",
+            "sha256": "8462641d3de818a9a10604e9ef7586790c5078bb03349bc46162789cbee1a9d3",
+            "text": "{\n  \"raw_rows\": 168,\n  \"cleaning_performed\": false\n}\n"
+          },
+          {
+            "id": "d7b30ca910e0996a3ae59526",
+            "name": "results/metrics.json",
+            "sha256": "48081bc7e687795f508668cc26cf217023f1202ff0f4bd1452a27b884146558c",
+            "text": "{\n  \"method\": \"raw rows; cleaning and standardization pending\",\n  \"variants\": {\n    \"A\": {\n      \"rows\": 85,\n      \"conversions\": 21,\n      \"conversion_rate\": 0.24705882352941178,\n      \"revenue\": 840.0,\n      \"revenue_per_row\": 9.882352941176471\n    },\n    \"B\": {\n      \"rows\": 83,\n      \"conversions\": 26,\n      \"conversion_rate\": 0.3132530120481928,\n      \"revenue\": 1040.0,\n      \"revenue_per_row\": 12.53012048192771\n    }\n  }\n}\n"
+          }
+        ],
+        "stderr": "",
+        "stdout": "revised session script\n"
+      },
+      "output_sha256": "ba93900df850a0710079633aba4ddcb189a55b9bcc185043498c5f95fabaad9f",
+      "profile": "development",
+      "program_sha256": "801c8859fcbf630445ae3d6461bbc52dd028a7f5ba4f4c75420eb74cf6d22855"
+    },
+    "error": null,
+    "runtime_profile": "development"
+  },
+  "artifact_sha256": "f82f07817d3eee186df4e795a44add549badaf74ed21b13c32f26ce41136cab8",
+  "runtime_boundary_observations": {
+    "readonly": true,
+    "excluded_absent": true,
+    "no_socket": true,
+    "no_key": true,
+    "network_denied": [
+      true,
+      true
+    ],
+    "memory_max": "268435456",
+    "pids_max": "32",
+    "cpu_max": "100000 100000",
+    "scratch_bytes": 33554432
+  },
+  "future_analysis_oracle": {
+    "raw_rows": 168,
+    "exact_duplicates": 6,
+    "missing_id_rows": 2,
+    "eligible_users": 160,
+    "standardized_conversion": {
+      "A": 0.25,
+      "B": 0.3
+    },
+    "difference": 0.05,
+    "bootstrap_interval": [
+      -0.09999999999999998,
+      0.20416666666666666
+    ],
+    "oracle_only": true,
+    "full_agent_analysis_verified": false
+  },
+  "full_agent_analysis_verified": false
+}

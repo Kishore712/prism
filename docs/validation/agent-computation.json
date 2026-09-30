@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "date": "2026-09-30",
+  "scope": "U4.1 local manual Python working-copy computation; no U4.2, cloud deployment or Kata Python",
+  "local_acceptance_passed": true,
+  "owner_acceptance": "pending",
+  "pilot_ready": false,
+  "checks": {
+    "backend_unittest": {
+      "passed": 490,
+      "total": 490
+    },
+    "focused_application": {
+      "passed": 8,
+      "total": 8
+    },
+    "real_runtime": {
+      "passed": 31,
+      "total": 31,
+      "record": "agent-computation-runtime.json"
+    },
+    "targeted_ruff": "passed",
+    "frontend_prettier": "passed",
+    "frontend_build": "passed",
+    "diff_check": "passed",
+    "targeted_ruff_format": "passed"
+  },
+  "browser": {
+    "browser": "Chrome",
+    "identity_mode": "local demo role cookies in regular and incognito profiles; not new OIDC validation",
+    "full_manual_path_passed": true,
+    "version": "5901bb9405a3472a980fdf213f51af8c",
+    "session": "58248fc9198d47eeace6a284525336aa",
+    "run_id": "88419323ed35430bada035b03073d210",
+    "return_id": "9505bfc88b5f48b09b199a1653616d96",
+    "editable_files": [
+      "analysis.py",
+      "report.md",
+      "results/data-quality.json",
+      "results/metrics.json"
+    ],
+    "computed_revision": 1,
+    "imported_and_returned_revision": 2,
+    "stdout": "browser revised copy\n",
+    "exit_code": 0,
+    "cleaned_up": true,
+    "profile": "development",
+    "elapsed_seconds": 0.366,
+    "zip_sha256": "4056da940b5af6c0126061aeeec08ae0c6e3dc97a5421cc1a4466197d1ae3d8b",
+    "zip_files_and_hashes_verified": true,
+    "selected_source_files_unchanged": 7,
+    "excluded_private_file_absent": true,
+    "returned_method": "raw rows; cleaning and standardization pending",
+    "steps": [
+      "select seven synthetic files",
+      "choose editable script and two result files plus report",
+      "choose explicit Python entrypoint and outputs",
+      "review and approve frozen version",
+      "enter independent collaborator session",
+      "append a marker to script copy and save",
+      "execute exact saved revision",
+      "import declared outputs atomically",
+      "prepare and download immutable return"
+    ]
+  },
+  "model_accounting": {
+    "application_cost_cap": null,
+    "new_model_requests": 0,
+    "original_dispatches": 99,
+    "original_estimated_reservations_cents": 495,
+    "not_billed_cost": true,
+    "ledger_reset": false
+  },
+  "retained_failures": [
+    {
+      "kind": "development command error",
+      "detail": "An accidental uv run pytest invoked the unrelated system pytest and failed collection; the documented uv run --no-editable python unittest command subsequently passed all 490 tests."
+    },
+    {
+      "kind": "temporary live-service package path error",
+      "detail": "The accidental command replaced the installed wheel while the live service still referenced it; one browser result read returned 500 for a missing launcher resource. Restoring the non-editable install restored the same completed run. The service was then stopped with no active work before the final install/restart and full browser acceptance. No run or ledger reset occurred."
+    },
+    {
+      "kind": "unsaved computer-use edit error",
+      "detail": "A native End-key insertion initially put the marker inside a string. The unsaved edit was corrected in the browser before saving; the saved diff and actual stdout verified only the intended final append."
+    }
+  ],
+  "known_limits": [
+    "Manual execution and import only; model Python tools not connected in U4.1",
+    "Initial analytical script deliberately incomplete; no autonomous cleaning, standardization, bootstrap or report repair verified",
+    "Development container only; no reference-Linux Python release or fallback",
+    "Worker pipe lease is not a durable watchdog or proof of cleanup after SIGKILL/host loss",
+    "Untrusted computation output is not mathematical correctness or owner acceptance",
+    "Existing U3 unnecessary access request and M2 delayed-offline gate remain unresolved"
+  ],
+  "next_increment": "U4.2 requires owner authorization after U4.1 review"
+}

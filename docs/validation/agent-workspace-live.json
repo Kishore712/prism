@@ -1,0 +1,85 @@
+{
+  "date": "2026-09-29",
+  "increment": "U2 real-model local task acceptance",
+  "status": "partial_effects_passed_final_answer_failed_budget_exhausted",
+  "pilot_ready": false,
+  "model": "gpt-5.4-mini-2026-03-17",
+  "provider": "existing fixed OpenAI Responses route",
+  "runtime_profile": "development",
+  "identity_entry": "trusted synthetic driver; separate prior Chrome manual-path acceptance",
+  "existing_ledger": {
+    "before_reserved_cents": 260,
+    "after_reserved_cents": 300,
+    "budget_cents": 300,
+    "new_ledger": false,
+    "reset": false,
+    "remaining_cents": 0,
+    "note": "Reservations, not measured provider charges; existing configured purpose-specific key was used without disclosure."
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "status": "failed",
+      "error": "The provider stopped before completing this bounded answer. No partial answer was delivered. Try a shorter question without repeating completed runs. Saved working copies, checks and returns are not rolled back. Inspect Working copies and Activity before retrying.",
+      "model_requests_dispatched": 4,
+      "sdk_usage": null,
+      "revision": 1,
+      "run_statuses": [
+        "completed"
+      ],
+      "cleanup_confirmed": true,
+      "return_count": 0,
+      "originals_unchanged": true
+    },
+    {
+      "attempt": 2,
+      "status": "failed",
+      "error": "This turn reached its model request or tool allowance. No answer was fabricated. Ask a narrower question; inspect existing runs before requesting more work. Saved working copies, checks and returns are not rolled back. Inspect Working copies and Activity before retrying.",
+      "model_requests_dispatched": 4,
+      "sdk_usage": null,
+      "revision": 1,
+      "run_statuses": [
+        "completed"
+      ],
+      "cleanup_confirmed": true,
+      "return_count": 1,
+      "originals_unchanged": true
+    }
+  ],
+  "artifact": {
+    "sha256": "890fe69867ebe649d4f431597fe305b4fd627a437551520b82aa979d1223d2e9",
+    "scoring": {
+      "release_matches_requirements": true,
+      "audience_matches_requirements": true,
+      "approval_pending": true,
+      "two_changed_files": true,
+      "requirements_unchanged": true,
+      "matching_completed_check": true,
+      "download_hashes_match": true,
+      "originals_unchanged": true,
+      "completed_final_answer": false
+    }
+  },
+  "checks": {
+    "focused_workspace_agent": 16,
+    "full_backend": 464,
+    "targeted_ruff": "passed"
+  },
+  "limitations": [
+    "No completed final answer in either real-model attempt; complete autonomous-task acceptance remains failed.",
+    "First response had provider incomplete status; subreason was not retained and must not be inferred.",
+    "Second attempt hit the request/tool allowance; exact exhausted category or any preceding output-validation failure was not retained.",
+    "SDK usage was not saved for failed turns; reservation rows establish four dispatched requests per attempt, not token totals.",
+    "No new Linux/Kata release, remote deployment, U3, commit or push."
+  ],
+  "pending_proposal": {
+    "authorized": false,
+    "requests_per_turn": 5,
+    "tool_calls": 8,
+    "seconds": 90,
+    "output_tokens": 1500,
+    "aggregate_budget_cents": 350,
+    "max_further_task_attempts": 2
+  },
+  "database_integrity": "ok"
+}

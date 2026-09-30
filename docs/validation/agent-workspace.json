@@ -1,0 +1,39 @@
+{
+  "date": "2026-09-29",
+  "increment": "U1: approved working copies and diff review",
+  "branch": "prototype/agent-workspace",
+  "baseline": "54e523b447965d844ea7a9e6d8159f655f5c612a",
+  "status": "local_implementation_and_automated_checks_passed_browser_pending",
+  "pilot_ready": false,
+  "checks": {
+    "focused_workspace_tests": {"passed": 16, "model": "none", "runtime": "none"},
+    "full_backend_checkpoint": {"passed": 447, "note": "Passed before the subsequently added total-quota/source-link check and explicit line-ending marker; that final edit passed the focused 16-test run."},
+    "targeted_ruff": "passed on final touched Python files; format and diff checks also passed",
+    "frontend_build": "passed on final frontend; Prettier check passed",
+    "browser": "pending: Chrome browser connection unavailable, native AX and screenshot observations inconsistent; user foreground assistance requested"
+  },
+  "verified_cases": [
+    "actual SQLite save, diff hashes, restart persistence and unchanged owner source/approved evidence",
+    "read-only and private file writes denied; arbitrary path strings cannot address workspace files",
+    "separate session overlays and Observer/Inspect denial",
+    "stale revision and simultaneous-save conflict",
+    "UTF-8 byte, control-character, line, total-text and save-count limits",
+    "final-newline change recorded even when normalized diff is empty",
+    "revocation and expiry block subsequent operations",
+    "named-principal binding, wrong identity denial and inspect invitation downgrade",
+    "malformed editable policy and unsupported privilege downgrade denied",
+    "Continue cannot submit bootstrap or JSON execution",
+    "API authorization, CSRF, forged fields and route-specific request body caps",
+    "contextual handoff remaps editable source IDs to share-local IDs",
+    "swapping a source path to an excluded-file symlink cannot redirect frozen-copy reads"
+  ],
+  "limits": [
+    "no live model, runtime or real OIDC provider call in this increment",
+    "automated API tests use local credentials; named binding tests exercise the actual Store with synthetic principals",
+    "no Chrome end-to-end acceptance claimed at this checkpoint",
+    "manual editing only; model workspace tools, edited-byte validation and artifact export are not implemented",
+    "logical SQLite workspaces, not new per-session virtual machines or writable source mounts",
+    "no private-server install; existing cloud release, grants and reservations unchanged",
+    "prior M2 offline/recovery failures and pilot_ready=false remain"
+  ]
+}
