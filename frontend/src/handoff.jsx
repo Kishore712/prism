@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { PythonApproval } from "./python-approval.jsx";
 
 const toggle = (items, value) =>
   items.includes(value) ? items.filter((x) => x !== value) : [...items, value];
@@ -17,6 +18,8 @@ const actionLabel = (action) => {
   return actionId(action)?.replaceAll("-", " ") || "No execution action";
 };
 const actionDetail = (action) => {
+  if (actionId(action) === "python-workspace")
+    return "Runs the approved revised Python copy with read-only staged inputs, no network and bounded JSON results. Development only; this does not establish numerical correctness or owner approval.";
   if (actionId(action) === "json-check")
     return isReferenceLinuxAction(action)
       ? "The fixed tool parses only the selected JSON inputs in a Kata VM under the reference Linux runtime. It checks JSON syntax and does not execute project code. This profile is not a private pilot."
@@ -46,6 +49,10 @@ export function HandoffBuilder({
       runs: [],
       excerpts: [],
       mode: "inspect",
+      editable_files: [],
+      check_workspace: false,
+      python_entrypoint: null,
+      python_outputs: [],
     },
   );
   useEffect(() => {
@@ -55,7 +62,11 @@ export function HandoffBuilder({
       if (active) {
         setSource(data);
         if (!data.action)
-          setDraft((current) => ({ ...current, mode: "inspect" }));
+          setDraft((current) =>
+            current.mode === "verify"
+              ? { ...current, mode: "inspect" }
+              : current,
+          );
       }
     });
     return () => {
@@ -134,7 +145,27 @@ export function HandoffBuilder({
       className="handoff-builder"
       onSubmit={(e) => {
         e.preventDefault();
-        act(async () => onFrozen(await api(path + "/handoffs", draft)));
+        act(async () =>
+          onFrozen(
+            await api(path + "/handoffs", {
+              ...draft,
+              python_entrypoint:
+                draft.mode === "continue"
+                  ? draft.python_entrypoint || null
+                  : null,
+              python_outputs:
+                draft.mode === "continue" ? draft.python_outputs || [] : [],
+              check_workspace:
+                draft.mode === "continue" && !!draft.check_workspace,
+              editable_files:
+                draft.mode === "continue"
+                  ? (draft.editable_files || []).filter((id) =>
+                      draft.files.includes(id),
+                    )
+                  : [],
+            }),
+          ),
+        );
       }}
     >
       <div className="page-heading">
@@ -354,6 +385,7 @@ export function HandoffBuilder({
             onChange={(e) => set("mode", e.target.value)}
           >
             <option value="inspect">Read the selected material</option>
+            <option value="continue">Read + edit selected copies</option>
             {action && (
               <option value="verify">
                 Read material + {actionLabel(action)}
@@ -361,6 +393,64 @@ export function HandoffBuilder({
             )}
           </select>
         </label>
+        {draft.mode === "continue" && (
+          <div className="field">
+            <strong>Editable copies (explicit approval)</strong>
+            {source.action?.id === "json-check" && (
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={draft.check_workspace || false}
+                  onChange={(event) =>
+                    setDraft((d) => ({
+                      ...d,
+                      check_workspace: event.target.checked,
+                      ...(event.target.checked
+                        ? { python_entrypoint: null, python_outputs: [] }
+                        : {}),
+                    }))
+                  }
+                />
+                Allow the fixed JSON syntax check on working copies
+              </label>
+            )}
+            <PythonApproval
+              files={source.files.filter((f) => draft.files.includes(f.id))}
+              editable={draft.editable_files || []}
+              entrypoint={draft.python_entrypoint}
+              outputs={draft.python_outputs || []}
+              onChange={(entrypoint, outputs) =>
+                setDraft((d) => ({
+                  ...d,
+                  python_entrypoint: entrypoint,
+                  python_outputs: outputs,
+                  ...(entrypoint ? { check_workspace: false } : {}),
+                }))
+              }
+            />
+            {source.files
+              .filter((file) => draft.files.includes(file.id))
+              .map((file) => (
+                <label key={file.id} className="check">
+                  <input
+                    type="checkbox"
+                    checked={(draft.editable_files || []).includes(file.id)}
+                    onChange={() =>
+                      set(
+                        "editable_files",
+                        toggle(draft.editable_files || [], file.id),
+                      )
+                    }
+                  />
+                  {file.name}
+                </label>
+              ))}
+            <p className="muted">
+              Select at least one editable shared file. Agent and manual edits
+              use session copies; original sources are never overwritten.
+            </p>
+          </div>
+        )}
         {action ? (
           <div className="notice action-notice">
             <div>
@@ -431,6 +521,10 @@ export function HandoffBuilder({
             !draft.files.length ||
             draft.files.length > 8 ||
             missingSupport ||
+            (draft.mode === "continue" &&
+              !(draft.editable_files || []).some((id) =>
+                draft.files.includes(id),
+              )) ||
             missingInputs
           }
         >

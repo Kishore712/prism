@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
 import { HandoffBuilder, HandoffPreview } from "./handoff.jsx";
+import { WorkspacePanel } from "./workspace.jsx";
+import { PythonApproval } from "./python-approval.jsx";
 
 const isOwner = location.pathname === "/owner";
 const isInvite = location.pathname === "/invite";
@@ -29,6 +31,14 @@ const when = (value) =>
     minute: "2-digit",
   });
 const money = (value) => "$" + (Math.max(0, value) / 100).toFixed(2);
+const modelCap = (model) =>
+  model.budget_cents === null
+    ? "No application cost cap"
+    : money(model.budget_cents);
+const modelRemaining = (model) =>
+  model.budget_cents === null
+    ? "No application cost cap"
+    : money(model.budget_cents - model.reserved_cents);
 const cleanProject = (value) =>
   value?.replace(" · synthetic", "") || "Shared work";
 const actionId = (action) =>
@@ -48,6 +58,8 @@ const actionLabel = (action) => {
 };
 const actionDescription = (action) => {
   const id = actionId(action);
+  if (id === "python-workspace")
+    return "Runs revised bytes of the explicitly approved script in a development container over staged read-only inputs. Only declared JSON results can be imported. No network or source writeback; mathematical correctness and owner approval remain separate.";
   if (id === "json-check")
     return isReferenceLinuxAction(action)
       ? "Checks the syntax of the selected JSON files with a fixed parser in a Kata VM under the reference Linux runtime. It does not run project code. This profile is not a private pilot."
@@ -389,10 +401,12 @@ function ModelDetails({ model, act, refresh, busy, owner = false }) {
         <>
           <p className="wrap">{model.endpoint}</p>
           <div className="info-grid">
-            <span>Configured allowance</span>
-            <strong>{money(model.budget_cents)}</strong>
-            <span>Remaining reservation</span>
-            <strong>{money(model.budget_cents - model.reserved_cents)}</strong>
+            <span>Application reservation ceiling</span>
+            <strong>{modelCap(model)}</strong>
+            <span>Recorded dispatch reservations</span>
+            <strong>{money(model.reserved_cents)}</strong>
+            <span>Remaining reservation capacity</span>
+            <strong>{modelRemaining(model)}</strong>
           </div>
           <button
             className="secondary"
@@ -400,12 +414,12 @@ function ModelDetails({ model, act, refresh, busy, owner = false }) {
             onClick={() => act(refresh)}
           >
             <Icon name="refresh" size={15} />
-            Refresh allowance
+            Refresh model status
           </button>
           <p className="muted">
-            This is a local allowance, not the provider bill. Reservations
-            persist across restarts. Provider retention may apply even with
-            store=false.
+            Fixed reservations are bookkeeping estimates, not the provider bill.
+            Dispatch and token records persist across restarts. Provider
+            retention may apply even with store=false.
           </p>
         </>
       )}
@@ -413,7 +427,7 @@ function ModelDetails({ model, act, refresh, busy, owner = false }) {
       <h3>Conversation visibility</h3>
       <p>
         {owner
-          ? "Owner project chats are private from collaborators. Only explicitly selected and approved conversation context is shared. Both roles share one persistent model allowance."
+          ? "Owner project chats are private from collaborators. Only explicitly selected and approved conversation context is shared. Both roles share the same model accounting and configured cost policy."
           : "The owner can review local activity and conversations."}{" "}
         Hidden reasoning is not stored. No remote analytics are enabled.
       </p>
@@ -572,6 +586,10 @@ function Owner({ state, refresh, act, busy }) {
     [catalog, setCatalog] = useState(null),
     [selected, setSelected] = useState([]),
     [shareSelected, setShareSelected] = useState([]),
+    [editable, setEditable] = useState([]),
+    [checkWorkspace, setCheckWorkspace] = useState(false),
+    [pythonEntrypoint, setPythonEntrypoint] = useState(null),
+    [pythonOutputs, setPythonOutputs] = useState([]),
     [purpose, setPurpose] = useState(
       "Help the collaborator understand the selected work, its evidence, limitations, and outstanding tasks.",
     ),
@@ -591,6 +609,9 @@ function Owner({ state, refresh, act, busy }) {
     setCatalog(null);
     setSelected([]);
     setShareSelected([]);
+    setEditable([]);
+    setPythonEntrypoint(null);
+    setPythonOutputs([]);
     setFile(null);
     setCandidate(null);
     if (!projectId) return () => {};
@@ -615,6 +636,7 @@ function Owner({ state, refresh, act, busy }) {
             : [],
         );
         setMode(next.action ? "verify" : "inspect");
+        setCheckWorkspace(false);
       } catch (error) {
         if (current) throw error;
       }
@@ -646,6 +668,13 @@ function Owner({ state, refresh, act, busy }) {
         files: shareSelected,
         purpose,
         mode,
+        check_workspace: mode === "continue" && checkWorkspace,
+        python_entrypoint: mode === "continue" ? pythonEntrypoint : null,
+        python_outputs: mode === "continue" ? pythonOutputs : [],
+        editable_files:
+          mode === "continue"
+            ? editable.filter((name) => shareSelected.includes(name))
+            : [],
       }),
     );
     setFile(null);
@@ -874,7 +903,7 @@ function Owner({ state, refresh, act, busy }) {
                   ? candidate.revoked
                     ? "Shared version revoked"
                     : candidate.approved
-                      ? candidate.manifest.schema === 2
+                      ? !!candidate.manifest.context
                         ? "Your contextual handoff is ready."
                         : "Your handoff is ready."
                       : "Review your share"
@@ -882,7 +911,7 @@ function Owner({ state, refresh, act, busy }) {
               }
               description={
                 candidate?.approved
-                  ? candidate.manifest.schema === 2
+                  ? !!candidate.manifest.context
                     ? "A fresh collaborator agent can use this approved background, selected files, and bounded capability."
                     : "Review the shared resources and manage future access."
                   : "Choose the context. Set the scope. Review before sharing."
@@ -892,7 +921,7 @@ function Owner({ state, refresh, act, busy }) {
               {[
                 "Select resources",
                 "Review version",
-                candidate?.manifest.schema === 2 ? "Save handoff" : "Share",
+                !!candidate?.manifest.context ? "Save handoff" : "Share",
               ].map((s, i) => (
                 <li
                   key={s}
@@ -997,6 +1026,9 @@ function Owner({ state, refresh, act, busy }) {
                     onChange={(e) => setMode(e.target.value)}
                   >
                     <option value="inspect">Read selected material</option>
+                    <option value="continue">
+                      Read + edit selected copies
+                    </option>
                     {catalog?.action && (
                       <option value="verify">
                         Read material + {actionLabel(catalog.action)}
@@ -1004,6 +1036,59 @@ function Owner({ state, refresh, act, busy }) {
                     )}
                   </select>
                 </label>
+                {mode === "continue" && (
+                  <div className="field">
+                    <strong>Editable copies (explicit approval)</strong>
+                    {catalog?.action?.id === "json-check" && (
+                      <label className="check">
+                        <input
+                          type="checkbox"
+                          checked={checkWorkspace}
+                          onChange={(event) => {
+                            setCheckWorkspace(event.target.checked);
+                            if (event.target.checked) {
+                              setPythonEntrypoint(null);
+                              setPythonOutputs([]);
+                            }
+                          }}
+                        />
+                        Allow the fixed JSON syntax check on working copies
+                      </label>
+                    )}
+                    <PythonApproval
+                      files={shareSelected.map((name) => ({ id: name, name }))}
+                      editable={editable}
+                      entrypoint={pythonEntrypoint}
+                      outputs={pythonOutputs}
+                      onChange={(entrypoint, outputs) => {
+                        setPythonEntrypoint(entrypoint);
+                        setPythonOutputs(outputs);
+                        if (entrypoint) setCheckWorkspace(false);
+                      }}
+                    />
+                    {shareSelected.map((name) => (
+                      <label key={name} className="check">
+                        <input
+                          type="checkbox"
+                          checked={editable.includes(name)}
+                          onChange={(event) =>
+                            setEditable((previous) =>
+                              event.target.checked
+                                ? [...previous, name]
+                                : previous.filter((value) => value !== name),
+                            )
+                          }
+                        />
+                        {name}
+                      </label>
+                    ))}
+                    <p className="muted">
+                      Select at least one. All other shared files stay read
+                      only. The agent and manual editor can change these session
+                      copies. Originals are never overwritten.
+                    </p>
+                  </div>
+                )}
                 {catalog?.action && mode === "verify" && (
                   <div className="notice action-notice">
                     <Icon name="shield" size={15} />
@@ -1033,6 +1118,10 @@ function Owner({ state, refresh, act, busy }) {
                     disabled={
                       busy ||
                       !catalog ||
+                      (mode === "continue" &&
+                        !editable.some((name) =>
+                          shareSelected.includes(name),
+                        )) ||
                       shareSelected.length < 1 ||
                       shareSelected.length > 8 ||
                       (mode === "verify" && !!missingActionInputs.length) ||
@@ -1086,12 +1175,26 @@ function Owner({ state, refresh, act, busy }) {
                       <Icon name="file" />
                       <span>
                         {f.name}
-                        <small>{f.bytes} bytes</small>
+                        <small>
+                          {f.bytes} bytes
+                          {candidate.manifest.workspace?.editable.includes(f.id)
+                            ? " · Editable copy"
+                            : " · Read only"}
+                        </small>
                       </span>
                       <Icon name="chevron" size={15} />
                     </button>
                   ))}
                 </div>
+                {candidate.manifest.workspace && candidate.manifest.action && (
+                  <Notice>
+                    {candidate.manifest.action.id === "python-workspace"
+                      ? "Approval permits revised bytes of the selected Python script to run over approved copied inputs."
+                      : "Approval permits this fixed checker on revisions of the selected working copies."}{" "}
+                    The hashes below identify approved originals; each run
+                    records the exact revised input hashes.
+                  </Notice>
+                )}
                 {candidate.manifest.action && (
                   <div className="action-card">
                     <div className="section-heading">
@@ -1105,10 +1208,21 @@ function Owner({ state, refresh, act, busy }) {
                       <Icon name="play" />
                     </div>
                     <p className="muted">
-                      Requests originate in the conversation. The server checks
-                      the approved file selection, action identity, parameters,
-                      session limits and current grant before execution.
+                      {candidate.manifest.action.id === "python-workspace"
+                        ? "Execution is requested manually from Working copies in this increment."
+                        : "Requests originate in the conversation."}{" "}
+                      The server checks the approved file selection, action
+                      identity, parameters, session limits and current grant
+                      before execution.
                     </p>
+                    {candidate.manifest.action.id === "python-workspace" && (
+                      <p>
+                        Declared result files:{" "}
+                        {candidate.manifest.action.outputs
+                          .map((item) => item.name)
+                          .join(", ")}
+                      </p>
+                    )}
                     {!!actionInputs(candidate.manifest.action).length && (
                       <div className="action-inputs">
                         <strong>Exact tool inputs</strong>
@@ -1136,15 +1250,17 @@ function Owner({ state, refresh, act, busy }) {
                           })
                         }
                       >
-                        Inspect fixed tool
+                        {candidate.manifest.action.id === "python-workspace"
+                          ? "Inspect trusted launcher"
+                          : "Inspect fixed tool"}
                       </button>
                     )}
                     <details className="disclosure">
                       <summary>Runtime limits and identity</summary>
                       <p>
-                        The fixed tool receives only the approved inputs. It
-                        cannot select another project path, run arbitrary
-                        commands, edit the project, or use task network access.
+                        {candidate.manifest.action.id === "python-workspace"
+                          ? "The approved script can spawn processes and write isolated scratch files within the displayed limits. Only declared JSON results are imported. Owner sources are not mounted; task network access is disabled. This is development-container execution, with no reference-Linux/Kata release in this increment."
+                          : "The fixed tool receives only the approved inputs. It cannot select another project path, run arbitrary commands, edit the project, or use task network access."}
                       </p>
                       {candidate.manifest.action.image && (
                         <p className="wrap">
@@ -1173,7 +1289,7 @@ function Owner({ state, refresh, act, busy }) {
                       active process memory. Approval starts no model call or
                       execution.
                     </Notice>
-                    {candidate.manifest.schema === 2 && (
+                    {!!candidate.manifest.context && (
                       <label className="handoff-check review-consent">
                         <input
                           type="checkbox"
@@ -1192,7 +1308,7 @@ function Owner({ state, refresh, act, busy }) {
                         className="secondary"
                         disabled={busy}
                         onClick={() => {
-                          if (candidate.manifest.schema === 2) act(editHandoff);
+                          if (!!candidate.manifest.context) act(editHandoff);
                           else {
                             setCandidate(null);
                             setFile(null);
@@ -1203,7 +1319,7 @@ function Owner({ state, refresh, act, busy }) {
                       </button>
                       <button
                         disabled={
-                          busy || (candidate.manifest.schema === 2 && !reviewed)
+                          busy || (!!candidate.manifest.context && !reviewed)
                         }
                         onClick={() => act(approve)}
                       >
@@ -1231,7 +1347,7 @@ function Owner({ state, refresh, act, busy }) {
                     ) : (
                       <div className="handoff">
                         <h3>Invite a fresh perspective</h3>
-                        {candidate.manifest.schema === 2 && (
+                        {!!candidate.manifest.context && (
                           <button
                             className="secondary"
                             disabled={busy}
@@ -1480,7 +1596,11 @@ function InvitationManager({ version, invitations, refresh, act, busy }) {
   const [recipientIssuer, setRecipientIssuer] = useState("");
   const [recipientSubject, setRecipientSubject] = useState("");
   const [inviteMode, setInviteMode] = useState(
-    version.manifest.action ? "verify" : "inspect",
+    version.manifest.mode === "continue"
+      ? "continue"
+      : version.manifest.action
+        ? "verify"
+        : "inspect",
   );
   const [expiresIn, setExpiresIn] = useState(3600);
   const [created, setCreated] = useState(null);
@@ -1681,6 +1801,9 @@ function InvitationManager({ version, invitations, refresh, act, busy }) {
               onChange={(event) => setInviteMode(event.target.value)}
             >
               <option value="inspect">Read approved material</option>
+              {version.manifest.mode === "continue" && (
+                <option value="continue">Read + edit approved copies</option>
+              )}
               {version.manifest.action && (
                 <option value="verify">
                   Read + {actionLabel(version.manifest.action)}
@@ -1766,7 +1889,9 @@ function InvitationManager({ version, invitations, refresh, act, busy }) {
                 <small>
                   {item.mode === "verify"
                     ? "Read + approved action"
-                    : "Read only"}{" "}
+                    : item.mode === "continue"
+                      ? "Read + edit copies"
+                      : "Read only"}{" "}
                   · expires {new Date(item.expires * 1000).toLocaleString()}
                 </small>
               </div>
@@ -2073,12 +2198,11 @@ function OwnerProject({
                   </span>
                 </label>
                 <p className="muted fine">
-                  Uses the same {money(state.model.budget_cents)} total
-                  allowance as collaborator chats;{" "}
-                  {money(state.model.budget_cents - state.model.reserved_cents)}{" "}
-                  remaining. Provider retention may apply. Starting the
-                  conversation makes no model call; a call happens only after I
-                  send a message.
+                  Shares the collaborator model cost policy:{" "}
+                  {modelCap(state.model)}. Fixed dispatch reservations are not
+                  actual billed costs. Provider retention may apply. Starting
+                  the conversation makes no model call; a call happens only
+                  after I send a message.
                 </p>
               </>
             ) : (
@@ -2307,6 +2431,9 @@ function Reviewer({ state, refresh, act, busy }) {
           ? [{ id: "background", icon: "file", label: "Shared background" }]
           : []),
         { id: "conversation", icon: "chat", label: "Conversation" },
+        ...(session.mode === "continue"
+          ? [{ id: "workspace", icon: "file", label: "Working copies" }]
+          : []),
         {
           id: "evidence",
           icon: "file",
@@ -2383,9 +2510,9 @@ function Reviewer({ state, refresh, act, busy }) {
               {state.model.status === "blocked"
                 ? state.model.blocked_reason
                 : state.model.endpoint
-                  ? money(
-                      state.model.budget_cents - state.model.reserved_cents,
-                    ) + " allowance remaining"
+                  ? state.model.budget_cents === null
+                    ? "No application cost cap"
+                    : modelRemaining(state.model) + " reservation remaining"
                   : "Browse sources without a model"}
             </small>
           </button>
@@ -2442,7 +2569,9 @@ function Reviewer({ state, refresh, act, busy }) {
               <span className="status-dot" />
               {session.mode === "verify" && session.manifest.action
                 ? `Approved files + ${actionLabel(session.manifest.action)}`
-                : "Approved files only"}
+                : session.mode === "continue"
+                  ? "Approved files + editable copies"
+                  : "Approved files only"}
               <span className="separator">/</span>
               {session.manifest.files.length} approved files
             </span>
@@ -2578,6 +2707,15 @@ function Reviewer({ state, refresh, act, busy }) {
               </p>
             </main>
           )}
+          {tab === "workspace" && session.mode === "continue" && (
+            <WorkspacePanel
+              key={session.id}
+              session={session}
+              api={api}
+              act={act}
+              busy={busy}
+            />
+          )}
           {tab === "runs" && (
             <main className="page-content">
               <Runs key={session.id} session={session} act={act} busy={busy} />
@@ -2619,11 +2757,23 @@ function Reviewer({ state, refresh, act, busy }) {
                       current grant before execution.
                     </li>
                   )}
+                  {session.mode === "continue" && (
+                    <li>
+                      Edit {session.manifest.workspace.editable.length} approved
+                      copies manually or through chat, review their diff, and
+                      download an immutable return for owner review.
+                      {session.manifest.action?.id === "python-workspace"
+                        ? " The approved Python copy can run manually in Working copies; chat execution is pending."
+                        : session.manifest.action?.id === "json-check"
+                          ? " The fixed JSON syntax check is authorized."
+                          : " Execution is not authorized."}
+                    </li>
+                  )}
                 </ul>
                 <h3>Outside this share</h3>
                 <p className="muted">
-                  Other project files, original agent memory, arbitrary commands
-                  and task network access.
+                  Other project files, original agent memory, host commands and
+                  task network access.
                 </p>
                 <AccessRequest
                   key={session.id}
@@ -2992,8 +3142,9 @@ function Conversation({
   const path = `${apiBase || `/review/sessions/${session.id}`}/turns`;
   const modelReady =
     model.status === "configured" && (!owner || session.model_policy);
-  const availableAction =
-    session.mode === "verify" ? session.manifest.action : null;
+  const availableAction = ["verify", "continue"].includes(session.mode)
+    ? session.manifest.action
+    : null;
   const scroll = useRef(null);
   useEffect(() => {
     act(async () => setTurns(await api(path)));
@@ -3200,6 +3351,21 @@ function Conversation({
                             </button>
                           ),
                         )}
+                        {(turn.answer.workspace_references || []).map((ref) => (
+                          <span className="citation" key={ref.file_id}>
+                            Working copy · revision {ref.revision} ·{" "}
+                            {short(ref.sha256)}
+                          </span>
+                        ))}
+                        {(turn.answer.return_references || []).map((id) => (
+                          <a
+                            className="citation"
+                            key={id}
+                            href={`/api/review/sessions/${session.id}/workspace/returns/${id}/download`}
+                          >
+                            Download return {short(id)}
+                          </a>
+                        ))}
                         {turn.answer.run_references.map((id) => (
                           <button
                             className="citation"
@@ -3264,7 +3430,7 @@ function Conversation({
         {owner && (
           <span className="turn-allowance">
             {turns.length} / 12 turns · Shared model allowance{" "}
-            {money(model.budget_cents - model.reserved_cents)}
+            {modelRemaining(model)}
           </span>
         )}
         {!modelReady && (

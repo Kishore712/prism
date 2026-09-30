@@ -1,0 +1,54 @@
+.workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(0, 3fr);
+  gap: 24px;
+  margin: 24px 0;
+}
+.workspace-grid .file-list {
+  align-self: start;
+}
+.workspace-editor textarea {
+  min-height: 300px;
+  font-family: ui-monospace, monospace;
+}
+.workspace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.workspace-changes {
+  margin-top: 24px;
+}
+.workspace-changes article {
+  margin: 20px 0;
+}
+.workspace-changes pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 16px;
+  background: #f3f5ef;
+  border-radius: 8px;
+}
+@media (max-width: 760px) {
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.python-approval,
+.computation-result {
+  display: block;
+}
+.python-approval .field:first-child {
+  margin-top: 0;
+}
+.python-approval .check {
+  display: block;
+  margin-top: 8px;
+}
+.computation-result pre {
+  max-height: 400px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
